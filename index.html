@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scale Story · Inbox Daily</title>
+  <script>if (new URLSearchParams(location.search).get("embedded") === "1") document.documentElement.classList.add("embedded-frame");</script>
+  <style>
+    :root {
+      --ink: #2a1419;
+      --muted: #8f7379;
+      --cream: #fbf4ef;
+      --card: rgba(255,250,247,.9);
+      --wine: #6f1027;
+      --wine-dark: #2a0610;
+      --wine-soft: #ead0d6;
+      --gold: #c99a45;
+      --rose: #b94f62;
+      --blush: #f5e5e4;
+      --line: #ead9d6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 1080px;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      background:
+        radial-gradient(circle at 76% 2%, rgba(111,16,39,.18), transparent 32%),
+        radial-gradient(circle at 13% 88%, rgba(201,154,69,.16), transparent 28%),
+        linear-gradient(135deg, #fff8f2 0%, #f5e7e2 52%, #f9f1eb 100%);
+    }
+    .shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+    aside {
+      width:250px;
+      min-width:250px;
+      flex:none;
+      padding: 32px 24px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(201,154,69,.18), transparent 32%),
+        linear-gradient(180deg, #350713 0%, #1d050b 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand { display:flex; align-items:center; gap:11px; margin-bottom:30px; }
+    .logo { width:37px; height:37px; border-radius:12px; background:linear-gradient(135deg,var(--gold),#f0d39a); color:var(--wine-dark); display:grid; place-items:center; font-weight:900; box-shadow:0 10px 22px rgba(0,0,0,.22); }
+    .brand strong { display:block; font-size:15px; }
+    .brand span { font-size:11px; opacity:.58; }
+    .account-label { margin:0 0 9px; color:rgba(255,255,255,.48); font-size:10px; font-weight:800; letter-spacing:.12em; }
+    .account-list, .channel-list { display:grid; gap:6px; }
+    .account-list button, .channel-list button { width:100%; min-height:47px; border:1px solid transparent; background:transparent; color:rgba(255,255,255,.72); padding:11px 12px; border-radius:12px; text-align:left; cursor:pointer; font:inherit; transition:none; }
+    .account-list button:hover, .channel-list button:hover { border-color:transparent; background:transparent; color:rgba(255,255,255,.72); }
+    .account-list button.active, .channel-list button.active {
+      border-color:rgba(255,255,255,.14);
+      background:rgba(255,255,255,.12);
+      color:rgba(255,255,255,.72);
+    }
+    .account-list button[data-view="overview"].active { color:rgba(255,255,255,.72); }
+    .analysis-toggle { display:flex !important; align-items:center; justify-content:space-between; color:white !important; }
+    .analysis-toggle .chevron { opacity:.45; transition:.18s ease; }
+    .analysis-toggle.open .chevron { transform:rotate(90deg); opacity:.9; }
+    .channel-list { margin:2px 0 4px 10px; padding-left:8px; border-left:1px solid rgba(255,255,255,.12); }
+    .channel-list[hidden] { display:none !important; }
+    .channel-list button { min-height:42px; padding:9px 10px; font-size:11px; }
+    .account-list b { display:block; font-size:12px; line-height:1.35; }
+    .account-list small { display:block; margin-top:4px; font-size:9px; opacity:.52; }
+    .account-inbox { display:inline-flex; margin-top:12px; color:#f0d39a; text-decoration:none; font-size:10px; font-weight:800; }
+    .side-sections { margin-top:25px; padding-top:17px; border-top:1px solid rgba(255,255,255,.1); }
+    .section-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .section-tags span { padding:6px 8px; border-radius:8px; background:rgba(255,255,255,.07); color:rgba(255,255,255,.58); font-size:9px; }
+    .tool-list { display:grid; gap:6px; }
+    .tool-list a { display:block; min-height:55px; border:1px solid transparent; background:transparent; color:rgba(255,255,255,.72); padding:12px 13px; border-radius:14px; text-decoration:none; font-size:12px; font-weight:900; transition:none; }
+    .tool-list a:hover { border-color:transparent; background:transparent; color:rgba(255,255,255,.72); }
+    .tool-list a.active { border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.12); color:rgba(255,255,255,.72); }
+    .tool-list a span { display:block; margin-top:4px; color:rgba(255,255,255,.55); font-size:9px; font-weight:600; }
+    .side-note { margin-top:auto; padding:16px; border-radius:14px; background:rgba(255,255,255,.08); font-size:11px; line-height:1.6; color:rgba(255,255,255,.65); }
+    .side-definition { margin-top:18px; border-top:1px solid rgba(255,255,255,.1); padding-top:14px; }
+    .side-definition summary { cursor:pointer; color:#f0d39a; font-size:11px; font-weight:800; }
+    .side-rules { margin-top:10px; display:grid; gap:10px; }
+    .side-rule b { display:block; font-size:10px; color:white; margin-bottom:3px; }
+    .side-rule span { display:block; font-size:9px; line-height:1.5; color:rgba(255,255,255,.55); }
+    aside .account-list button,
+    aside .channel-list button,
+    aside .tool-list a {
+      border-color:transparent !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+      font-size:12px !important;
+      transform:none !important;
+      box-shadow:none !important;
+      transition:none !important;
+    }
+    aside .account-list > button,
+    aside .tool-list > a {
+      height:57px !important;
+      min-height:57px !important;
+    }
+    aside .channel-list button { font-size:11px !important; }
+    aside .channel-list button {
+      height:45px !important;
+      min-height:45px !important;
+    }
+    aside .account-list button:hover,
+    aside .channel-list button:hover,
+    aside .tool-list a:hover {
+      border-color:transparent !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+    }
+    aside .account-list button.active,
+    aside .channel-list button.active,
+    aside .tool-list a.active {
+      border-color:transparent !important;
+      background:rgba(255,255,255,.12) !important;
+      color:rgba(255,255,255,.72) !important;
+    }
+    main { padding:34px 42px 48px; }
+    header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
+    h1 { margin:0 0 7px; font-size:28px; letter-spacing:-.04em; color:var(--wine-dark); }
+    .title-row { display:flex; align-items:center; gap:10px; }
+    .edit-name { border:1px solid var(--line); background:rgba(255,255,255,.72); color:var(--wine); padding:6px 9px; border-radius:9px; cursor:pointer; font-size:10px; font-weight:800; }
+    .edit-name:hover { background:white; border-color:#d8a8b2; }
+    .sub { color:var(--muted); font-size:13px; }
+    .header-actions { display:flex; gap:10px; align-items:center; }
+    .run-button { border:0; padding:10px 17px; border-radius:999px; background:linear-gradient(135deg,var(--wine),#9b2942); color:white; font:inherit; font-size:11px; font-weight:900; letter-spacing:.08em; cursor:pointer; box-shadow:0 10px 24px rgba(111,16,39,.2); }
+    .run-button:hover { transform:translateY(-1px); box-shadow:0 13px 28px rgba(111,16,39,.28); }
+    .run-button:disabled { opacity:.65; cursor:wait; transform:none; }
+    .download-button { border:1px solid #d8a8b2; padding:9px 14px; border-radius:999px; background:rgba(255,255,255,.82); color:var(--wine); font:inherit; font-size:11px; font-weight:850; cursor:pointer; white-space:nowrap; }
+    .download-button:hover { background:white; transform:translateY(-1px); box-shadow:0 9px 22px rgba(111,16,39,.12); }
+    .pill { padding:9px 13px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.65); font-size:12px; }
+    .verified { color:var(--wine); background:#fff0f0; border-color:#e6bdc5; font-weight:700; }
+    #syncBadge { display:none !important; }
+    .date-control { display:flex; align-items:center; gap:8px; padding:5px 10px; }
+    .date-control button { border:0; background:transparent; color:var(--wine); cursor:pointer; font-size:16px; padding:3px 5px; }
+    .date-control input { border:0; outline:0; background:transparent; color:var(--ink); font:inherit; font-weight:700; }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:14px; }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,.72); box-shadow:0 18px 48px rgba(64,9,22,.08); border-radius:20px; backdrop-filter:blur(10px); }
+    .metric { padding:19px 20px; position:relative; overflow:hidden; }
+    .metric::after { content:""; position:absolute; width:72px; height:72px; border-radius:50%; background:var(--tint); right:-23px; top:-25px; opacity:.55; }
+    .metric label { display:block; font-size:12px; color:var(--muted); margin-bottom:13px; }
+    .metric strong { font-size:30px; letter-spacing:-.05em; }
+    .metric small { margin-left:8px; color:var(--wine); font-weight:700; font-size:11px; }
+    .metric-button { width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer; }
+    .metric-button:hover { transform:translateY(-2px); border-color:#d8a8b2; box-shadow:0 18px 42px rgba(111,16,39,.14); }
+    .metric-button:focus-visible { outline:3px solid rgba(111,16,39,.22); outline-offset:2px; }
+    .grid { display:grid; grid-template-columns:1.12fr .88fr; gap:14px; }
+    .panel { padding:22px; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .panel h2 { font-size:15px; margin:0; }
+    .panel-head span { color:var(--muted); font-size:11px; }
+    .funnel-row { display:grid; grid-template-columns:110px 1fr 42px; gap:12px; align-items:center; margin:15px 0; font-size:12px; }
+    .track { height:10px; background:#edf0ec; border-radius:999px; overflow:hidden; }
+    .bar { height:100%; width:var(--w); border-radius:999px; background:var(--c); }
+    .num { text-align:right; font-weight:800; }
+    .reason { display:grid; grid-template-columns:28px 1fr auto; gap:11px; align-items:center; padding:13px 0; border-bottom:1px solid #edf0ec; }
+    .reason:last-child { border:0; }
+    .rank { width:26px; height:26px; border-radius:8px; background:#edf3ed; display:grid; place-items:center; font-size:11px; font-weight:800; }
+    .reason b { display:block; font-size:12px; margin-bottom:3px; }
+    .reason p { margin:0; font-size:10px; color:var(--muted); }
+    .reason strong { font-size:13px; }
+    .reason-count { border:0; background:#f3e4e7; color:var(--wine); min-width:32px; height:30px; padding:0 9px; border-radius:9px; font-weight:900; cursor:pointer; }
+    .reason-count:hover { background:#ead0d6; }
+    .blocker-section { margin:18px 0 4px; padding:11px 12px; border-radius:13px; background:#f8eff1; color:var(--wine); font-size:12px; font-weight:900; display:flex; justify-content:space-between; align-items:center; }
+    .blocker-section:first-child { margin-top:0; }
+    .blocker-section small { color:var(--muted); font-size:10px; font-weight:800; }
+    .summary { grid-column:1 / -1; padding:23px; display:grid; grid-template-columns:42px 1fr; gap:14px; border-left:5px solid var(--wine); }
+    .spark { width:42px; height:42px; border-radius:13px; display:grid; place-items:center; background:linear-gradient(135deg,var(--wine),var(--rose)); color:white; font-size:19px; }
+    .summary h2 { margin:1px 0 8px; font-size:15px; }
+    .summary p { margin:0; line-height:1.75; color:#5c4247; font-size:13px; }
+    .summary b { color:var(--ink); }
+    .sync-warning { display:inline-block; margin-top:8px; color:#7e2230; font-weight:800; }
+    .definition { padding:22px; }
+    .definition.compact { grid-column:1 / -1; padding:0; overflow:hidden; }
+    .definition.compact summary { display:flex; justify-content:space-between; align-items:center; padding:13px 18px; cursor:pointer; font-size:12px; font-weight:800; list-style:none; }
+    .definition.compact summary::-webkit-details-marker { display:none; }
+    .definition.compact summary span { color:var(--muted); font-size:10px; font-weight:500; }
+    .definition.compact .rules { padding:0 18px 10px; }
+    .blockers-panel { grid-column:1 / -1; }
+    .rule { display:grid; grid-template-columns:128px 1fr; gap:14px; padding:12px 0; border-bottom:1px solid #edf0ec; }
+    .rule:last-child { border-bottom:0; }
+    .rule b { font-size:12px; }
+    .rule span { color:var(--muted); font-size:11px; line-height:1.55; }
+    .history { grid-column:1 / -1; padding:22px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th { color:var(--muted); font-weight:600; text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
+    td { padding:12px; border-bottom:1px solid #edf0ec; }
+    .empty { color:#9aa9a4; }
+    dialog { width:min(640px,calc(100vw - 40px)); max-height:min(82vh,760px); padding:0; border:0; border-radius:20px; color:var(--ink); box-shadow:0 28px 80px rgba(16,43,35,.28); overflow:hidden; }
+    dialog::backdrop { background:rgba(12,32,27,.45); backdrop-filter:blur(3px); }
+    .dialog-head { display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid var(--line); }
+    .dialog-head h2 { margin:0; font-size:16px; }
+    .dialog-head button { border:0; background:#edf3ef; color:var(--ink); width:30px; height:30px; border-radius:9px; cursor:pointer; }
+    .customer-list { padding:8px 22px 20px; max-height:min(62vh,590px); overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+    .customer-section { margin:14px 0 4px; padding:8px 10px; border-radius:10px; background:#fbf4ef; color:var(--wine); font-size:11px; font-weight:900; }
+    .customer-section small { margin-left:7px; color:var(--muted); font-size:10px; font-weight:700; }
+    .customer { display:grid; grid-template-columns:minmax(0,1fr) 150px; align-items:center; gap:18px; padding:13px 0; border-bottom:1px solid #edf0ec; }
+    .customer:last-child { border-bottom:0; }
+    .customer b { display:block; font-size:13px; margin-bottom:3px; }
+    .customer span { display:block; color:var(--muted); font-size:10px; line-height:1.45; overflow-wrap:anywhere; word-break:break-word; }
+    .badge-return { display:inline-flex; margin-left:7px; padding:3px 7px; border-radius:999px; background:#fff0d8; color:#8b5e11; font-size:9px; font-weight:800; vertical-align:middle; }
+    .tag-badges { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+    .tag-badge { display:inline-flex; padding:3px 7px; border-radius:999px; background:#f4e4e7; color:var(--wine); font-size:9px; font-weight:800; }
+    .tag-badge.dnd { background:#ece9e6; color:#6d625c; }
+    .tag-badge.free { background:#edf2df; color:#526629; }
+    .customer a { flex:none; width:118px; min-height:38px; display:inline-flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; background:linear-gradient(135deg,var(--wine),#8f1d36); color:white; padding:8px 12px; border-radius:12px; font-size:11px; font-weight:800; box-sizing:border-box; white-space:nowrap; }
+    .customer-actions { width:150px; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+    .run-dialog { width:min(430px,calc(100vw - 36px)); text-align:center; }
+    .run-dialog .run-body { padding:26px 26px 24px; background:linear-gradient(135deg,#fff9f5,#fff); }
+    .run-icon { width:48px; height:48px; border-radius:16px; margin:0 auto 14px; display:grid; place-items:center; background:linear-gradient(135deg,var(--wine),#9b2942); color:white; font-size:22px; font-weight:950; }
+    .run-dialog h2 { margin:0 0 8px; font-size:18px; color:var(--wine-dark); }
+    .run-dialog p { margin:0; color:var(--muted); font-size:13px; line-height:1.6; }
+    .run-dialog button { margin-top:18px; border:0; border-radius:999px; padding:10px 18px; background:var(--wine); color:white; font:inherit; font-size:12px; font-weight:900; cursor:pointer; }
+    footer { margin-top:14px; text-align:right; color:#91a09b; font-size:10px; }
+    @media (max-width: 560px) {
+      .customer { grid-template-columns:1fr; gap:10px; }
+      .customer-actions { width:100%; justify-content:flex-start; }
+      .customer a { width:auto; min-width:118px; }
+    }
+    /* Sidebar lock: keep the left navigation visually identical on every page. */
+    .shell { grid-template-columns:250px minmax(0,1fr) !important; }
+    aside {
+      width:250px !important;
+      min-width:250px !important;
+      max-width:250px !important;
+      padding:32px 24px !important;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(201,154,69,.18), transparent 32%),
+        linear-gradient(180deg, #350713 0%, #1d050b 100%) !important;
+      color:white !important;
+      overflow:hidden !important;
+    }
+    aside, aside * { transition:none !important; animation:none !important; transform:none !important; box-sizing:border-box !important; }
+    aside .brand { height:37px !important; margin:0 0 30px !important; gap:11px !important; }
+    aside .brand strong { font-size:15px !important; line-height:1.25 !important; color:white !important; }
+    aside .brand span { font-size:11px !important; line-height:1.25 !important; color:rgba(255,255,255,.58) !important; }
+    aside .account-label,
+    aside .side-title { height:12px !important; line-height:12px !important; margin:0 0 9px !important; color:rgba(255,255,255,.48) !important; font-size:10px !important; font-weight:850 !important; letter-spacing:.12em !important; }
+    aside .account-list,
+    aside .tool-list,
+    aside .nav-list { display:grid !important; gap:6px !important; margin:0 !important; }
+    aside .side-sections { margin-top:25px !important; padding-top:17px !important; border-top:1px solid rgba(255,255,255,.1) !important; }
+    aside .side-button,
+    aside .account-list > a,
+    aside .account-list > button,
+    aside .tool-list > a,
+    aside .tool-list > button,
+    aside .nav-list > a,
+    aside .nav-list > button {
+      display:flex !important;
+      flex-direction:column !important;
+      justify-content:center !important;
+      align-items:flex-start !important;
+      width:100% !important;
+      height:57px !important;
+      min-height:57px !important;
+      max-height:57px !important;
+      margin:0 !important;
+      padding:0 12px !important;
+      border:1px solid transparent !important;
+      border-radius:14px !important;
+      background:transparent !important;
+      box-shadow:none !important;
+      outline:none !important;
+      color:rgba(255,255,255,.72) !important;
+      text-align:left !important;
+      text-decoration:none !important;
+      font:inherit !important;
+      font-size:12px !important;
+      font-weight:850 !important;
+      line-height:1.35 !important;
+    }
+    aside .analysis-toggle,
+    aside .account-toggle { flex-direction:row !important; align-items:center !important; justify-content:space-between !important; }
+    aside .analysis-toggle > span:first-child,
+    aside .account-toggle > span:first-child { display:flex !important; flex-direction:column !important; justify-content:center !important; }
+    aside .channel-list {
+      display:grid !important;
+      gap:6px !important;
+      margin:2px 0 4px 10px !important;
+      padding-left:8px !important;
+      border-left:1px solid rgba(255,255,255,.12) !important;
+    }
+    aside .channel-list[hidden] { display:none !important; }
+    aside .channel-list a,
+    aside .channel-list button {
+      display:flex !important;
+      flex-direction:column !important;
+      justify-content:center !important;
+      align-items:flex-start !important;
+      width:100% !important;
+      height:45px !important;
+      min-height:45px !important;
+      max-height:45px !important;
+      margin:0 !important;
+      padding:0 10px !important;
+      border:1px solid transparent !important;
+      border-radius:12px !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+      text-align:left !important;
+      text-decoration:none !important;
+      font:inherit !important;
+      font-size:11px !important;
+      font-weight:850 !important;
+      line-height:1.35 !important;
+      box-shadow:none !important;
+      outline:none !important;
+    }
+    aside b { color:inherit !important; }
+    aside b { display:block !important; margin:0 !important; font-size:12px !important; line-height:1.35 !important; font-weight:900 !important; }
+    aside small,
+    aside .tool-list a span,
+    aside .nav-list small,
+    aside .account-list small,
+    aside .channel-list small { display:block !important; margin:4px 0 0 !important; color:rgba(255,255,255,.55) !important; font-size:9px !important; line-height:1.25 !important; font-weight:650 !important; opacity:1 !important; }
+    aside a:hover,
+    aside button:hover,
+    aside a:focus,
+    aside button:focus { background:transparent !important; border-color:transparent !important; color:rgba(255,255,255,.72) !important; box-shadow:none !important; outline:none !important; }
+    aside a.active,
+    aside button.active { background:rgba(255,255,255,.12) !important; border-color:transparent !important; color:rgba(255,255,255,.72) !important; box-shadow:none !important; }
+    aside [data-view="overview"].active b,
+    aside [data-view="overview"].active small { color:#f0d39a !important; }
+  </style>
+  <link rel="stylesheet" href="theme-luxe.css" />
+  <link rel="stylesheet" href="sidebar-unified.css" />
+  <link rel="stylesheet" href="embedded-frame.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <div class="logo">S</div>
+        <div><strong>Scale Story</strong><span>天然胶原蛋白</span></div>
+      </div>
+      <div class="account-label">ANALYSIS</div>
+      <div class="account-list" id="accountList">
+        <button class="analysis-toggle" id="analysisToggle" type="button" data-view="overview" aria-expanded="false" aria-controls="analysisChannels">
+          <span><b>Inbox Analysis</b><small>3 个 Channel 总统计</small></span>
+          <span class="chevron">›</span>
+        </button>
+        <div class="channel-list" id="analysisChannels" hidden>
+          <button data-account="fb108701968299986"><b>Scalestory</b><small>天然胶原蛋白</small></button>
+          <button data-account="fb1177107122151553"><b>鳞记</b><small>Main Front</small></button>
+          <button data-account="fb701760706347255"><b>鳞记 SG</b><small>SG 997 WA</small></button>
+        </div>
+      </div>
+      <div class="side-sections">
+        <div class="account-label">TOOLS</div>
+        <div class="tool-list">
+          <a href="/order-key-in" id="orderKeyInLink">Order Key-In<span>Paste order details</span></a>
+          <a href="/broadcast-planning" id="broadcastPlanningLink">Broadcast Planning<span>Broadcast calendar</span></a>
+        </div>
+      </div>
+    </aside>
+    <main>
+      <header>
+        <div>
+          <div class="title-row"><h1 id="accountTitle">Inbox Daily</h1><button class="edit-name" id="editAccountName">编辑名称</button></div>
+          <div class="sub">快速看懂今天有多少人进来、谁真正讲话，以及顾客卡在哪里。</div>
+        </div>
+        <div class="header-actions">
+          <button class="download-button" id="downloadReport" title="把三个户口的合并报告发送到 WhatsApp">↗ Send WhatsApp Report</button>
+          <button class="run-button" id="runUpdate" title="执行完整 Analysis：PM、互动、Pending、After Payment、卡点和总结">▶ RUN</button>
+          <span class="pill verified" id="syncBadge">最后更新：21:12</span>
+          <div class="pill date-control analysis-date-control">
+            <button id="prevDay" aria-label="前一天">‹</button>
+            <button class="date-label" id="dateLabel" type="button" aria-haspopup="true" aria-expanded="false">21/07/2026</button>
+            <input id="reportDate" type="hidden" value="2026-06-22" />
+            <button id="nextDay" aria-label="后一天">›</button>
+            <div class="month-popover analysis-date-popover" id="datePopover" hidden>
+              <div class="year-row">
+                <button id="datePrevYear" type="button" aria-label="上一年">‹</button>
+                <strong id="datePickerYear">2026</strong>
+                <button id="dateNextYear" type="button" aria-label="下一年">›</button>
+              </div>
+              <div class="month-picker-grid" id="dateMonthChoices"></div>
+              <div class="day-picker-grid" id="dateDayChoices"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="metrics">
+        <button class="card metric metric-button" data-detail="pm" style="--tint:#f0d8dd"><label>PM 人数 · 点击查看</label><strong id="pmValue">15</strong><small id="pmNote">Subscribed 当日</small></button>
+        <button class="card metric metric-button" data-detail="pending" style="--tint:#f1cf95"><label>Pending · 点击查看</label><strong id="pendingValue">—</strong><small id="pendingNote">当日待付款</small></button>
+        <button class="card metric metric-button" data-detail="active" style="--tint:#ead0d6"><label>有讲话互动 · 点击查看</label><strong id="activeValue">—</strong><small id="activeNote">只算顾客文字/语音</small></button>
+        <button class="card metric metric-button" data-detail="orders" style="--tint:#dbc1a2"><label>完成订单 · 点击查看</label><strong id="orderValue">—</strong><small id="orderNote">After Payment / AO</small></button>
+        <button class="card metric metric-button" data-detail="orderAmount" style="--tint:#dbe8e7"><label>进单金额 · 点击查看</label><strong id="orderAmountValue">RM0</strong><small id="orderAmountNote">Order Key-In</small></button>
+      </section>
+
+      <section class="grid">
+        <div class="card panel blockers-panel">
+          <div class="panel-head"><h2>未下单主要卡点</h2><span>完成当日 Inbox 扫描后生成</span></div>
+          <div id="blockerList"></div>
+        </div>
+
+        <div class="card summary">
+          <div class="spark">✦</div>
+          <div>
+            <h2 id="summaryTitle">2026年6月21日 Inbox 总结</h2>
+            <p id="summaryText"><b>正在载入当天报告。</b></p>
+          </div>
+        </div>
+
+        <div class="card history">
+          <div class="panel-head"><h2>每日历史记录</h2><span>点选上方日期即可回看</span></div>
+          <table>
+            <thead><tr><th>日期</th><th>PM</th><th>Pending</th><th>有讲话互动</th><th>完成订单</th><th>状态</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </section>
+      <footer>Scale Story Inbox Report · Daily Snapshot</footer>
+    </main>
+  </div>
+  <dialog id="customerDialog">
+    <div class="dialog-head"><h2 id="dialogTitle">顾客名单</h2><button id="closeDialog" aria-label="关闭">×</button></div>
+    <div id="customerList" class="customer-list"></div>
+  </dialog>
+  <dialog id="runDialog" class="run-dialog">
+    <div class="run-body">
+      <div class="run-icon" id="runDialogIcon">⏳</div>
+      <h2 id="runDialogTitle">正在开始 Analysis</h2>
+      <p id="runDialogText">Dashboard 正在登记扫描请求。</p>
+      <button id="runDialogClose">OK</button>
+    </div>
+  </dialog>
+  <script>
+    const accounts = {
+      fb108701968299986: {name:"Scalestory - 天然胶原蛋白", inbox:"https://app.manychat.com/fb108701968299986/chat"},
+      fb1177107122151553: {name:"鳞记 - 天然胶原蛋白", inbox:"https://app.manychat.com/fb1177107122151553/chat"},
+      fb701760706347255: {name:"鳞记 SG", inbox:"https://app.manychat.com/fb701760706347255/chat"}
+    };
+    const customAccountNames = JSON.parse(localStorage.getItem("manychatDashboardNames") || "{}");
+    Object.entries(customAccountNames).forEach(([id,name]) => {
+      if (accounts[id] && String(name).trim()) accounts[id].name = String(name).trim();
+    });
+    const apiBase = location.protocol === "file:" ? "http://127.0.0.1:4173" : "";
+    const apiFetch = (path, options = {}) => fetch(`${apiBase}${path}`, {cache:"no-store", ...options});
+    const reportsByAccount = {fb108701968299986:{}, fb1177107122151553:{}, fb701760706347255:{}};
+    const REPORT_CACHE_KEY = "manychatDashboardReportsCacheV1";
+    const orderSummariesByDate = {};
+    const urlParams = new URLSearchParams(location.search);
+    const requestedAccount = urlParams.get("account");
+    let currentView = accounts[requestedAccount] ? "account" : "overview";
+    let currentAccount = accounts[requestedAccount]
+      ? requestedAccount
+      : "fb108701968299986";
+    let dailyReports = reportsByAccount[currentAccount];
+    const dateInput = document.getElementById("reportDate");
+    const klTodayParts = new Intl.DateTimeFormat("en", {
+      timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit"
+    }).formatToParts(new Date()).reduce((all, part) => ({...all, [part.type]: part.value}), {});
+    const requestedDate = urlParams.get("date");
+    dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "")
+      ? requestedDate
+      : `${klTodayParts.year}-${klTodayParts.month}-${klTodayParts.day}`;
+    const dateLabel = document.getElementById("dateLabel");
+    const datePopover = document.getElementById("datePopover");
+    const datePickerYearEl = document.getElementById("datePickerYear");
+    const dateMonthChoices = document.getElementById("dateMonthChoices");
+    const dateDayChoices = document.getElementById("dateDayChoices");
+    let datePickerYear = Number(dateInput.value.slice(0, 4));
+    let datePickerMonth = Number(dateInput.value.slice(5, 7));
+    const customerDialog = document.getElementById("customerDialog");
+    const analysisToggle = document.getElementById("analysisToggle");
+    const analysisChannels = document.getElementById("analysisChannels");
+    const orderKeyInLink = document.getElementById("orderKeyInLink");
+    const broadcastPlanningLink = document.getElementById("broadcastPlanningLink");
+    const runDialog = document.getElementById("runDialog");
+    const runDialogIcon = document.getElementById("runDialogIcon");
+    const runDialogTitle = document.getElementById("runDialogTitle");
+    const runDialogText = document.getElementById("runDialogText");
+    let currentDialogType = null;
+    let runRefreshTimer = null;
+    const ids = {pm:"pmValue", pending:"pendingValue", active:"activeValue", orders:"orderValue"};
+    function mergeReports(source = {}) {
+      Object.entries(source || {}).forEach(([accountId, reports]) => {
+        if (!accounts[accountId] || !reports || typeof reports !== "object") return;
+        reportsByAccount[accountId] = {...reportsByAccount[accountId], ...reports};
+      });
+      dailyReports = reportsByAccount[currentAccount] ||= {};
+    }
+    function restoreReportCache() {
+      try {
+        mergeReports(JSON.parse(localStorage.getItem(REPORT_CACHE_KEY) || "{}"));
+      } catch {}
+    }
+    function saveReportCache() {
+      try {
+        localStorage.setItem(REPORT_CACHE_KEY, JSON.stringify(reportsByAccount));
+      } catch {}
+    }
+    restoreReportCache();
+    function setAnalysisDropdown(open) {
+      analysisToggle.classList.toggle("open", open);
+      analysisToggle.setAttribute("aria-expanded", String(open));
+      analysisChannels.hidden = !open;
+    }
+    const customerKey = person => `${accountIdForPerson(person)}:${person.id || person.inbox || person.name}`;
+    const visiblePeople = (report, type, date) => {
+      if (type === "orderAmount") return [];
+      return report?.customers?.[type] || [];
+    };
+    const channelAliases = {
+      fb108701968299986: ["knee", "knee 990", "knee 990 mc", "scalestory", "scale story"],
+      fb1177107122151553: ["main", "main front", "old main", "鳞记 - 天然胶原蛋白", "鳞记"],
+      fb701760706347255: ["sg", "sg 997", "sg 997 wa", "sg page", "鳞记 sg"]
+    };
+    function moneyNumber(value) {
+      const text = String(value ?? "").replace(/,/g, "");
+      const match = text.match(/-?\d+(?:\.\d+)?/);
+      return match ? Number(match[0]) : 0;
+    }
+    function moneyLabel(value) {
+      const number = Number(value || 0);
+      return `RM${number.toLocaleString("en-MY", {minimumFractionDigits: number % 1 ? 2 : 0, maximumFractionDigits: 2})}`;
+    }
+    function accountForOrderEntry(entry = {}) {
+      const raw = String(entry.channel || entry.page || entry.order?.["H · Channel / Chanel"] || "").toLowerCase();
+      for (const [accountId, aliases] of Object.entries(channelAliases)) {
+        if (aliases.some(alias => raw.includes(alias))) return accountId;
+      }
+      return "fb108701968299986";
+    }
+    function summarizeOrderEntries(entries = []) {
+      const byAccount = Object.fromEntries(Object.keys(accounts).map(id => [id, {accountId:id, name:accounts[id].name, total:0, count:0, entries:[]}]));
+      for (const entry of entries) {
+        const accountId = accountForOrderEntry(entry);
+        const total = moneyNumber(entry.total ?? entry.order?.["S · Total/RM"]);
+        byAccount[accountId].total += total;
+        byAccount[accountId].count += 1;
+        byAccount[accountId].entries.push({...entry, total});
+      }
+      const all = Object.values(byAccount);
+      return {total: all.reduce((sum, item) => sum + item.total, 0), count: all.reduce((sum, item) => sum + item.count, 0), byAccount};
+    }
+    function orderSummaryFor(date) {
+      return orderSummariesByDate[date] || summarizeOrderEntries([]);
+    }
+    async function loadOrderSummary(date) {
+      try {
+        const response = await apiFetch(`/api/order-entries?date=${encodeURIComponent(date)}`);
+        if (!response.ok) throw new Error("Order entries failed");
+        const payload = await response.json();
+        orderSummariesByDate[date] = summarizeOrderEntries(payload.entries || []);
+      } catch {
+        orderSummariesByDate[date] = orderSummariesByDate[date] || summarizeOrderEntries([]);
+      }
+      render(date);
+      return orderSummariesByDate[date];
+    }
+    const formatDate = value => {
+      const [y,m,d] = value.split("-");
+      return `${y}年${Number(m)}月${Number(d)}日`;
+    };
+    const formatDateLabel = value => {
+      const [y,m,d] = value.split("-");
+      return `${d}/${m}/${y}`;
+    };
+    function updateDateLabel() {
+      dateLabel.textContent = formatDateLabel(dateInput.value);
+    }
+    function renderDatePopover() {
+      const [selectedYear, selectedMonth, selectedDay] = dateInput.value.split("-").map(Number);
+      datePickerYearEl.textContent = datePickerYear;
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      dateMonthChoices.innerHTML = months.map((name, index) => {
+        const month = index + 1;
+        const active = month === datePickerMonth;
+        return `<button class="month-choice ${active ? "active" : ""}" data-month="${month}" type="button">${name}</button>`;
+      }).join("");
+      const daysInMonth = new Date(datePickerYear, datePickerMonth, 0).getDate();
+      dateDayChoices.innerHTML = Array.from({length: daysInMonth}, (_, index) => {
+        const day = index + 1;
+        const active = datePickerYear === selectedYear && datePickerMonth === selectedMonth && day === selectedDay;
+        return `<button class="day-choice ${active ? "active" : ""}" data-day="${day}" type="button">${day}</button>`;
+      }).join("");
+      dateMonthChoices.querySelectorAll("[data-month]").forEach(button => {
+        button.onclick = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          datePickerMonth = Number(button.dataset.month);
+          renderDatePopover();
+        };
+      });
+      dateDayChoices.querySelectorAll("[data-day]").forEach(button => {
+        button.onclick = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const value = `${datePickerYear}-${String(datePickerMonth).padStart(2, "0")}-${String(button.dataset.day).padStart(2, "0")}`;
+          setReportDate(value);
+          closeDatePopover();
+          requestAnimationFrame(closeDatePopover);
+        };
+      });
+      dateLabel.setAttribute("aria-expanded", String(!datePopover.hidden));
+    }
+    function setReportDate(value) {
+      dateInput.value = value;
+      datePickerYear = Number(value.slice(0, 4));
+      datePickerMonth = Number(value.slice(5, 7));
+      updateDateLabel();
+      render(dateInput.value);
+      if (currentView === "overview") connectAllAccounts();
+      else refreshLive(dateInput.value);
+    }
+    function openDatePopover() {
+      datePickerYear = Number(dateInput.value.slice(0, 4));
+      datePickerMonth = Number(dateInput.value.slice(5, 7));
+      datePopover.hidden = false;
+      renderDatePopover();
+    }
+    function toggleDatePopover() {
+      if (datePopover.hidden) openDatePopover();
+      else {
+        datePopover.hidden = true;
+        dateLabel.setAttribute("aria-expanded", "false");
+      }
+    }
+    function closeDatePopover() {
+      datePopover.hidden = true;
+      dateLabel.setAttribute("aria-expanded", "false");
+    }
+    const displayTime = value => {
+      if (!value) return "";
+      if (value.includes("T")) {
+        return new Intl.DateTimeFormat("zh-MY", {
+          timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hour12: false
+        }).format(new Date(value));
+      }
+      return value.slice(11);
+    };
+    function renderAccountNames() {
+      document.querySelectorAll("[data-account]").forEach(button => {
+        const account = accounts[button.dataset.account];
+        const label = button.querySelector("b");
+        if (account && label) label.textContent = account.name;
+      });
+    }
+
+    function reportFor(accountId, date) {
+      return reportsByAccount[accountId]?.[date] || null;
+    }
+
+    function isAutoEntryText(text = "") {
+      const plain = String(text || "").replace(/[👉🏻👉🏼🌟⚡️🌹😍✨🎬🦐🔵🟢🟠🔴【】"'「」]/g, "").trim();
+      return !plain ||
+        /^whatsapp_message$/i.test(plain) ||
+        /^(\d+|A|B|C)$/i.test(plain) ||
+        /^西马\s*\/\s*东马$/i.test(plain) ||
+        /contact tapped|quick reply|follow the link/i.test(plain) ||
+        /^(我想了解更多.*|我想了解(养颜|护膝|护肤|关节)?系列～?|开始了解鳞记鱼鳞冻|了解这个月配套|can share more info\??|can i make a purchase\??|能帮我查看一件商品的价格吗？?|我要了解最新优惠|了解collagen drink|我要免费试吃|新品荔枝玫瑰|rm 1promotion|5月闪电优惠|西马|东马|新加坡|马来西亚|west malaysia|east malaysia|singapore|sg)$/i.test(plain);
+    }
+    function firstValue(...values) {
+      return values.map(value => String(value || "").trim()).find(Boolean) || "";
+    }
+    function escapeAttr(value = "") {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+    function escapeHtml(value = "") {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+    function isAudioContent(value = "") {
+      return /\.(ogg|mp3|m4a|wav|aac)(\?|$)/i.test(String(value || "")) ||
+        /audioclip|manybot-files.*\/(wa|fb)\/.*\.(ogg|mp3|m4a|wav|aac)|voice/i.test(String(value || ""));
+    }
+    function displayNote(value = "") {
+      const text = String(value || "").trim();
+      if (!text) return "";
+      return isAudioContent(text) ? "语音" : text;
+    }
+    function manychatContactId(person = {}) {
+      const contact = person.contact || person.subscriber || person.user || {};
+      const inbox = firstValue(person.inbox, person.inbox_url, person.live_chat_url, contact.inbox, contact.inbox_url, contact.live_chat_url);
+      const inboxId = inbox.match(/app\.manychat\.com\/fb\d+\/chat\/(\d+)/)?.[1] || "";
+      return firstValue(
+        person.contact_id, person.subscriber_id, person.subscriberId, person.user_id, person.userId,
+        person.manychat_id, person.manychat_contact_id, person.mc_id, person.id,
+        contact.id, contact.contact_id, contact.subscriber_id, contact.subscriberId, contact.user_id, contact.userId,
+        contact.manychat_id, contact.manychat_contact_id, inboxId
+      );
+    }
+    function livePerson(person = {}, note = "") {
+      const id = manychatContactId(person);
+      return {
+        id,
+        name: person.name || person.full_name || `Contact ${id || ""}`.trim(),
+        note,
+        tags: person.tags || [],
+        returning: Boolean(person.returning),
+        inbox: /^\d+$/.test(id) ? `https://app.manychat.com/${currentAccount}/chat/${id}` : accounts[currentAccount].inbox
+      };
+    }
+
+    function combinedReport(date) {
+      const reports = Object.entries(accounts).map(([accountId, account]) => ({accountId, account, report: reportFor(accountId, date)}));
+      const count = key => reports.reduce((sum, item) => sum + Number(item.report?.[key] || 0), 0);
+      const customers = {};
+      ["pm", "pending", "active", "orders"].forEach(type => {
+        customers[type] = reports.flatMap(item =>
+          (item.report?.customers?.[type] || []).map(person => ({
+            ...person,
+            accountId: item.accountId,
+            note: `${item.account.name} · ${person.note || ""}`.trim()
+          }))
+        );
+      });
+      const blockers = reports.flatMap(item =>
+        (item.report?.blockers || []).filter(blocker => Number(blocker.count || 0) > 0).map(blocker => ({
+          ...blocker,
+          accountId: item.accountId,
+          channelName: item.account.name,
+          displayTitle: `${item.account.name}：${blocker.title}`
+        }))
+      );
+      const pmTags = reports.reduce((all, item) => ({
+        collagenDrinks: all.collagenDrinks + Number(item.report?.pmTags?.collagenDrinks || 0),
+        freeTesting: all.freeTesting + Number(item.report?.pmTags?.freeTesting || 0),
+        dontDisturb: all.dontDisturb + Number(item.report?.pmTags?.dontDisturb || 0)
+      }), {collagenDrinks:0, freeTesting:0, dontDisturb:0});
+      const syncWarnings = reports.flatMap(item =>
+        (item.report?.syncWarnings || []).map(message => `${item.account.name}：${message}`)
+      );
+      const loaded = reports.filter(item => item.report).length;
+      const orderSummary = orderSummaryFor(date);
+      return {
+        pm: count("pm"),
+        pending: count("pending"),
+        active: count("active"),
+        orders: count("orders"),
+        orderAmount: orderSummary.total,
+        orderAmountSummary: orderSummary,
+        pmTags,
+        customers,
+        blockers,
+        syncWarnings,
+        status: loaded ? `${loaded}/3 Channel` : "尚未扫描",
+        summary: loaded
+          ? `Inbox Analysis 总览：今天 3 个 Channel 合计 PM ${count("pm")} 位，有讲话互动 ${count("active")} 位，Pending ${count("pending")} 位，完成订单 ${count("orders")} 位。你可以点下方 Channel 看单独数据。`
+          : "这一天还没有保存任何 Channel 的 Inbox 扫描结果。"
+      };
+    }
+
+    function combinedHistoryRows() {
+      const days = [...new Set(Object.values(reportsByAccount).flatMap(reports => Object.keys(reports || {})))].sort((a,b)=>b.localeCompare(a));
+      return days.map(day => [day, combinedReport(day)]);
+    }
+
+    function renderBlockerRows(blockers = []) {
+      return blockers.map((b,i) => {
+        const title = b.displayTitle || b.title;
+        return `<div class="reason"><span class="rank">${i+1}</span><div><b>${title}</b><p>${b.detail}</p></div><button class="reason-count" data-blocker="${i}" aria-label="查看${title}顾客">${b.count}</button></div>`;
+      }).join("");
+    }
+    function renderBlockerSections(blockers = []) {
+      if (currentView !== "overview") return renderBlockerRows(blockers);
+      const groups = blockers.reduce((all, blocker) => {
+        const accountId = blocker.accountId || currentAccount;
+        (all[accountId] ||= []).push(blocker);
+        return all;
+      }, {});
+      return Object.entries(accounts).map(([accountId, account]) => {
+        const list = groups[accountId] || [];
+        if (!list.length) return "";
+        const total = list.reduce((sum, item) => sum + Number(item.count || 0), 0);
+        return `<div class="blocker-section">${account.name}<small>${total} 位</small></div>${list.map((b) => {
+          const globalIndex = blockers.indexOf(b);
+          return `<div class="reason"><span class="rank">${globalIndex+1}</span><div><b>${b.title}</b><p>${b.detail}</p></div><button class="reason-count" data-blocker="${globalIndex}" aria-label="查看${account.name} ${b.title}顾客">${b.count}</button></div>`;
+        }).join("")}`;
+      }).join("");
+    }
+
+    function render(date) {
+      updateDateLabel();
+      const report = currentView === "overview" ? combinedReport(date) : dailyReports[date];
+      const account = accounts[currentAccount];
+      document.getElementById("accountTitle").textContent = currentView === "overview" ? "Inbox Analysis" : account.name;
+      document.getElementById("editAccountName").style.display = currentView === "overview" ? "none" : "";
+      orderKeyInLink.href = `/order-key-in?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(date)}`;
+      broadcastPlanningLink.href = `/broadcast-planning?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(date)}`;
+      document.querySelector("[data-view='overview']")?.classList.toggle("active", currentView === "overview");
+      document.querySelectorAll("[data-account]").forEach(button => button.classList.toggle("active", currentView === "account" && button.dataset.account === currentAccount));
+      document.getElementById("syncBadge").textContent = report?.lastUpdated ? `最后更新：${displayTime(report.lastUpdated)}` : "尚未同步";
+      Object.entries(ids).forEach(([key,id]) => {
+        document.getElementById(id).textContent = report?.[key] ?? "待扫";
+      });
+      const amountSummary = currentView === "overview"
+        ? orderSummaryFor(date)
+        : orderSummaryFor(date).byAccount?.[currentAccount] || {total:0,count:0,entries:[]};
+      document.getElementById("orderAmountValue").textContent = moneyLabel(amountSummary.total || 0);
+      document.getElementById("orderAmountNote").textContent = `${amountSummary.count || 0} 单`;
+      document.getElementById("summaryTitle").textContent = `${formatDate(date)} Inbox 总结`;
+      const pmTags = report?.pmTags || {};
+      const tagSummary = report
+        ? `PM 分类：Collagen Drinks ${pmTags.collagenDrinks || 0} 位、Free Testing ${pmTags.freeTesting || 0} 位、Don't Disturb ${pmTags.dontDisturb || 0} 位。`
+        : "";
+      const warningSummary = (report?.syncWarnings || []).length
+        ? `<br><span class="sync-warning">⚠ ${report.syncWarnings.map(escapeHtml).join("<br>⚠ ")}</span>`
+        : "";
+      document.getElementById("summaryText").innerHTML = report
+        ? `<b>${report.summary}</b>${tagSummary ? `<br>${tagSummary}` : ""}${warningSummary}`
+        : `<b>这一天还没有保存报告。</b> 每日扫描完成后，数字与分析会固定保存，之后可以从日期选择器回看。`;
+      document.getElementById("blockerList").innerHTML = report?.blockers?.length
+        ? renderBlockerSections(report.blockers)
+        : `<div class="reason"><span class="rank">•</span><div><b>尚无分析</b><p>这一天还没有保存 Inbox 扫描结果。</p></div><strong>待扫</strong></div>`;
+      const historySource = currentView === "overview" ? combinedHistoryRows() : Object.entries(dailyReports).sort((a,b)=>b[0].localeCompare(a[0]));
+      const rows = historySource.map(([day,r]) =>
+        `<tr><td>${formatDate(day)}</td><td>${r.pm ?? "待扫"}</td><td>${r.pending ?? "待扫"}</td><td>${r.active ?? "待扫"}</td><td>${r.orders ?? "待扫"}</td><td>${r.status}</td></tr>`
+      ).join("");
+      document.getElementById("historyBody").innerHTML = rows || `<tr><td class="empty" colspan="6">尚无历史记录</td></tr>`;
+    }
+    function personNameKey(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+    function reportPeopleSource(report) {
+      const buckets = ["active", "pending", "pm", "orders"];
+      const seen = new Set();
+      return buckets.flatMap(type => report?.customers?.[type] || []).filter(person => {
+        const key = personNameKey(person.name);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    function groupPeopleByAccount(people = []) {
+      return people.reduce((groups, person) => {
+        const accountId = accountIdForPerson(person);
+        (groups[accountId] ||= []).push(person);
+        return groups;
+      }, {});
+    }
+    function renderCustomerRows(people, type = "") {
+      return people.map((p, index) => {
+        const tags = (p.tags || []).map(tag => {
+          const key = String(tag).toLowerCase();
+          const cls = key.includes("disturb") ? " dnd" : key.includes("free") ? " free" : "";
+          return `<em class="tag-badge${cls}">${tag}</em>`;
+        }).join("");
+        return `<div class="customer"><div><b>${p.name}${p.returning ? `<em class="badge-return">↩ 老顾客</em>` : ""}</b><span>${displayNote(p.note)}</span>${tags ? `<div class="tag-badges">${tags}</div>` : ""}</div><div class="customer-actions">${inboxAction(p)}</div></div>`;
+      }).join("");
+    }
+    function renderCustomerSections(people, type = "") {
+      if (currentView !== "overview") return renderCustomerRows(people, type);
+      const groups = groupPeopleByAccount(people);
+      return Object.entries(accounts).map(([accountId, account]) => {
+        const list = groups[accountId] || [];
+        if (!list.length) return "";
+        return `<div class="customer-section">${account.name}<small>${list.length} 位</small></div>${renderCustomerRows(list, type)}`;
+      }).join("");
+    }
+    function renderOrderAmountDetails(date) {
+      const summary = orderSummaryFor(date);
+      return Object.entries(accounts).map(([accountId, account]) => {
+        const item = summary.byAccount?.[accountId] || {total:0,count:0,entries:[]};
+        const rows = (item.entries || []).map(entry => {
+          const name = escapeHtml(entry.name || entry.order?.["P · Name"] || "未命名订单");
+          const product = escapeHtml(entry.product || entry.order?.["N · Variant"] || entry.order?.["O · Remark"] || "");
+          const location = [entry.sheet, entry.row ? `Row ${entry.row}` : ""].filter(Boolean).join(" · ");
+          return `<div class="customer"><div><b>${name}</b><span>${product || "Dashboard 进单记录"}${location ? ` · ${escapeHtml(location)}` : ""}</span></div><strong>${moneyLabel(entry.total || 0)}</strong></div>`;
+        }).join("");
+        return `<div class="customer-section">${account.name}<small>${moneyLabel(item.total || 0)} · ${item.count || 0} 单</small></div>${rows || `<div class="customer"><div><b>RM0</b><span>这个日期没有从 Dashboard 进单的记录。</span></div></div>`}`;
+      }).join("");
+    }
+    function accountIdForPerson(person) {
+      if (person?.accountId && accounts[person.accountId]) return person.accountId;
+      const inbox = String(person?.inbox || "");
+      const matched = inbox.match(/app\.manychat\.com\/(fb\d+)\/chat/);
+      return matched?.[1] && accounts[matched[1]] ? matched[1] : currentAccount;
+    }
+    function hasDirectInbox(person) {
+      const id = String(person?.id || "").trim();
+      return /^\d+$/.test(id);
+    }
+    function inboxLink(person) {
+      const accountId = accountIdForPerson(person);
+      const id = String(person?.id || "").trim();
+      if (/^\d+$/.test(id)) return `https://app.manychat.com/${accountId}/chat/${id}`;
+      return accounts[accountId].inbox;
+    }
+    function inboxAction(person) {
+      const direct = hasDirectInbox(person);
+      const name = String(person?.name || "").trim();
+      return `<a href="${inboxLink(person)}" target="_blank" rel="noopener" title="${direct ? "直达这个顾客的 Inbox" : `没有 Contact ID，请在打开后的 Inbox 搜索：${name}`}">${direct ? "打开 Inbox ↗" : "去 Inbox 搜索 ↗"}</a>`;
+    }
+    function showRunDialog(icon, title, text) {
+      runDialogIcon.textContent = icon;
+      runDialogTitle.textContent = title;
+      runDialogText.textContent = text;
+      if (runDialog.open) return;
+      runDialog.showModal();
+    }
+    function blockerPeople(report, blocker) {
+      const source = reportPeopleSource(report);
+      if (blocker.people?.length) {
+        return blocker.people.map(item => {
+          if (typeof item === "object") return item;
+          const fallbackAccount = blocker.accountId && accounts[blocker.accountId] ? blocker.accountId : currentAccount;
+          return source.find(person => personNameKey(person.name) === personNameKey(item) && (!blocker.accountId || person.accountId === blocker.accountId))
+            || {name:item, note:blocker.detail, accountId:fallbackAccount, inbox:accounts[fallbackAccount].inbox};
+        });
+      }
+      const text = `${blocker.title} ${blocker.detail}`;
+      const groups = [];
+      if (/价格|配套|优惠|付款|下单/i.test(text)) groups.push("价格","配套","优惠","付款","下单","COD");
+      if (/产品|地区|系列|门市|疗程|健康|信任/i.test(text)) groups.push("产品","地区","系列","门市","疗程","健康","状况");
+      if (/Pending|待付款/i.test(text)) return report?.customers?.pending || [];
+      const matches = groups.length ? source.filter(p => groups.some(word => String(p.note || "").includes(word))) : [];
+      return matches.slice(0, Number(blocker.count || matches.length));
+    }
+    document.getElementById("blockerList").addEventListener("click", event => {
+      const button = event.target.closest("[data-blocker]");
+      if (!button) return;
+      const report = currentView === "overview" ? combinedReport(dateInput.value) : dailyReports[dateInput.value];
+      const blocker = report?.blockers?.[Number(button.dataset.blocker)];
+      if (!blocker) return;
+      const people = blockerPeople(report, blocker);
+      document.getElementById("dialogTitle").textContent = blocker.displayTitle || blocker.title;
+      document.getElementById("customerList").innerHTML = people.length
+        ? renderCustomerSections(people.map(p => ({...p, note:p.note || blocker.detail})))
+        : `<div class="customer"><div><b>名单待复核</b><span>目前有 ${blocker.count} 位，但还没有足够资料安全对应到顾客姓名。</span></div></div>`;
+      customerDialog.showModal();
+    });
+    function shiftDate(days) {
+      const d = new Date(`${dateInput.value}T12:00:00`);
+      d.setDate(d.getDate()+days);
+      datePickerYear = d.getFullYear();
+      setReportDate(d.toISOString().slice(0,10));
+    }
+    dateInput.addEventListener("change", () => {
+      updateDateLabel();
+      render(dateInput.value);
+      if (currentView === "overview") connectAllAccounts();
+      else refreshLive(dateInput.value);
+    });
+    dateLabel.addEventListener("click", event => {
+      event.stopPropagation();
+      toggleDatePopover();
+    });
+    document.querySelector(".analysis-date-control").addEventListener("click", event => {
+      if (event.target.closest("#prevDay, #nextDay, #datePopover, #dateLabel")) return;
+      event.stopPropagation();
+      openDatePopover();
+    });
+    document.getElementById("datePrevYear").addEventListener("click", event => {
+      event.stopPropagation();
+      datePickerYear -= 1;
+      renderDatePopover();
+    });
+    document.getElementById("dateNextYear").addEventListener("click", event => {
+      event.stopPropagation();
+      datePickerYear += 1;
+      renderDatePopover();
+    });
+    dateMonthChoices.addEventListener("click", event => {
+      const button = event.target.closest("[data-month]");
+      if (!button) return;
+      datePickerMonth = Number(button.dataset.month);
+      renderDatePopover();
+    });
+    dateDayChoices.addEventListener("click", event => {
+      const button = event.target.closest("[data-day]");
+      if (!button) return;
+      const value = `${datePickerYear}-${String(datePickerMonth).padStart(2, "0")}-${String(button.dataset.day).padStart(2, "0")}`;
+      setReportDate(value);
+          closeDatePopover();
+          requestAnimationFrame(closeDatePopover);
+    });
+    datePopover.addEventListener("pointerdown", event => {
+      const monthButton = event.target.closest("#dateMonthChoices [data-month]");
+      if (monthButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        datePickerMonth = Number(monthButton.dataset.month);
+        renderDatePopover();
+        return;
+      }
+      const dayButton = event.target.closest("#dateDayChoices [data-day]");
+      if (dayButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const value = `${datePickerYear}-${String(datePickerMonth).padStart(2, "0")}-${String(dayButton.dataset.day).padStart(2, "0")}`;
+        setReportDate(value);
+          closeDatePopover();
+          requestAnimationFrame(closeDatePopover);
+      }
+    }, true);
+    document.addEventListener("click", event => {
+      if (!datePopover.hidden && !event.target.closest(".analysis-date-control")) {
+        datePopover.hidden = true;
+        dateLabel.setAttribute("aria-expanded", "false");
+      }
+    });
+    document.getElementById("prevDay").addEventListener("click", event => {
+      event.stopPropagation();
+      shiftDate(-1);
+      closeDatePopover();
+    });
+    document.getElementById("nextDay").addEventListener("click", event => {
+      event.stopPropagation();
+      shiftDate(1);
+      closeDatePopover();
+    });
+    document.getElementById("editAccountName").addEventListener("click", () => {
+      const nextName = window.prompt("输入这个 ManyChat 户口在 Dashboard 显示的名称：", accounts[currentAccount].name);
+      if (nextName === null || !nextName.trim()) return;
+      accounts[currentAccount].name = nextName.trim();
+      customAccountNames[currentAccount] = nextName.trim();
+      localStorage.setItem("manychatDashboardNames", JSON.stringify(customAccountNames));
+      renderAccountNames();
+      render(dateInput.value);
+    });
+    document.querySelector("[data-view='overview']").addEventListener("click", async () => {
+      currentView = "overview";
+      setAnalysisDropdown(true);
+      history.replaceState(null, "", `${location.pathname}${dateInput.value ? `?date=${dateInput.value}` : ""}`);
+      render(dateInput.value);
+      await connectAllAccounts();
+    });
+    document.querySelectorAll("[data-account]").forEach(button => button.addEventListener("click", async () => {
+      setAnalysisDropdown(true);
+      currentView = "account";
+      currentAccount = button.dataset.account;
+      localStorage.setItem("manychatDashboardAccount", currentAccount);
+      history.replaceState(null, "", `${location.pathname}?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(dateInput.value)}`);
+      dailyReports = reportsByAccount[currentAccount] ||= {};
+      render(dateInput.value);
+      await connectAccount();
+    }));
+    function openCustomerList(type) {
+      currentDialogType = type;
+      const report = currentView === "overview" ? combinedReport(dateInput.value) : dailyReports[dateInput.value];
+      if (type === "orderAmount") {
+        document.getElementById("dialogTitle").textContent = "Order Key-In 进单金额";
+        document.getElementById("customerList").innerHTML = renderOrderAmountDetails(dateInput.value);
+        customerDialog.showModal();
+        return;
+      }
+      const people = visiblePeople(report, type, dateInput.value);
+      document.getElementById("dialogTitle").textContent = type === "pm" ? "PM 顾客名单" : type === "pending" ? "Pending 顾客" : type === "orders" ? "完成订单顾客" : "有讲话互动顾客";
+      const emptyText = type === "pm"
+        ? "这个日期的 PM 总数会以 Contacts → Subscribed 当日为准；名单还没从 Subscribed 同步时，不会用 All chats 代替。"
+        : type === "active"
+          ? "所选日期暂时没有确认到顾客实际讲话；点按钮、选系列、Get Started、数字选择不会算进这里。"
+          : "所选日期没有符合条件的顾客。";
+      const expectedCount = Number(report?.[type] || 0);
+      const partialNotice = "";
+      document.getElementById("customerList").innerHTML = people.length
+        ? partialNotice + renderCustomerSections(people, type)
+        : `<div class="customer"><div><b>${type === "pm" ? "等待 Subscribed 名单同步" : "没有记录"}</b><span>${emptyText}</span></div></div>`;
+      customerDialog.showModal();
+    }
+    document.querySelectorAll("[data-detail]").forEach(card => card.addEventListener("click", () => openCustomerList(card.dataset.detail)));
+    document.getElementById("closeDialog").addEventListener("click", () => customerDialog.close());
+    document.getElementById("runDialogClose").addEventListener("click", () => runDialog.close());
+    async function loadAccountDate(accountId, date) {
+      const response = await apiFetch(`/api/live?account=${encodeURIComponent(accountId)}&date=${encodeURIComponent(date)}`);
+      if (!response.ok) throw new Error("Webhook connection failed");
+      const payload = await response.json();
+      reportsByAccount[accountId] ||= {};
+      if (payload.report) {
+        reportsByAccount[accountId][date] = payload.report;
+        saveReportCache();
+      }
+      return payload.report || null;
+    }
+    async function refreshLive(date) {
+      try {
+        const report = await loadAccountDate(currentAccount, date);
+        dailyReports = reportsByAccount[currentAccount];
+        render(date);
+        await loadOrderSummary(date);
+        document.getElementById("syncBadge").textContent = report?.lastUpdated
+          ? `Webhook 已更新 · ${displayTime(report.lastUpdated)}`
+          : "Webhook 已连接 · 暂无这个日期数据";
+      } catch {
+        document.getElementById("syncBadge").textContent = "API 已连接 · Webhook 暂时无法读取";
+      }
+    }
+    async function connectAccount() {
+      try {
+        const reportsResponse = await apiFetch(`/api/reports?account=${encodeURIComponent(currentAccount)}`);
+        if (!reportsResponse.ok) throw new Error("Report connection failed");
+        const payload = await reportsResponse.json();
+        mergeReports({[currentAccount]: payload.reports || {}});
+        saveReportCache();
+        dailyReports = reportsByAccount[currentAccount];
+        render(dateInput.value);
+        const report = dailyReports[dateInput.value];
+        document.getElementById("syncBadge").textContent = report?.lastUpdated
+          ? `日报已载入 · ${displayTime(report.lastUpdated)}`
+          : "日报已载入 · 尚未扫描";
+        try {
+          const metaResponse = await apiFetch(`/api/meta?account=${encodeURIComponent(currentAccount)}`);
+          if (metaResponse.ok) {
+            const meta = await metaResponse.json();
+            document.getElementById("syncBadge").textContent = report?.lastUpdated
+              ? `API 已连接 · ${displayTime(report.lastUpdated)}`
+              : `API 已连接 · ${meta.account?.name || "ManyChat"}`;
+          }
+        } catch {}
+        await refreshLive(dateInput.value);
+        await loadOrderSummary(dateInput.value);
+      } catch {
+        document.getElementById("syncBadge").textContent = "日报载入失败 · 请确认本机服务已开启";
+      }
+    }
+    async function connectAllAccounts() {
+      try {
+        const reportsPayloads = await Promise.all(Object.keys(accounts).map(async accountId => {
+          const response = await apiFetch(`/api/reports?account=${encodeURIComponent(accountId)}`);
+          if (!response.ok) return null;
+          const payload = await response.json();
+          return {[accountId]: payload.reports || {}};
+        }));
+        reportsPayloads.filter(Boolean).forEach(mergeReports);
+        saveReportCache();
+        render(dateInput.value);
+        await Promise.all(Object.keys(accounts).map(accountId => loadAccountDate(accountId, dateInput.value).catch(() => null)));
+        dailyReports = reportsByAccount[currentAccount];
+        render(dateInput.value);
+        await loadOrderSummary(dateInput.value);
+        document.getElementById("syncBadge").textContent = "Dashboard 已更新";
+      } catch {
+        document.getElementById("syncBadge").textContent = "Dashboard 载入失败 · 请确认本机服务已开启";
+      }
+    }
+    function scheduleDashboardRefresh() {
+      if (runRefreshTimer) clearInterval(runRefreshTimer);
+      let attempts = 0;
+      runRefreshTimer = setInterval(async () => {
+        attempts += 1;
+        await connectAllAccounts();
+        if (attempts >= 12 || currentView !== "overview") {
+          clearInterval(runRefreshTimer);
+          runRefreshTimer = null;
+        }
+      }, 10000);
+    }
+    function runTargets() {
+      return currentView === "overview" ? Object.keys(accounts) : [currentAccount];
+    }
+    document.getElementById("runUpdate").addEventListener("click", async () => {
+      const button = document.getElementById("runUpdate");
+      button.disabled = true;
+      button.textContent = "RUNNING…";
+      document.getElementById("syncBadge").textContent = currentView === "overview"
+        ? "正在更新 3 个 Channel…"
+        : "正在更新这个 Channel…";
+      showRunDialog("⏳", "正在更新 Analysis", currentView === "overview"
+        ? "Dashboard 正在读取 3 个 Channel 当天的 webhook 数据。"
+        : "Dashboard 正在读取这个 Channel 当天的 webhook 数据。");
+      try {
+        const targets = runTargets();
+        const runResponse = await apiFetch(`/api/run-request?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(dateInput.value)}`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({date: dateInput.value, accounts: targets})
+        });
+        const runPayload = await runResponse.json().catch(() => ({}));
+        if (!runResponse.ok || runPayload.ok === false) throw new Error(runPayload.message || runPayload.error || "RUN failed");
+        Object.entries(runPayload.results || {}).forEach(([accountId, report]) => {
+          if (report && !report.error) {
+            reportsByAccount[accountId] ||= {};
+            reportsByAccount[accountId][dateInput.value] = report;
+          }
+        });
+        saveReportCache();
+        dailyReports = reportsByAccount[currentAccount] ||= {};
+        render(dateInput.value);
+        await loadOrderSummary(dateInput.value);
+        button.disabled = false;
+        button.textContent = "▶ RUN";
+        document.getElementById("syncBadge").textContent = currentView === "overview"
+          ? "3 个 Channel 已更新"
+          : "这个 Channel 已更新";
+        showRunDialog("✓", "Analysis 已完成", currentView === "overview"
+          ? "3 个 Channel 的当天数据已经重新读取并更新。"
+          : "这个 Channel 的当天数据已经重新读取并更新。");
+      } catch (error) {
+        button.textContent = "重试 RUN";
+        button.disabled = false;
+        document.getElementById("syncBadge").textContent = "RUN 失败 · Webhook 暂时无法读取";
+        showRunDialog("!", "RUN 失败", error.message || "暂时无法读取 webhook 数据，请稍后再试。");
+      }
+    });
+
+    document.getElementById("downloadReport").addEventListener("click", async () => {
+      const date = dateInput.value;
+      const button = document.getElementById("downloadReport");
+      const whatsappReportUrl = `${apiBase}/api/whatsapp-report?date=${encodeURIComponent(date)}`;
+      const opened = window.open(whatsappReportUrl, "_blank");
+      button.textContent = opened ? "✓ 已打开 WhatsApp" : "请允许弹出窗口";
+      setTimeout(() => { button.textContent = "↗ Send WhatsApp Report"; }, 2500);
+    });
+    render(dateInput.value);
+    renderAccountNames();
+    if (currentView === "overview") connectAllAccounts();
+    else connectAccount();
+    setInterval(() => {
+      if (currentView === "account") refreshLive(dateInput.value);
+    }, 60000);
+  </script>
+  <script src="date-picker-unified.js"></script>
+</body>
+</html>

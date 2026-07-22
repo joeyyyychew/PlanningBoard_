@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scale Story Dashboard</title>
+  <link rel="stylesheet" href="dashboard-shell.css" />
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+      <div class="brand">
+        <div class="logo">S</div>
+        <div><strong>Scale Story</strong><span>天然胶原蛋白</span></div>
+      </div>
+
+      <div class="side-title">ANALYSIS</div>
+      <nav class="side-list" aria-label="Analysis navigation">
+        <button class="side-item" id="inboxOverview" type="button" data-target="analysis-overview" aria-expanded="false" aria-controls="channelList">
+          <span class="text"><b>Inbox Analysis</b><small>3 个 Channel 总统计</small></span>
+          <span class="chevron">›</span>
+        </button>
+        <div class="channel-list" id="channelList" hidden>
+          <button class="side-item" type="button" data-target="analysis-account" data-account="fb108701968299986"><span class="text"><b>Scalestory</b><small>天然胶原蛋白</small></span></button>
+          <button class="side-item" type="button" data-target="analysis-account" data-account="fb1177107122151553"><span class="text"><b>鳞记</b><small>Main Front</small></span></button>
+          <button class="side-item" type="button" data-target="analysis-account" data-account="fb701760706347255"><span class="text"><b>鳞记 SG</b><small>SG 997 WA</small></span></button>
+        </div>
+      </nav>
+
+      <div class="side-section">
+        <div class="side-title">TOOLS</div>
+        <nav class="side-list" aria-label="Tools navigation">
+          <button class="side-item" type="button" data-target="order-key-in">
+            <span class="text"><b>Order Key-In</b><small>Paste order details</small></span>
+          </button>
+          <button class="side-item" type="button" data-target="broadcast-planning">
+            <span class="text"><b>Broadcast Planning</b><small>Broadcast calendar</small></span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+    <iframe class="content-frame" id="contentFrame" title="Scale Story Dashboard content"></iframe>
+  </div>
+  <script src="dashboard-shell.js"></script>
+</body>
+</html>

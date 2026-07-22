@@ -1,0 +1,1995 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scale Story · Broadcast Planning</title>
+  <script>if (new URLSearchParams(location.search).get("embedded") === "1") document.documentElement.classList.add("embedded-frame");</script>
+  <style>
+    :root {
+      --ink:#2a1419;
+      --muted:#8f7379;
+      --cream:#fbf4ef;
+      --card:rgba(255,250,247,.9);
+      --wine:#6f1027;
+      --wine-dark:#2a0610;
+      --wine-soft:#ead0d6;
+      --gold:#c99a45;
+      --rose:#b94f62;
+      --pink:#f6dbe2;
+      --blush:#f5e5e4;
+      --line:#ead9d6;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      min-width:1080px;
+      color:var(--ink);
+      font-family:Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      background:
+        radial-gradient(circle at 76% 2%, rgba(111,16,39,.18), transparent 32%),
+        radial-gradient(circle at 13% 88%, rgba(201,154,69,.16), transparent 28%),
+        linear-gradient(135deg, #fff8f2 0%, #f5e7e2 52%, #f9f1eb 100%);
+    }
+    .shell { display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+    aside {
+      width:250px;
+      min-width:250px;
+      flex:none;
+      padding:32px 24px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(201,154,69,.18), transparent 32%),
+        linear-gradient(180deg, #350713 0%, #1d050b 100%);
+      color:white;
+      display:flex;
+      flex-direction:column;
+    }
+    .brand { display:flex; align-items:center; gap:11px; margin-bottom:30px; }
+    .logo {
+      width:37px; height:37px; border-radius:12px;
+      background:linear-gradient(135deg,var(--gold),#f0d39a);
+      color:var(--wine-dark); display:grid; place-items:center;
+      font-weight:900; box-shadow:0 10px 22px rgba(0,0,0,.22);
+    }
+    .brand strong { display:block; font-size:15px; }
+    .brand span { font-size:11px; opacity:.58; }
+    .account-label { margin:0 0 9px; color:rgba(255,255,255,.48); font-size:10px; font-weight:800; letter-spacing:.12em; }
+    .account-list, .tool-list { display:grid; gap:6px; }
+    .side-button, .tool-list a {
+      display:block;
+      width:100%;
+      border:1px solid transparent;
+      background:transparent;
+      color:rgba(255,255,255,.72);
+      padding:11px 12px;
+      border-radius:12px;
+      min-height:47px;
+      text-align:left;
+      text-decoration:none;
+      cursor:pointer;
+      font:inherit;
+      transition:none;
+    }
+    .side-button:hover, .tool-list a:hover { border-color:transparent; background:transparent; color:rgba(255,255,255,.72); }
+    .side-button.active, .tool-list a.active {
+      border-color:rgba(255,255,255,.14);
+      background:rgba(255,255,255,.12);
+      color:rgba(255,255,255,.72);
+    }
+    .account-list > a.side-button.active { color:rgba(255,255,255,.72); }
+    .side-button b, .tool-list a b { display:block; font-size:12px; line-height:1.35; }
+    .side-button small, .tool-list a span { display:block; margin-top:4px; font-size:9px; opacity:.62; font-weight:650; }
+    .analysis-toggle { display:flex; align-items:center; justify-content:space-between; }
+    .analysis-toggle .chevron { opacity:.45; }
+    .channel-list { margin:2px 0 4px 10px; padding-left:8px; border-left:1px solid rgba(255,255,255,.12); display:grid; gap:6px; }
+    .channel-list[hidden] { display:none !important; }
+    .channel-list button { min-height:42px; padding:9px 10px; font-size:11px; }
+    .side-sections { margin-top:25px; padding-top:17px; border-top:1px solid rgba(255,255,255,.1); }
+    aside .side-button,
+    aside .tool-list a,
+    aside .channel-list a,
+    aside .channel-list button {
+      border-color:transparent !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+      font-size:12px !important;
+      transform:none !important;
+      box-shadow:none !important;
+      transition:none !important;
+    }
+    aside .account-list > .side-button,
+    aside .tool-list > a {
+      height:57px !important;
+      min-height:57px !important;
+    }
+    aside .channel-list a,
+    aside .channel-list button {
+      height:45px !important;
+      min-height:45px !important;
+      font-size:11px !important;
+    }
+    aside .side-button:hover,
+    aside .tool-list a:hover,
+    aside .channel-list a:hover,
+    aside .channel-list button:hover {
+      border-color:transparent !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+    }
+    aside .side-button.active,
+    aside .tool-list a.active,
+    aside .channel-list a.active,
+    aside .channel-list button.active {
+      border-color:transparent !important;
+      background:rgba(255,255,255,.12) !important;
+      color:rgba(255,255,255,.72) !important;
+    }
+    main { padding:34px 42px 48px; }
+    header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; }
+    h1 { margin:0 0 7px; font-size:28px; letter-spacing:-.04em; color:var(--wine-dark); }
+    .sub { color:var(--muted); font-size:13px; max-width:640px; line-height:1.6; }
+    .header-actions { display:flex; gap:10px; align-items:center; }
+    .pill, .ghost-button {
+      padding:9px 13px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.72);
+      color:var(--ink);
+      font-size:12px;
+      text-decoration:none;
+    }
+    .ghost-button { color:var(--wine); font-weight:850; cursor:pointer; }
+    .primary-button {
+      border:0;
+      padding:10px 17px;
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--wine),#9b2942);
+      color:white;
+      font:inherit;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.03em;
+      cursor:pointer;
+      box-shadow:0 10px 24px rgba(111,16,39,.2);
+    }
+    .metrics { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:14px; }
+    .card {
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.72);
+      box-shadow:0 18px 48px rgba(64,9,22,.08);
+      border-radius:20px;
+      backdrop-filter:blur(10px);
+    }
+    .metric { padding:19px 20px; position:relative; overflow:hidden; }
+    button.metric { width:100%; text-align:left; color:inherit; font:inherit; cursor:pointer; }
+    button.metric:hover { transform:translateY(-2px); border-color:#d8a8b2; box-shadow:0 18px 42px rgba(111,16,39,.14); }
+    .metric::after {
+      content:"";
+      position:absolute;
+      width:72px; height:72px; border-radius:50%;
+      background:var(--tint,#f4dfe3);
+      right:-23px; top:-25px; opacity:.58;
+    }
+    .metric label { display:block; font-size:12px; color:var(--muted); margin-bottom:13px; }
+    .metric strong { font-size:30px; letter-spacing:-.05em; }
+    .metric small { margin-left:8px; color:var(--wine); font-weight:800; font-size:11px; }
+    .panel { padding:22px; }
+    .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:19px; }
+    .panel h2 { font-size:15px; margin:0 0 6px; }
+    .panel-head span { color:var(--muted); font-size:11px; line-height:1.6; }
+    .toggle { display:flex; padding:4px; gap:4px; border-radius:16px; background:#f2e8e1; }
+    .toggle button {
+      border:0;
+      border-radius:12px;
+      padding:8px 12px;
+      background:transparent;
+      color:var(--muted);
+      font:inherit;
+      font-size:12px;
+      font-weight:850;
+      cursor:pointer;
+    }
+    .toggle button.active { background:white; color:var(--ink); box-shadow:0 8px 20px rgba(64,9,22,.07); }
+    .filter-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .filter-row button {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.72);
+      color:#6d555a;
+      padding:8px 11px;
+      border-radius:999px;
+      font:inherit;
+      font-size:11px;
+      font-weight:850;
+      cursor:pointer;
+    }
+    .filter-row button.active { color:var(--wine); background:#ffe9ef; border-color:#efc8d1; }
+    .search-box {
+      width:100%;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.7);
+      border-radius:14px;
+      padding:11px 13px;
+      font:inherit;
+      font-size:12px;
+      margin-bottom:14px;
+      outline:0;
+    }
+    .plan-list { display:grid; gap:10px; }
+    .plan-row {
+      display:grid;
+      grid-template-columns:92px 1fr 100px 108px 92px 92px 80px 86px 62px;
+      gap:14px;
+      align-items:center;
+      padding:14px 15px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.63);
+    }
+    .plan-row:hover { border-color:#d8a8b2; box-shadow:0 12px 30px rgba(111,16,39,.08); }
+    .date strong { display:block; font-size:18px; letter-spacing:-.04em; }
+    .date span, .meta, .subtle { color:var(--muted); font-size:10px; }
+    .title strong { display:block; font-size:13px; margin-bottom:4px; }
+    .tag, .page-tag {
+      justify-self:center;
+      min-width:74px;
+      text-align:center;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#f3ece6;
+      color:#776761;
+      font-size:10px;
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .tag.new { background:#ffe1e9; color:var(--wine); }
+    .page-tag { background:#f9dfe7; color:#9a1736; text-transform:none; }
+    .amount { text-align:right; font-weight:950; font-size:13px; }
+    .pax-input {
+      width:92px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(255,255,255,.82);
+      padding:8px 10px;
+      color:var(--ink);
+      font:inherit;
+      font-size:11px;
+      font-weight:850;
+      outline:0;
+    }
+    .done-toggle {
+      justify-self:end;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.78);
+      color:var(--muted);
+      border-radius:999px;
+      padding:8px 10px;
+      font:inherit;
+      font-size:10px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .done-toggle.done { background:#fff0d8; color:#7d4c00; border-color:#ead4a8; }
+    .copy-toggle {
+      justify-self:end;
+      border:1px solid #d8a8b2;
+      background:rgba(255,255,255,.78);
+      color:var(--wine);
+      border-radius:999px;
+      padding:8px 10px;
+      font:inherit;
+      font-size:10px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .copy-toggle.saved { background:#ffe9ef; }
+    .edit-toggle {
+      justify-self:end;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.78);
+      color:var(--muted);
+      border-radius:999px;
+      padding:8px 10px;
+      font:inherit;
+      font-size:10px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .delete-button {
+      border:1px solid #e3b9c1;
+      background:#fff4f4;
+      color:var(--wine);
+      border-radius:999px;
+      padding:10px 14px;
+      font:inherit;
+      font-size:11px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .copy-box {
+      width:100%;
+      min-height:82px;
+      resize:vertical;
+      border:1px solid var(--line);
+      border-radius:15px;
+      background:rgba(255,255,255,.72);
+      padding:12px;
+      color:var(--ink);
+      font:inherit;
+      font-size:12px;
+      outline:0;
+    }
+    .copy-box:focus { border-color:#d8a8b2; box-shadow:0 0 0 3px rgba(111,16,39,.08); }
+    .calendar { display:none; grid-template-columns:repeat(7,1fr); gap:10px; }
+    .calendar.active { display:grid; }
+    .calendar-weekday {
+      padding:0 4px 4px;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:900;
+      text-align:center;
+      letter-spacing:.05em;
+    }
+    .day-card {
+      min-height:128px;
+      padding:12px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.56);
+    }
+    .day-card.muted-day { opacity:.45; }
+    .day-card h3 { margin:0 0 12px; font-size:15px; }
+    .day-card h3 span { color:var(--muted); font-size:10px; font-weight:700; margin-left:5px; }
+    .event {
+      margin-top:9px;
+      padding:10px;
+      border-radius:11px;
+      background:#fff4d3;
+      border-left:4px solid var(--wine-dark);
+      font-size:11px;
+      line-height:1.4;
+    }
+    .event.new { background:#ffe8ef; border-left-color:var(--rose); }
+    .event small { display:block; color:#765f65; margin-top:4px; }
+    .no-event { color:#b3a2a6; font-size:10px; }
+    .empty { color:#9c8a8f; padding:18px; text-align:center; }
+    .sheet-note { margin-top:12px; color:var(--muted); font-size:10px; text-align:right; }
+    .month-control {
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:5px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.72);
+      color:var(--wine);
+      font-size:11px;
+      font-weight:900;
+    }
+    .month-control button {
+      border:0;
+      background:transparent;
+      color:var(--wine);
+      cursor:pointer;
+      font:inherit;
+      font-size:17px;
+      font-weight:950;
+      padding:3px 6px;
+    }
+    .month-control span {
+      min-width:80px;
+      color:var(--ink);
+      text-align:center;
+      font-size:12px;
+      font-weight:950;
+      cursor:pointer;
+      padding:5px 8px;
+      border-radius:999px;
+    }
+    .month-control span:hover { background:#fff0f0; color:var(--wine); }
+    .month-popover {
+      position:absolute;
+      top:calc(100% + 8px);
+      right:0;
+      z-index:30;
+      width:238px;
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(255,250,248,.98);
+      box-shadow:0 20px 45px rgba(62,10,27,.16);
+      padding:12px;
+    }
+    .month-popover[hidden] { display:none; }
+    .month-picker-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .month-choice {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.78);
+      border-radius:14px;
+      padding:12px;
+      color:var(--ink);
+      font:inherit;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .month-choice.active { background:var(--wine); color:white; border-color:var(--wine); }
+    .year-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .year-row button {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.78);
+      color:var(--wine);
+      width:36px;
+      height:34px;
+      border-radius:12px;
+      font:inherit;
+      font-weight:950;
+      cursor:pointer;
+    }
+    .year-row strong {
+      flex:1;
+      text-align:center;
+      padding:10px;
+      border-radius:12px;
+      background:#fff5f5;
+    }
+    .insights { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; margin-bottom:14px; }
+    .frequency-list { display:grid; gap:10px; }
+    .frequency-row {
+      display:grid;
+      grid-template-columns:92px 1fr 110px;
+      gap:12px;
+      align-items:center;
+      padding:10px 0;
+      border-bottom:1px solid #edf0ec;
+    }
+    .frequency-row:last-child { border-bottom:0; }
+    .frequency-row b { font-size:12px; }
+    .frequency-row span { color:var(--muted); font-size:10px; }
+    .frequency-numbers { display:grid; gap:2px; justify-items:end; font-size:10px; color:var(--muted); }
+    .frequency-numbers b { color:var(--wine); font-size:12px; }
+    .mini-track { height:8px; border-radius:999px; background:#edf0ec; overflow:hidden; }
+    .mini-bar { height:100%; width:var(--w); border-radius:999px; background:linear-gradient(90deg,var(--wine),var(--rose)); }
+    .form-panel { margin-bottom:14px; }
+    .form-panel[hidden] { display:none; }
+    .form-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .field { display:grid; gap:6px; }
+    .field.wide { grid-column:span 2; }
+    .field.full { grid-column:1 / -1; }
+    .field label { color:var(--muted); font-size:10px; font-weight:850; letter-spacing:.04em; text-transform:uppercase; }
+    .field input, .field select, .field textarea {
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:13px;
+      background:rgba(255,255,255,.78);
+      padding:11px 12px;
+      color:var(--ink);
+      font:inherit;
+      font-size:12px;
+      outline:0;
+    }
+    .quick-input {
+      width:100%;
+      min-height:62px;
+      resize:vertical;
+      border:1px solid var(--line);
+      border-radius:15px;
+      background:rgba(255,255,255,.78);
+      padding:12px;
+      color:var(--ink);
+      font:inherit;
+      font-size:12px;
+      outline:0;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color:#d8a8b2; box-shadow:0 0 0 3px rgba(111,16,39,.08); }
+    .audience-picks { display:flex; flex-wrap:wrap; gap:7px; }
+    .audience-picks label {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.7);
+      color:#6d555a;
+      font-size:11px;
+      font-weight:850;
+      cursor:pointer;
+    }
+    .audience-picks input { width:auto; accent-color:var(--wine); }
+    .form-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; }
+    .done-check {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:850;
+    }
+    .done-check input { width:16px; height:16px; accent-color:var(--wine); }
+    .secondary-button {
+      border:1px solid #d8a8b2;
+      padding:10px 14px;
+      border-radius:999px;
+      background:rgba(255,255,255,.82);
+      color:var(--wine);
+      font:inherit;
+      font-size:11px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .spend-preview {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:9px 13px;
+      border-radius:999px;
+      background:#fff0f0;
+      color:var(--wine);
+      font-size:12px;
+      font-weight:900;
+    }
+    .panel-actions { display:flex; align-items:center; gap:9px; }
+    dialog { width:min(560px,calc(100vw - 40px)); max-height:min(82vh,720px); padding:0; border:0; border-radius:20px; color:var(--ink); box-shadow:0 28px 80px rgba(64,9,22,.28); overflow:hidden; }
+    dialog::backdrop { background:rgba(42,6,16,.42); backdrop-filter:blur(3px); }
+    .dialog-head { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--line); background:#fffafa; }
+    .dialog-head h2 { margin:0; font-size:16px; }
+    .dialog-head button { border:0; background:#f3e7e9; color:var(--ink); width:30px; height:30px; border-radius:9px; cursor:pointer; }
+    .dialog-body { padding:18px 20px 20px; display:grid; gap:12px; }
+    .channel-total-row { display:grid; grid-template-columns:1fr auto; gap:12px; padding:12px 0; border-bottom:1px solid #edf0ec; }
+    .channel-total-row:last-child { border-bottom:0; }
+    .channel-total-row b { font-size:13px; }
+    .channel-total-row span { color:var(--muted); font-size:11px; }
+    .detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .detail-item { padding:12px; border-radius:16px; border:1px solid var(--line); background:rgba(255,250,247,.56); }
+    .detail-item label { display:block; margin-bottom:5px; color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .detail-item strong { display:block; color:var(--ink); font-size:14px; line-height:1.25; word-break:break-word; }
+    .detail-copy { padding:13px; border-radius:16px; border:1px solid var(--line); background:rgba(245,220,168,.22); color:var(--muted); font-size:12px; line-height:1.55; white-space:pre-wrap; max-height:150px; overflow:auto; }
+    .detail-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; padding-top:4px; }
+    .event { cursor:pointer; border:0; text-align:left; width:100%; font:inherit; color:inherit; }
+    .event:focus-visible { outline:2px solid var(--wine); outline-offset:3px; }
+    .reminder-item { padding:12px; border-radius:14px; background:#fff4f4; border:1px solid #efd1d6; }
+    .reminder-item b { display:block; margin-bottom:4px; }
+    /* Sidebar lock: keep the left navigation visually identical on every page. */
+    .shell { grid-template-columns:250px minmax(0,1fr) !important; }
+    aside {
+      width:250px !important;
+      min-width:250px !important;
+      max-width:250px !important;
+      padding:32px 24px !important;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(201,154,69,.18), transparent 32%),
+        linear-gradient(180deg, #350713 0%, #1d050b 100%) !important;
+      color:white !important;
+      overflow:hidden !important;
+    }
+    aside, aside * { transition:none !important; animation:none !important; transform:none !important; box-sizing:border-box !important; }
+    aside .brand { height:37px !important; margin:0 0 30px !important; gap:11px !important; }
+    aside .brand strong { font-size:15px !important; line-height:1.25 !important; color:white !important; }
+    aside .brand span { font-size:11px !important; line-height:1.25 !important; color:rgba(255,255,255,.58) !important; }
+    aside .account-label,
+    aside .side-title { height:12px !important; line-height:12px !important; margin:0 0 9px !important; color:rgba(255,255,255,.48) !important; font-size:10px !important; font-weight:850 !important; letter-spacing:.12em !important; }
+    aside .account-list,
+    aside .tool-list,
+    aside .nav-list { display:grid !important; gap:6px !important; margin:0 !important; }
+    aside .side-sections { margin-top:25px !important; padding-top:17px !important; border-top:1px solid rgba(255,255,255,.1) !important; }
+    aside .side-button,
+    aside .account-list > a,
+    aside .account-list > button,
+    aside .tool-list > a,
+    aside .tool-list > button,
+    aside .nav-list > a,
+    aside .nav-list > button {
+      display:flex !important;
+      flex-direction:column !important;
+      justify-content:center !important;
+      align-items:flex-start !important;
+      width:100% !important;
+      height:57px !important;
+      min-height:57px !important;
+      max-height:57px !important;
+      margin:0 !important;
+      padding:0 12px !important;
+      border:1px solid transparent !important;
+      border-radius:14px !important;
+      background:transparent !important;
+      box-shadow:none !important;
+      outline:none !important;
+      color:rgba(255,255,255,.72) !important;
+      text-align:left !important;
+      text-decoration:none !important;
+      font:inherit !important;
+      font-size:12px !important;
+      font-weight:850 !important;
+      line-height:1.35 !important;
+    }
+    aside .analysis-toggle,
+    aside .account-toggle { flex-direction:row !important; align-items:center !important; justify-content:space-between !important; }
+    aside .analysis-toggle > span:first-child,
+    aside .account-toggle > span:first-child { display:flex !important; flex-direction:column !important; justify-content:center !important; }
+    aside .channel-list {
+      display:grid !important;
+      gap:6px !important;
+      margin:2px 0 4px 10px !important;
+      padding-left:8px !important;
+      border-left:1px solid rgba(255,255,255,.12) !important;
+    }
+    aside .channel-list[hidden] { display:none !important; }
+    aside .channel-list a,
+    aside .channel-list button {
+      display:flex !important;
+      flex-direction:column !important;
+      justify-content:center !important;
+      align-items:flex-start !important;
+      width:100% !important;
+      height:45px !important;
+      min-height:45px !important;
+      max-height:45px !important;
+      margin:0 !important;
+      padding:0 10px !important;
+      border:1px solid transparent !important;
+      border-radius:12px !important;
+      background:transparent !important;
+      color:rgba(255,255,255,.72) !important;
+      text-align:left !important;
+      text-decoration:none !important;
+      font:inherit !important;
+      font-size:11px !important;
+      font-weight:850 !important;
+      line-height:1.35 !important;
+      box-shadow:none !important;
+      outline:none !important;
+    }
+    aside b { color:inherit !important; }
+    aside b { display:block !important; margin:0 !important; font-size:12px !important; line-height:1.35 !important; font-weight:900 !important; }
+    aside small,
+    aside .tool-list a span,
+    aside .nav-list small,
+    aside .account-list small,
+    aside .channel-list small { display:block !important; margin:4px 0 0 !important; color:rgba(255,255,255,.55) !important; font-size:9px !important; line-height:1.25 !important; font-weight:650 !important; opacity:1 !important; }
+    aside a:hover,
+    aside button:hover,
+    aside a:focus,
+    aside button:focus { background:transparent !important; border-color:transparent !important; color:rgba(255,255,255,.72) !important; box-shadow:none !important; outline:none !important; }
+    aside a.active,
+    aside button.active { background:rgba(255,255,255,.12) !important; border-color:transparent !important; color:rgba(255,255,255,.72) !important; box-shadow:none !important; }
+    aside a[href$="index.html"].active b,
+    aside a[href$="index.html"].active small { color:#f0d39a !important; }
+    /* Broadcast layout repair: keep every row inside the Raw Oak panel. */
+    main { overflow-x:hidden !important; }
+    header { margin-top:0 !important; }
+    .metrics {
+      grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+      gap:16px !important;
+    }
+    .metric {
+      min-width:0 !important;
+      padding:20px 20px !important;
+    }
+    .metric label,
+    .metric small {
+      overflow-wrap:anywhere !important;
+    }
+    .panel {
+      max-width:100% !important;
+      overflow:hidden !important;
+      border-radius:24px !important;
+    }
+    .panel-head {
+      align-items:center !important;
+      gap:12px !important;
+      flex-wrap:wrap !important;
+    }
+    .panel-actions {
+      margin-left:auto !important;
+      flex-wrap:wrap !important;
+      justify-content:flex-end !important;
+    }
+    .plan-list {
+      width:100% !important;
+      overflow:hidden !important;
+      gap:12px !important;
+    }
+    .plan-row {
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      overflow:hidden !important;
+      grid-template-columns:76px minmax(150px, 1fr) 82px 86px 92px 84px 46px 46px 58px !important;
+      gap:8px !important;
+      padding:14px 16px !important;
+      border-radius:20px !important;
+    }
+    .plan-row > * { min-width:0 !important; }
+    .title strong,
+    .title .meta {
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+    .tag,
+    .page-tag {
+      min-width:0 !important;
+      width:100% !important;
+      padding:8px 8px !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+      white-space:nowrap !important;
+    }
+    .pax-input {
+      width:100% !important;
+      min-width:0 !important;
+    }
+    .amount {
+      text-align:right !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+    .done-toggle,
+    .copy-toggle,
+    .edit-toggle {
+      justify-self:stretch !important;
+      width:100% !important;
+      min-width:0 !important;
+      padding:8px 6px !important;
+      text-align:center !important;
+    }
+    
+  </style>
+  <link rel="stylesheet" href="theme-luxe.css" />
+  <link rel="stylesheet" href="sidebar-unified.css" />
+  <link rel="stylesheet" href="embedded-frame.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <div class="logo">S</div>
+        <div><strong>Scale Story</strong><span>天然胶原蛋白</span></div>
+      </div>
+
+      <div class="account-label">ANALYSIS</div>
+      <div class="account-list">
+        <button class="side-button analysis-toggle" id="analysisToggle" type="button" aria-expanded="false" aria-controls="analysisChannels">
+          <span><b>Inbox Analysis</b><small>3 个 Channel 总统计</small></span>
+          <span class="chevron">›</span>
+        </button>
+        <div class="channel-list" id="analysisChannels" hidden>
+          <a class="side-button" data-analysis-account="fb108701968299986" href="/index?account=fb108701968299986"><b>Scalestory</b><small>天然胶原蛋白</small></a>
+          <a class="side-button" data-analysis-account="fb1177107122151553" href="/index?account=fb1177107122151553"><b>鳞记</b><small>Main Front</small></a>
+          <a class="side-button" data-analysis-account="fb701760706347255" href="/index?account=fb701760706347255"><b>鳞记 SG</b><small>SG 997 WA</small></a>
+        </div>
+      </div>
+
+      <div class="side-sections">
+        <div class="account-label">TOOLS</div>
+        <div class="tool-list">
+          <a href="/order-key-in" id="orderKeyInLink"><b>Order Key-In</b><span>Paste order details</span></a>
+          <a class="active" href="/broadcast-planning"><b>Broadcast Planning</b><span>Broadcast calendar</span></a>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <h1>Broadcast Planning</h1>
+          <div class="sub">把 Google Sheet 里的 Broadcast 计划整理成 dashboard 可以直接查看、安排和同步的版本。</div>
+        </div>
+        <div class="header-actions">
+          <a class="ghost-button" target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470">打开 Google Sheet ↗</a>
+          <span class="pill">Live Plan</span>
+        </div>
+      </header>
+
+      <section class="metrics">
+        <div class="card metric" style="--tint:#f3dfe4"><label>Total Plans</label><strong id="totalPlans">0</strong><small>JULY</small></div>
+        <div class="card metric" style="--tint:#f4dfb4"><label>Completed</label><strong id="donePlans">0</strong><small>已勾选</small></div>
+        <div class="card metric" style="--tint:#f3dfe4"><label>Pending</label><strong id="pendingPlans">0</strong><small>待安排</small></div>
+        <button class="card metric" id="totalPaxCard" type="button" style="--tint:#f1e0d1"><label>Total Pax · 点击查看</label><strong id="totalPax">0</strong><small>Done 后统计</small></button>
+        <button class="card metric" id="totalSpendCard" type="button" style="--tint:#f3dfe4"><label>Total Spending · 点击查看</label><strong id="totalSpend">RM0</strong><small>Done 后统计</small></button>
+      </section>
+
+      <section class="card panel form-panel" id="addPlanPanel" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>新增 Broadcast Plan</h2>
+            <span>先安排日期、时间、主题、人群、category 和 channel；PAX 等当天走完后再回到列表补填。</span>
+          </div>
+          <button class="secondary-button" id="closeAddPlan" type="button">收起</button>
+        </div>
+        <form id="planForm">
+          <div class="form-grid">
+            <div class="field full">
+              <label>Quick Paste</label>
+              <textarea class="quick-input" id="quickPaste" placeholder="例：25/7 8pm | 早鸟 Last Call | NEW | 7月 | KNEE 990"></textarea>
+            </div>
+            <div class="field full" style="display:flex; justify-content:flex-end;">
+              <button class="secondary-button" id="smartFill" type="button">Smart Fill</button>
+            </div>
+            <div class="field">
+              <label>Date</label>
+              <div class="date-field-control" data-date-picker="planDate">
+                <input id="planDate" type="text" placeholder="dd/mm/yyyy" required autocomplete="off" readonly />
+                <div class="date-popover" id="planDatePopover" hidden>
+                  <div class="year-row">
+                    <button id="planDatePrevYear" type="button">‹</button>
+                    <strong id="planDatePickerYear">2026</strong>
+                    <button id="planDateNextYear" type="button">›</button>
+                  </div>
+                  <div class="month-picker-grid" id="planDateMonthChoices"></div>
+                  <div class="day-picker-grid" id="planDateDayChoices"></div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Time</label>
+              <input id="planTime" type="text" placeholder="8:00 PM" />
+            </div>
+            <div class="field wide">
+              <label>Title</label>
+              <input id="planTitle" placeholder="例如：早鸟 Last Call" required />
+            </div>
+            <div class="field">
+              <label>Category</label>
+              <select id="planCategory">
+                <option>NEW</option>
+                <option>EXSISTING</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Channel</label>
+              <select id="planPage">
+                <option>KNEE 990</option>
+                <option>Old Main Page</option>
+                <option>SG Page</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>Target Audience</label>
+              <div class="audience-picks" id="audiencePicks">
+                <label><input type="checkbox" value="1 月" /> 1 月</label>
+                <label><input type="checkbox" value="2 月" /> 2 月</label>
+                <label><input type="checkbox" value="3 月" /> 3 月</label>
+                <label><input type="checkbox" value="4 月" /> 4 月</label>
+                <label><input type="checkbox" value="5 月" /> 5 月</label>
+                <label><input type="checkbox" value="6 月" /> 6 月</label>
+                <label><input type="checkbox" value="7 月" /> 7 月</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <span class="subtle">PAX 和 Spending 之后在 Broadcast Planning Sheet 的那一行补填。</span>
+            <button class="primary-button" type="submit">+ Add Plan</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card panel">
+        <div class="panel-head">
+          <div>
+            <h2>Broadcast Planning Sheet</h2>
+            <span id="sheetMeta">Synced 1 planning tab · Source tab: JULY Broadcast Planning</span>
+          </div>
+          <div class="panel-actions">
+            <div class="month-control" aria-label="月份选择">
+              <button id="prevMonth" type="button">‹</button>
+              <span id="monthLabel" role="button" tabindex="0">2026-07</span>
+              <button id="nextMonth" type="button">›</button>
+              <div class="month-popover" id="monthPopover" hidden>
+                <div class="year-row">
+                  <button id="pickerPrevYear" type="button">‹</button>
+                  <strong id="pickerYear">2026</strong>
+                  <button id="pickerNextYear" type="button">›</button>
+                </div>
+                <div class="month-picker-grid" id="monthChoices"></div>
+              </div>
+            </div>
+            <button class="primary-button" id="newPlan" type="button">＋</button>
+            <div class="toggle">
+              <button id="listView" class="active">列表</button>
+              <button id="calendarView">日历</button>
+            </div>
+          </div>
+        </div>
+
+        <input class="search-box" id="search" placeholder="搜索 title、audience、page、category..." />
+
+        <div class="filter-row">
+          <button class="active" data-filter="all">All</button>
+          <button data-filter="NEW">New</button>
+          <button data-filter="EXSISTING">Existing</button>
+          <button data-filter="KNEE 990">KNEE 990</button>
+          <button data-filter="Old Main Page">Old Main</button>
+          <button data-filter="SG Page">SG Page</button>
+        </div>
+
+        <div class="plan-list" id="planList"></div>
+        <div class="calendar" id="calendar"></div>
+        <div class="sheet-note" id="sourceNote"></div>
+      </section>
+
+      <section class="insights">
+        <div class="card panel">
+          <div class="panel-head">
+            <div>
+              <h2>人群 Frequency</h2>
+              <span>自动统计所选月份每个人群被安排 broadcast 的次数和总人数。</span>
+            </div>
+          </div>
+          <div class="frequency-list" id="audienceFrequency"></div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head">
+            <div>
+              <h2>Channel Frequency</h2>
+              <span>看所选月份每个 Channel 安排了多少次 Broadcast。</span>
+            </div>
+          </div>
+          <div class="frequency-list" id="pageFrequency"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="paxDialog">
+    <div class="dialog-head">
+      <h2>Done Broadcast · Channel Pax</h2>
+      <button type="button" data-close-dialog="paxDialog">×</button>
+    </div>
+    <div class="dialog-body" id="paxDialogBody"></div>
+  </dialog>
+
+  <dialog id="spendDialog">
+    <div class="dialog-head">
+      <h2>Done Broadcast · Channel Spending</h2>
+      <button type="button" data-close-dialog="spendDialog">×</button>
+    </div>
+    <div class="dialog-body" id="spendDialogBody"></div>
+  </dialog>
+
+  <dialog id="reminderDialog">
+    <div class="dialog-head">
+      <h2>今天有 Broadcast 要安排</h2>
+      <button type="button" data-close-dialog="reminderDialog">×</button>
+    </div>
+    <div class="dialog-body">
+      <div id="reminderList"></div>
+      <button class="primary-button" type="button" data-close-dialog="reminderDialog">我知道了</button>
+    </div>
+  </dialog>
+
+  <dialog id="copyDialog">
+    <div class="dialog-head">
+      <h2>Broadcast 文案</h2>
+      <button type="button" data-close-dialog="copyDialog">×</button>
+    </div>
+    <div class="dialog-body">
+      <textarea class="copy-box" id="copyText" placeholder="把这个 broadcast 的文案存这里..."></textarea>
+      <button class="primary-button" id="saveCopy" type="button">保存文案</button>
+    </div>
+  </dialog>
+
+  <dialog id="broadcastDetailDialog">
+    <div class="dialog-head">
+      <h2 id="broadcastDetailTitle">Broadcast Details</h2>
+      <button type="button" data-close-dialog="broadcastDetailDialog">×</button>
+    </div>
+    <div class="dialog-body" id="broadcastDetailBody"></div>
+  </dialog>
+
+  <dialog id="editDialog">
+    <div class="dialog-head">
+      <h2>Edit Broadcast Plan</h2>
+      <button type="button" data-close-dialog="editDialog">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Date</label>
+          <div class="date-field-control" data-date-picker="editDate">
+            <input id="editDate" type="text" placeholder="dd/mm/yyyy" autocomplete="off" readonly />
+            <div class="date-popover" id="editDatePopover" hidden>
+              <div class="year-row">
+                <button id="editDatePrevYear" type="button">‹</button>
+                <strong id="editDatePickerYear">2026</strong>
+                <button id="editDateNextYear" type="button">›</button>
+              </div>
+              <div class="month-picker-grid" id="editDateMonthChoices"></div>
+              <div class="day-picker-grid" id="editDateDayChoices"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <input id="editTime" type="text" placeholder="8:00 PM" />
+        </div>
+        <div class="field wide">
+          <label>Title</label>
+          <input id="editTitle" type="text" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="editCategory">
+            <option>NEW</option>
+            <option>EXSISTING</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Channel</label>
+          <select id="editPage">
+            <option>KNEE 990</option>
+            <option>Old Main Page</option>
+            <option>SG Page</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Target Audience</label>
+          <div class="audience-picks" id="editAudiencePicks">
+            <label><input type="checkbox" value="1 月" /> 1 月</label>
+            <label><input type="checkbox" value="2 月" /> 2 月</label>
+            <label><input type="checkbox" value="3 月" /> 3 月</label>
+            <label><input type="checkbox" value="4 月" /> 4 月</label>
+            <label><input type="checkbox" value="5 月" /> 5 月</label>
+            <label><input type="checkbox" value="6 月" /> 6 月</label>
+            <label><input type="checkbox" value="7 月" /> 7 月</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="delete-button" id="deletePlan" type="button">删除</button>
+        <button class="primary-button" id="saveEdit" type="button">保存修改</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const sheetRows = [
+      {done:true,date:"2026-07-06",time:"8:15 PM",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:843,page:"KNEE 990",spend:421.5},
+      {done:true,date:"2026-07-06",time:"8:30 PM",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:313,page:"SG Page",spend:156.5},
+      {done:true,date:"2026-07-14",time:"8:00 PM",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:583,page:"KNEE 990",spend:291.5},
+      {done:true,date:"2026-07-14",time:"8:00 PM",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:464,page:"SG Page",spend:232},
+      {done:true,date:"2026-07-15",time:"10:30 PM",title:"LastCall RM30 Voucher",category:"NEW",audience:"7 月",pax:204,page:"KNEE 990",spend:102},
+      {done:true,date:"2026-07-17",time:"7:45 PM",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"7 月",pax:299,page:"KNEE 990",spend:149.5},
+      {done:true,date:"2026-07-18",time:"7:00 PM",title:"世界杯限定 Weekend Deal 2",category:"NEW",audience:"7 月",pax:155,page:"SG Page",spend:77.5},
+      {done:true,date:"2026-07-18",time:"7:15 PM",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"6 月",pax:675,page:"KNEE 990",spend:337.5},
+      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
+      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
+      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"NEW",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"NEW",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
+      {done:null,date:"2026-07-24",time:"",title:"早鸟 ➕ SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"KNEE 990",spend:0},
+      {done:null,date:"2026-07-24",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"SG Page",spend:0},
+      {done:null,date:"2026-07-25",time:"",title:"早鸟 ➕ SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"KNEE 990",spend:0},
+      {done:null,date:"2026-07-25",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"SG Page",spend:0},
+      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"SG Page",spend:0},
+      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
+      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
+      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"SG Page",spend:0},
+      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
+      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
+      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0}
+    ];
+    const STORAGE_KEY = "broadcastPlanningPreviewRows:v2";
+    const EDITS_KEY = "broadcastPlanningPreviewEdits:v1";
+    const DELETED_KEY = "broadcastPlanningPreviewDeleted:v1";
+    const REMINDER_KEY = "broadcastPlanningReminderSeen:v1";
+    const BASE_SHEET_ROW_COUNT = sheetRows.length;
+    sheetRows.forEach((row, index) => {
+      row.sheetRow = row.sheetRow || index + 2;
+      row.preview = false;
+    });
+    try {
+      const savedRows = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (Array.isArray(savedRows)) sheetRows.push(...savedRows);
+    } catch (error) {}
+    function rowKey(row) {
+      return [row.date, row.time, row.title, row.category, row.page, row.audience].join("||");
+    }
+    sheetRows.forEach(row => {
+      row._key = row._key || rowKey(row);
+    });
+    try {
+      const deletedRows = new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || "[]"));
+      for (let index = sheetRows.length - 1; index >= 0; index -= 1) {
+        const row = sheetRows[index];
+        if (!row.preview && deletedRows.has(row._key || rowKey(row))) sheetRows.splice(index, 1);
+      }
+    } catch (error) {}
+    try {
+      const savedEdits = JSON.parse(localStorage.getItem(EDITS_KEY) || "{}");
+      sheetRows.forEach(row => {
+        const edit = savedEdits[row._key || rowKey(row)];
+        if (!edit) return;
+        if (Object.prototype.hasOwnProperty.call(edit, "done")) row.done = edit.done;
+        if (Object.prototype.hasOwnProperty.call(edit, "copy")) row.copy = edit.copy;
+        if (Object.prototype.hasOwnProperty.call(edit, "date")) row.date = edit.date;
+        if (Object.prototype.hasOwnProperty.call(edit, "time")) row.time = edit.time;
+        if (Object.prototype.hasOwnProperty.call(edit, "title")) row.title = edit.title;
+        if (Object.prototype.hasOwnProperty.call(edit, "category")) row.category = edit.category;
+        if (Object.prototype.hasOwnProperty.call(edit, "page")) row.page = edit.page;
+        if (Object.prototype.hasOwnProperty.call(edit, "audience")) row.audience = edit.audience;
+        if (Object.prototype.hasOwnProperty.call(edit, "sheetRow")) row.sheetRow = Number(edit.sheetRow || 0);
+        if (Object.prototype.hasOwnProperty.call(edit, "pax")) {
+          row.pax = Number(edit.pax || 0);
+          row.spend = row.pax * 0.5;
+        }
+      });
+    } catch (error) {}
+
+    let filter = "all";
+    let mode = "list";
+    let selectedMonth = "2026-07";
+    const fmt = new Intl.DateTimeFormat("en-GB", { day:"numeric", month:"numeric" });
+    const weekday = new Intl.DateTimeFormat("en", { weekday:"short" });
+
+    function money(value) {
+      return `RM${Number(value || 0).toLocaleString("en-MY", { minimumFractionDigits:value % 1 ? 2 : 0, maximumFractionDigits:2 })}`;
+    }
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+    function normalizeAudienceName(value) {
+      return String(value || "").trim().replace(/^(\d{1,2})\s*月$/, "$1 月");
+    }
+    function splitAudience(value) {
+      return String(value || "")
+        .split("|")
+        .map(item => normalizeAudienceName(item))
+        .filter(Boolean);
+    }
+    function monthLabel(date) {
+      const d = new Date(date + "T00:00:00");
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }
+    function formatMonthText(value) {
+      const [year, month] = String(value || selectedMonth).split("-");
+      return `${month}/${year}`;
+    }
+    function shiftMonth(offset) {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const d = new Date(year, month - 1 + offset, 1);
+      selectedMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
+      document.getElementById("planDate").value = `01/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      render();
+    }
+    let pickerYear = Number(selectedMonth.slice(0, 4));
+    function renderMonthPicker() {
+      document.getElementById("pickerYear").textContent = pickerYear;
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const monthChoicesEl = document.getElementById("monthChoices");
+      monthChoicesEl.innerHTML = months.map((name, index) => {
+        const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
+        return `<button class="month-choice ${value === selectedMonth ? "active" : ""}" data-month="${value}" type="button">${name}</button>`;
+      }).join("");
+      monthChoicesEl.querySelectorAll(".month-choice").forEach(button => {
+        button.onclick = event => {
+          event.preventDefault();
+          event.stopPropagation();
+          chooseMonth(button.dataset.month);
+        };
+      });
+    }
+    function chooseMonth(value) {
+      selectedMonth = value;
+      document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
+      document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
+      document.getElementById("monthPopover").hidden = true;
+      render();
+    }
+    function normalizePlanDate(value) {
+      const raw = String(value || "").trim();
+      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return raw;
+      const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?$/);
+      if (slash) {
+        const year = slash[3] ? (slash[3].length === 2 ? `20${slash[3]}` : slash[3]) : selectedMonth.slice(0, 4);
+        return `${year}-${slash[2].padStart(2, "0")}-${slash[1].padStart(2, "0")}`;
+      }
+      return "";
+    }
+    function monthlyRows() {
+      return sheetRows
+        .map((row, index) => ({...row, index}))
+        .filter(row => monthLabel(row.date) === selectedMonth);
+    }
+    function doneMonthlyRows() {
+      return monthlyRows().filter(row => row.done === true);
+    }
+    function filteredRows() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      return monthlyRows().filter(row => {
+        const inFilter = filter === "all" || row.category === filter || row.page === filter;
+        const text = `${row.title} ${row.audience} ${row.page} ${row.category} ${row.time}`.toLowerCase();
+        return inFilter && (!q || text.includes(q));
+      });
+    }
+    function updateMetrics() {
+      const rows = monthlyRows();
+      const doneRows = rows.filter(r => r.done === true);
+      document.getElementById("totalPlans").textContent = rows.length;
+      document.getElementById("donePlans").textContent = doneRows.length;
+      document.getElementById("pendingPlans").textContent = rows.filter(r => r.done !== true).length;
+      document.getElementById("totalPax").textContent = doneRows.reduce((sum, r) => sum + Number(r.pax || 0), 0).toLocaleString();
+      document.getElementById("totalSpend").textContent = money(doneRows.reduce((sum, r) => sum + Number(r.spend || 0), 0));
+      document.querySelectorAll(".metric small").forEach(small => {
+        if (small.textContent === "JULY" || /^\d{4}-\d{2}$/.test(small.textContent)) small.textContent = selectedMonth;
+      });
+      document.getElementById("sheetMeta").textContent = `Selected month ${selectedMonth} · ${rows.length} rows · Source tab: Broadcast Planning`;
+    }
+    function renderFrequency(targetId, entries) {
+      const max = Math.max(1, ...entries.map(item => item.planned));
+      const target = document.getElementById(targetId);
+      target.innerHTML = entries.length ? entries.map(item => `
+        <div class="frequency-row">
+          <b>${item.name}</b>
+          <div>
+            <div class="mini-track"><div class="mini-bar" style="--w:${Math.max(8, item.planned / max * 100)}%"></div></div>
+            <span>${item.pax.toLocaleString()} pax · ${money(item.spend)}</span>
+          </div>
+          <div class="frequency-numbers">
+            <b>${item.planned} 次</b>
+            <span>Done ${item.done} 次</span>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">还没有 frequency 数据。</div>`;
+    }
+    function updateFrequency() {
+      const audienceMap = new Map();
+      const pageMap = new Map();
+      monthlyRows().forEach(row => {
+        splitAudience(row.audience).forEach(name => {
+          const item = audienceMap.get(name) || {name, planned:0, done:0, pax:0, spend:0};
+          item.planned += 1;
+          if (row.done === true) item.done += 1;
+          if (row.done === true) {
+            item.pax += Number(row.pax || 0);
+            item.spend += Number(row.spend || 0);
+          }
+          audienceMap.set(name, item);
+        });
+        const page = row.page || "—";
+        const pageItem = pageMap.get(page) || {name:page, planned:0, done:0, pax:0, spend:0};
+        pageItem.planned += 1;
+        if (row.done === true) pageItem.done += 1;
+        if (row.done === true) {
+          pageItem.pax += Number(row.pax || 0);
+          pageItem.spend += Number(row.spend || 0);
+        }
+        pageMap.set(page, pageItem);
+      });
+      const sortByCount = (a, b) => b.planned - a.planned || a.name.localeCompare(b.name);
+      renderFrequency("audienceFrequency", Array.from(audienceMap.values()).sort(sortByCount));
+      renderFrequency("pageFrequency", Array.from(pageMap.values()).sort(sortByCount));
+    }
+    function renderList() {
+      const rows = filteredRows();
+      const list = document.getElementById("planList");
+      list.style.display = mode === "list" ? "grid" : "none";
+      if (mode !== "list") return;
+      list.innerHTML = rows.length ? rows.map(row => {
+        const d = new Date(row.date + "T00:00:00");
+        const catClass = row.category === "NEW" ? "new" : "existing";
+        const pageClass = row.page === "SG Page" ? "sg" : row.page === "Old Main Page" ? "old-main" : "knee";
+        return `
+          <div class="plan-row">
+            <div class="date"><strong>${fmt.format(d)}</strong><span>${weekday.format(d)}${row.time ? ` · ${row.time}` : ""}</span></div>
+            <div class="title"><strong>${row.title}</strong><div class="meta">${row.audience || "—"}</div></div>
+            <div class="tag ${catClass}">${row.category || "—"}</div>
+            <input class="pax-input" data-index="${row.index}" type="number" min="0" step="1" value="${Number(row.pax || 0)}" placeholder="PAX" />
+            <div class="amount">${money(row.spend)}</div>
+            <div class="page-tag ${pageClass}">${row.page.replace(" Page","")}</div>
+            <button class="done-toggle ${row.done === true ? "done" : ""}" data-index="${row.index}" type="button" ${row.done === true ? "disabled" : ""}>${row.done === true ? "✓" : "DONE"}</button>
+            <button class="copy-toggle ${row.copy ? "saved" : ""}" data-index="${row.index}" type="button" title="${row.copy ? "Saved" : "Save copy"}" aria-label="${row.copy ? "Saved copy" : "Save copy"}">${row.copy ? "✓" : "💾"}</button>
+            <button class="edit-toggle" data-index="${row.index}" type="button">Edit</button>
+          </div>`;
+      }).join("") : `<div class="empty">没有符合筛选的 Broadcast Plan。</div>`;
+      document.getElementById("sourceNote").textContent = "Data from Google Sheet · Broadcast Planning";
+    }
+    function renderCalendar() {
+      const cal = document.getElementById("calendar");
+      cal.classList.toggle("active", mode === "calendar");
+      if (mode !== "calendar") return;
+      const grouped = filteredRows().reduce((acc, row) => {
+        (acc[row.date] ||= []).push(row);
+        return acc;
+      }, {});
+      const rows = filteredRows();
+      const base = `${selectedMonth}-01`;
+      const baseDate = new Date(base + "T00:00:00");
+      const year = baseDate.getFullYear();
+      const month = baseDate.getMonth();
+      const first = new Date(year, month, 1);
+      const startOffset = (first.getDay() + 6) % 7;
+      const start = new Date(year, month, 1 - startOffset);
+      const cells = [];
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        cells.push({date:key, current:d.getMonth() === month, rows:grouped[key] || []});
+      }
+      cal.innerHTML = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => `<div class="calendar-weekday">${day}</div>`).join("") + cells.map(cell => {
+        const d = new Date(cell.date + "T00:00:00");
+        return `
+          <div class="day-card ${cell.current ? "" : "muted-day"}">
+            <h3>${fmt.format(d)} <span>${weekday.format(d)}</span></h3>
+            ${cell.rows.length ? cell.rows.map(row => {
+              const categoryClass = row.category === "NEW" ? "new" : "existing";
+              const pageClass = row.page === "SG Page" ? "sg" : row.page === "Old Main Page" ? "old-main" : "knee";
+              return `<button class="event ${categoryClass} ${pageClass}" data-index="${row.index}" type="button"><b>${escapeHtml(row.title)}</b><small>${escapeHtml(row.audience || "—")}</small><span class="event-tags"><em class="event-cat ${categoryClass}">${escapeHtml(row.category || "—")}</em><em class="event-page ${pageClass}">${escapeHtml((row.page || "—").replace(" Page",""))}</em></span></button>`;
+            }).join("") : `<div class="no-event">No Broadcast</div>`}
+          </div>`;
+      }).join("");
+      document.getElementById("sourceNote").textContent = `Calendar · ${monthLabel(base)} 完整月历`;
+    }
+    let activeDetailIndex = null;
+    function openBroadcastDetail(index) {
+      const row = sheetRows[index];
+      if (!row) return;
+      activeDetailIndex = index;
+      const d = new Date(row.date + "T00:00:00");
+      const catClass = row.category === "NEW" ? "new" : "existing";
+      const pageClass = row.page === "SG Page" ? "sg" : row.page === "Old Main Page" ? "old-main" : "knee";
+      document.getElementById("broadcastDetailTitle").textContent = row.title || "Broadcast Details";
+      document.getElementById("broadcastDetailBody").innerHTML = `
+        <div class="detail-grid">
+          <div class="detail-item"><label>日期 / 时间</label><strong>${escapeHtml(fmt.format(d))} · ${escapeHtml(weekday.format(d))}${row.time ? ` · ${escapeHtml(row.time)}` : ""}</strong></div>
+          <div class="detail-item"><label>人群</label><strong>${escapeHtml(row.audience || "—")}</strong></div>
+          <div class="detail-item"><label>Category</label><strong><span class="tag ${catClass}">${escapeHtml(row.category || "—")}</span></strong></div>
+          <div class="detail-item"><label>Channel</label><strong><span class="page-tag ${pageClass}">${escapeHtml((row.page || "—").replace(" Page",""))}</span></strong></div>
+          <div class="detail-item"><label>Pax</label><strong>${Number(row.pax || 0).toLocaleString()} pax</strong></div>
+          <div class="detail-item"><label>Spending</label><strong>${money(row.spend)}</strong></div>
+          <div class="detail-item"><label>Status</label><strong>${row.done === true ? "✓ Done" : "Pending"}</strong></div>
+          <div class="detail-item"><label>Sheet Row</label><strong>${row.sheetRow ? `Row ${row.sheetRow}` : "Not synced yet"}</strong></div>
+        </div>
+        <div class="detail-copy">${row.copy ? escapeHtml(row.copy) : "还没有保存 Broadcast 文案。"}</div>
+        <div class="detail-actions">
+          <button class="copy-toggle ${row.copy ? "saved" : ""}" id="detailCopy" type="button">${row.copy ? "✓ Saved" : "💾 Save"}</button>
+          <button class="edit-toggle" id="detailEdit" type="button">Edit</button>
+          <button class="done-toggle ${row.done === true ? "done" : ""}" id="detailDone" type="button" ${row.done === true ? "disabled" : ""}>${row.done === true ? "✓ Done" : "DONE"}</button>
+        </div>
+      `;
+      const dialog = document.getElementById("broadcastDetailDialog");
+      if (!dialog.open) dialog.showModal();
+    }
+    function render() {
+      updateMetrics();
+      updateFrequency();
+      renderList();
+      renderCalendar();
+    }
+
+    function savePreviewRows() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sheetRows.filter(row => row.preview === true)));
+    }
+    function saveRowEdits() {
+      const edits = {};
+      sheetRows.filter(row => !row.preview).forEach(row => {
+        edits[row._key || rowKey(row)] = {
+          done: row.done === true,
+          date: row.date,
+          time: row.time || "",
+          title: row.title || "",
+          category: row.category || "",
+          audience: row.audience || "",
+          pax: Number(row.pax || 0),
+          page: row.page || "",
+          sheetRow: Number(row.sheetRow || 0),
+          copy: row.copy || ""
+        };
+      });
+      localStorage.setItem(EDITS_KEY, JSON.stringify(edits));
+    }
+    function selectedAudience() {
+      return Array.from(document.querySelectorAll("#audiencePicks input:checked")).map(input => input.value).join(" | ");
+    }
+    function selectedAudienceFrom(containerId) {
+      return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map(input => input.value).join(" | ");
+    }
+    function setAudienceChecks(containerId, audience) {
+      const selected = new Set(splitAudience(audience));
+      document.querySelectorAll(`#${containerId} input`).forEach(input => {
+        input.checked = selected.has(input.value);
+      });
+    }
+    function displayInputDate(isoDate) {
+      const [year, month, day] = String(isoDate || "").split("-");
+      return year && month && day ? `${day}/${month}/${year}` : "";
+    }
+    function isoFromDisplayDate(value) {
+      return normalizePlanDate(value);
+    }
+    function displayFromParts(year, month, day) {
+      return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+    }
+    function setupDateFieldPicker(inputId) {
+      const input = document.getElementById(inputId);
+      const popover = document.getElementById(`${inputId}Popover`);
+      const yearEl = document.getElementById(`${inputId}PickerYear`);
+      const monthChoices = document.getElementById(`${inputId}MonthChoices`);
+      const dayChoices = document.getElementById(`${inputId}DayChoices`);
+      const prevYear = document.getElementById(`${inputId}PrevYear`);
+      const nextYear = document.getElementById(`${inputId}NextYear`);
+      let pickerYear = Number(selectedMonth.slice(0, 4));
+      let pickerMonth = Number(selectedMonth.slice(5, 7));
+      function selectedParts() {
+        const iso = isoFromDisplayDate(input.value) || `${selectedMonth}-01`;
+        const [year, month, day] = iso.split("-").map(Number);
+        return {year, month, day};
+      }
+      function renderPicker() {
+        const selected = selectedParts();
+        yearEl.textContent = pickerYear;
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        monthChoices.innerHTML = months.map((name, index) => {
+          const month = index + 1;
+          const active = month === pickerMonth;
+          return `<button class="month-choice ${active ? "active" : ""}" data-month="${month}" type="button">${name}</button>`;
+        }).join("");
+        const daysInMonth = new Date(pickerYear, pickerMonth, 0).getDate();
+        dayChoices.innerHTML = Array.from({length: daysInMonth}, (_, index) => {
+          const day = index + 1;
+          const active = pickerYear === selected.year && pickerMonth === selected.month && day === selected.day;
+          return `<button class="day-choice ${active ? "active" : ""}" data-day="${day}" type="button">${day}</button>`;
+        }).join("");
+        monthChoices.querySelectorAll("[data-month]").forEach(button => {
+          button.onclick = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            pickerMonth = Number(button.dataset.month);
+            renderPicker();
+          };
+        });
+        dayChoices.querySelectorAll("[data-day]").forEach(button => {
+          button.onclick = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            input.value = displayFromParts(pickerYear, pickerMonth, Number(button.dataset.day));
+            popover.hidden = true;
+            input.dispatchEvent(new Event("change", {bubbles:true}));
+          };
+        });
+      }
+      function openPicker() {
+        document.querySelectorAll(".date-popover").forEach(panel => {
+          if (panel !== popover) panel.hidden = true;
+        });
+        document.querySelectorAll(".date-field-control.open-up").forEach(control => control.classList.remove("open-up"));
+        const selected = selectedParts();
+        pickerYear = selected.year;
+        pickerMonth = selected.month;
+        renderPicker();
+        popover.hidden = false;
+        requestAnimationFrame(() => {
+          const rect = popover.getBoundingClientRect();
+          const inputRect = input.getBoundingClientRect();
+          const spaceBelow = window.innerHeight - inputRect.bottom;
+          const spaceAbove = inputRect.top;
+          input.parentElement.classList.toggle("open-up", rect.bottom > window.innerHeight && spaceAbove > spaceBelow);
+        });
+      }
+      input.addEventListener("click", event => {
+        event.stopPropagation();
+        openPicker();
+      });
+      input.addEventListener("pointerdown", event => {
+        event.stopPropagation();
+        openPicker();
+      });
+      input.parentElement.addEventListener("click", event => {
+        if (event.target.closest(".date-popover")) return;
+        event.stopPropagation();
+        openPicker();
+      });
+      input.parentElement.addEventListener("pointerdown", event => {
+        if (event.target.closest(".date-popover")) return;
+        event.stopPropagation();
+        openPicker();
+      });
+      prevYear.addEventListener("click", event => {
+        event.stopPropagation();
+        pickerYear -= 1;
+        renderPicker();
+      });
+      nextYear.addEventListener("click", event => {
+        event.stopPropagation();
+        pickerYear += 1;
+        renderPicker();
+      });
+      monthChoices.addEventListener("click", event => {
+        const button = event.target.closest("[data-month]");
+        if (!button) return;
+        event.stopPropagation();
+        pickerMonth = Number(button.dataset.month);
+        renderPicker();
+      });
+      dayChoices.addEventListener("click", event => {
+        const button = event.target.closest("[data-day]");
+        if (!button) return;
+        event.stopPropagation();
+        input.value = displayFromParts(pickerYear, pickerMonth, Number(button.dataset.day));
+        popover.hidden = true;
+        input.dispatchEvent(new Event("change", {bubbles:true}));
+      });
+      popover.addEventListener("pointerdown", event => {
+        const monthButton = event.target.closest(".month-choice[data-month]");
+        if (monthButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          pickerMonth = Number(monthButton.dataset.month);
+          renderPicker();
+          return;
+        }
+        const dayButton = event.target.closest(".day-choice[data-day]");
+        if (dayButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          input.value = displayFromParts(pickerYear, pickerMonth, Number(dayButton.dataset.day));
+          popover.hidden = true;
+          input.dispatchEvent(new Event("change", {bubbles:true}));
+        }
+      }, true);
+    }
+    function persistRow(row) {
+      if (row?.preview) savePreviewRows();
+      else saveRowEdits();
+    }
+    function planPayload(row) {
+      return {
+        sheetRow: Number(row.sheetRow || 0),
+        done: row.done === true,
+        date: row.date || "",
+        time: row.time || "",
+        title: row.title || "",
+        category: row.category || "",
+        audience: row.audience || "",
+        pax: Number(row.pax || 0),
+        spend: Number(row.spend || 0),
+        page: row.page || "",
+        copy: row.copy || ""
+      };
+    }
+    async function syncBroadcastPlan(row, action = "update") {
+      const response = await fetch("/api/broadcast-plan", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({action, plan: planPayload(row)})
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) {
+        throw new Error(body.error || body.result?.error || "Google Sheet sync failed");
+      }
+      const result = body.result || {};
+      if (result.row) {
+        row.sheetRow = Number(result.row);
+        row.preview = false;
+        row._key = row._key || rowKey(row);
+        persistRow(row);
+      }
+      return result;
+    }
+    async function syncWithNotice(row, action = "update", successText = "") {
+      try {
+        const result = await syncBroadcastPlan(row, action);
+        if (successText) alert(successText.replace("{sheet}", result.sheet || "JULY Broadcast Planning").replace("{row}", result.row || row.sheetRow || "—"));
+        return true;
+      } catch (error) {
+        alert(`Google Sheet 暂时没有同步成功：${error.message || error}`);
+        return false;
+      }
+    }
+    function markRowDeleted(row) {
+      if (!row || row.preview) return;
+      try {
+        const deletedRows = new Set(JSON.parse(localStorage.getItem(DELETED_KEY) || "[]"));
+        deletedRows.add(row._key || rowKey(row));
+        localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deletedRows)));
+      } catch (error) {}
+    }
+    let activeEditIndex = null;
+    function openEditDialog(index) {
+      const row = sheetRows[index];
+      if (!row) return;
+      activeEditIndex = index;
+      document.getElementById("editDate").value = displayInputDate(row.date);
+      document.getElementById("editTime").value = row.time || "";
+      document.getElementById("editTitle").value = row.title || "";
+      document.getElementById("editCategory").value = row.category || "NEW";
+      document.getElementById("editPage").value = row.page || "KNEE 990";
+      setAudienceChecks("editAudiencePicks", row.audience);
+      document.getElementById("editDialog").showModal();
+    }
+    function focusForm() {
+      const panel = document.getElementById("addPlanPanel");
+      panel.hidden = false;
+      panel.scrollIntoView({behavior:"smooth", block:"start"});
+      setTimeout(() => document.getElementById("planTitle").focus(), 250);
+    }
+
+    const analysisToggle = document.getElementById("analysisToggle");
+    const analysisChannels = document.getElementById("analysisChannels");
+    const navParams = new URLSearchParams(location.search);
+    const navAccount = navParams.get("account") || localStorage.getItem("manychatDashboardAccount") || "fb108701968299986";
+    const navDate = navParams.get("date") || "";
+    const navDateQuery = navDate ? `&date=${encodeURIComponent(navDate)}` : "";
+    document.getElementById("orderKeyInLink").href = `/order-key-in?account=${encodeURIComponent(navAccount)}${navDate ? `&date=${encodeURIComponent(navDate)}` : ""}`;
+    document.querySelectorAll("[data-analysis-account]").forEach(link => {
+      const account = link.dataset.analysisAccount;
+      link.href = `/index?account=${encodeURIComponent(account)}${navDateQuery}`;
+    });
+    function setAnalysisDropdown(open) {
+      analysisToggle.classList.toggle("open", open);
+      analysisToggle.setAttribute("aria-expanded", String(open));
+      analysisChannels.hidden = !open;
+    }
+    analysisToggle.addEventListener("click", event => {
+      event.preventDefault();
+      if (event.target.closest(".chevron")) {
+        event.stopPropagation();
+        setAnalysisDropdown(analysisChannels.hidden);
+        return;
+      }
+      window.location.assign(navDate ? `/index?date=${encodeURIComponent(navDate)}` : "/index");
+    });
+    setAnalysisDropdown(false);
+    document.querySelectorAll("a.active").forEach(link => {
+      link.addEventListener("click", event => event.preventDefault());
+    });
+    document.querySelectorAll(".filter-row button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-row button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filter = btn.dataset.filter;
+        render();
+      });
+    });
+    document.getElementById("search").addEventListener("input", render);
+    document.getElementById("planForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const row = {
+        preview: true,
+        done: false,
+        date: normalizePlanDate(document.getElementById("planDate").value),
+        time: document.getElementById("planTime").value,
+        title: document.getElementById("planTitle").value.trim(),
+        category: document.getElementById("planCategory").value,
+        audience: selectedAudience(),
+        pax: 0,
+        page: document.getElementById("planPage").value,
+        spend: 0
+      };
+      if (!row.date || !row.title) return;
+      sheetRows.push(row);
+      selectedMonth = monthLabel(row.date);
+      savePreviewRows();
+      await syncWithNotice(row, "append", "已同步到 Google Sheet：{sheet} row {row}");
+      event.target.reset();
+      document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
+      document.getElementById("addPlanPanel").hidden = true;
+      render();
+    });
+    function parseQuickDate(value) {
+      const now = new Date();
+      const text = String(value || "");
+      const match = text.match(/(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?/);
+      if (!match) return "";
+      const day = match[1].padStart(2, "0");
+      const month = match[2].padStart(2, "0");
+      const year = match[3] ? (match[3].length === 2 ? `20${match[3]}` : match[3]) : now.getFullYear();
+      return `${year}-${month}-${day}`;
+    }
+    function parseQuickTime(value) {
+      const text = String(value || "").toLowerCase();
+      const match = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+      if (!match) return "";
+      let hour = Number(match[1]);
+      const minute = match[2] || "00";
+      if (match[3] === "pm" && hour < 12) hour += 12;
+      if (match[3] === "am" && hour === 12) hour = 0;
+      return `${String(hour).padStart(2, "0")}:${minute}`;
+    }
+    function setAudienceFromText(text) {
+      const found = new Set();
+      String(text || "").replace(/(\d)\s*月/g, (_, month) => {
+        found.add(`${month} 月`);
+        return _;
+      });
+      document.querySelectorAll("#audiencePicks input").forEach(input => {
+        input.checked = found.has(input.value);
+      });
+    }
+    document.getElementById("smartFill").addEventListener("click", () => {
+      const raw = document.getElementById("quickPaste").value.trim();
+      if (!raw) return;
+      const parts = raw.split("|").map(item => item.trim()).filter(Boolean);
+      const first = parts[0] || raw;
+      const date = parseQuickDate(raw);
+      const time = parseQuickTime(raw.replace(/\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?/, ""));
+      if (date) {
+        const [year, month, day] = date.split("-");
+        document.getElementById("planDate").value = `${day}/${month}/${year}`;
+      }
+      if (time) document.getElementById("planTime").value = time;
+      document.getElementById("planTitle").value = parts[1] || raw.replace(first, "").replace(/\|/g, " ").trim();
+      const category = parts.find(part => /^new$/i.test(part) || /exsisting|existing/i.test(part));
+      if (category) document.getElementById("planCategory").value = /new/i.test(category) ? "NEW" : "EXSISTING";
+      const page = parts.find(part => /knee|old|sg/i.test(part));
+      if (page) {
+        const normalized = /knee/i.test(page) ? "KNEE 990" : /old/i.test(page) ? "Old Main Page" : "SG Page";
+        document.getElementById("planPage").value = normalized;
+      }
+      setAudienceFromText(raw);
+    });
+    document.getElementById("planList").addEventListener("change", async event => {
+      const input = event.target.closest(".pax-input");
+      if (!input) return;
+      const index = Number(input.dataset.index);
+      if (!Number.isInteger(index) || !sheetRows[index]) return;
+      const pax = Math.max(0, Number(input.value || 0));
+      sheetRows[index].pax = pax;
+      sheetRows[index].spend = pax * 0.5;
+      persistRow(sheetRows[index]);
+      render();
+      await syncWithNotice(sheetRows[index], sheetRows[index].sheetRow ? "update" : "append");
+    });
+    function renderPaxDialog() {
+      const map = new Map();
+      doneMonthlyRows().forEach(row => {
+        const channel = row.page || "—";
+        const item = map.get(channel) || {channel, pax:0, count:0, spend:0};
+        item.pax += Number(row.pax || 0);
+        item.count += 1;
+        item.spend += Number(row.spend || 0);
+        map.set(channel, item);
+      });
+      const rows = Array.from(map.values()).sort((a,b) => b.pax - a.pax || a.channel.localeCompare(b.channel));
+      document.getElementById("paxDialogBody").innerHTML = rows.length ? rows.map(row => `
+        <div class="channel-total-row">
+          <div><b>${row.channel}</b></div>
+          <strong>${row.pax.toLocaleString()} pax</strong>
+        </div>
+      `).join("") : `<div class="empty">这个月份还没有 Done 的 Broadcast Pax。</div>`;
+      document.getElementById("paxDialog").showModal();
+    }
+    document.getElementById("totalPaxCard").addEventListener("click", renderPaxDialog);
+    function renderSpendDialog() {
+      const map = new Map();
+      doneMonthlyRows().forEach(row => {
+        const channel = row.page || "—";
+        const item = map.get(channel) || {channel, pax:0, count:0, spend:0};
+        item.pax += Number(row.pax || 0);
+        item.count += 1;
+        item.spend += Number(row.spend || 0);
+        map.set(channel, item);
+      });
+      const rows = Array.from(map.values()).sort((a,b) => b.spend - a.spend || a.channel.localeCompare(b.channel));
+      document.getElementById("spendDialogBody").innerHTML = rows.length ? rows.map(row => `
+        <div class="channel-total-row">
+          <div><b>${row.channel}</b></div>
+          <strong>${money(row.spend)}</strong>
+        </div>
+      `).join("") : `<div class="empty">这个月份还没有 Done 的 Broadcast Spending。</div>`;
+      document.getElementById("spendDialog").showModal();
+    }
+    document.getElementById("totalSpendCard").addEventListener("click", renderSpendDialog);
+    let activeCopyIndex = null;
+    function openCopyDialog(index) {
+      activeCopyIndex = index;
+      document.getElementById("copyText").value = sheetRows[index]?.copy || "";
+      document.getElementById("copyDialog").showModal();
+    }
+    document.getElementById("saveCopy").addEventListener("click", async () => {
+      if (!Number.isInteger(activeCopyIndex) || !sheetRows[activeCopyIndex]) return;
+      sheetRows[activeCopyIndex].copy = document.getElementById("copyText").value;
+      persistRow(sheetRows[activeCopyIndex]);
+      await syncWithNotice(sheetRows[activeCopyIndex], sheetRows[activeCopyIndex].sheetRow ? "update" : "append");
+      document.getElementById("copyDialog").close();
+      render();
+    });
+    document.getElementById("saveEdit").addEventListener("click", async () => {
+      if (!Number.isInteger(activeEditIndex) || !sheetRows[activeEditIndex]) return;
+      const row = sheetRows[activeEditIndex];
+      const date = normalizePlanDate(document.getElementById("editDate").value);
+      const title = document.getElementById("editTitle").value.trim();
+      if (!date || !title) {
+        alert("请先填好日期和 Broadcast 名称。");
+        return;
+      }
+      row.date = date;
+      row.time = document.getElementById("editTime").value.trim();
+      row.title = title;
+      row.category = document.getElementById("editCategory").value;
+      row.page = document.getElementById("editPage").value;
+      row.audience = selectedAudienceFrom("editAudiencePicks");
+      row.pax = Number(row.pax || 0);
+      row.spend = row.pax * 0.5;
+      selectedMonth = monthLabel(row.date);
+      document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
+      persistRow(row);
+      await syncWithNotice(row, row.sheetRow ? "update" : "append");
+      document.getElementById("editDialog").close();
+      render();
+    });
+    document.getElementById("deletePlan").addEventListener("click", async () => {
+      if (!Number.isInteger(activeEditIndex) || !sheetRows[activeEditIndex]) return;
+      const row = sheetRows[activeEditIndex];
+      if (!confirm(`确定删除「${row.title}」吗？`)) return;
+      if (row.sheetRow) {
+        const synced = await syncWithNotice(row, "delete");
+        if (!synced) return;
+      }
+      markRowDeleted(row);
+      sheetRows.splice(activeEditIndex, 1);
+      savePreviewRows();
+      saveRowEdits();
+      activeEditIndex = null;
+      document.getElementById("editDialog").close();
+      render();
+    });
+    document.getElementById("planList").addEventListener("click", async event => {
+      const copyButton = event.target.closest(".copy-toggle");
+      if (copyButton) {
+        const index = Number(copyButton.dataset.index);
+        if (Number.isInteger(index) && sheetRows[index]) openCopyDialog(index);
+        return;
+      }
+      const editButton = event.target.closest(".edit-toggle");
+      if (editButton) {
+        const index = Number(editButton.dataset.index);
+        if (Number.isInteger(index) && sheetRows[index]) openEditDialog(index);
+        return;
+      }
+      const button = event.target.closest(".done-toggle");
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (!Number.isInteger(index) || !sheetRows[index]) return;
+      if (sheetRows[index].done === true) return;
+      sheetRows[index].done = true;
+      persistRow(sheetRows[index]);
+      render();
+      await syncWithNotice(sheetRows[index], sheetRows[index].sheetRow ? "update" : "append");
+    });
+    document.getElementById("calendar").addEventListener("click", event => {
+      const eventCard = event.target.closest(".event[data-index]");
+      if (!eventCard) return;
+      const index = Number(eventCard.dataset.index);
+      if (Number.isInteger(index) && sheetRows[index]) openBroadcastDetail(index);
+    });
+    document.getElementById("broadcastDetailDialog").addEventListener("click", async event => {
+      if (!Number.isInteger(activeDetailIndex) || !sheetRows[activeDetailIndex]) return;
+      if (event.target.closest("#detailCopy")) {
+        document.getElementById("broadcastDetailDialog").close();
+        openCopyDialog(activeDetailIndex);
+        return;
+      }
+      if (event.target.closest("#detailEdit")) {
+        document.getElementById("broadcastDetailDialog").close();
+        openEditDialog(activeDetailIndex);
+        return;
+      }
+      if (event.target.closest("#detailDone")) {
+        const row = sheetRows[activeDetailIndex];
+        if (row.done === true) return;
+        row.done = true;
+        persistRow(row);
+        render();
+        openBroadcastDetail(activeDetailIndex);
+        await syncWithNotice(row, row.sheetRow ? "update" : "append");
+      }
+    });
+    document.getElementById("listView").addEventListener("click", () => {
+      mode = "list";
+      document.getElementById("listView").classList.add("active");
+      document.getElementById("calendarView").classList.remove("active");
+      render();
+    });
+    document.getElementById("calendarView").addEventListener("click", () => {
+      mode = "calendar";
+      document.getElementById("calendarView").classList.add("active");
+      document.getElementById("listView").classList.remove("active");
+      render();
+    });
+    document.querySelectorAll("[data-close-dialog]").forEach(button => {
+      button.addEventListener("click", () => document.getElementById(button.dataset.closeDialog)?.close());
+    });
+    function todayKey() {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kuala_Lumpur",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(new Date());
+    }
+    function showTodayReminder() {
+      const today = todayKey();
+      const due = sheetRows.filter(row => row.date === today && row.done !== true);
+      const key = `${REMINDER_KEY}:${today}:${due.map(row => row.title).join("|")}`;
+      if (!due.length || localStorage.getItem(key) === "seen") return;
+      document.getElementById("reminderList").innerHTML = due.map(row => `
+        <div class="reminder-item">
+          <b>${row.title}</b>
+          <span>${row.time || "未设时间"} · ${row.audience || "—"} · ${row.page}</span>
+        </div>
+      `).join("");
+      document.getElementById("reminderDialog").showModal();
+      localStorage.setItem(key, "seen");
+    }
+    document.getElementById("newPlan").addEventListener("click", focusForm);
+    document.getElementById("closeAddPlan").addEventListener("click", () => {
+      document.getElementById("addPlanPanel").hidden = true;
+    });
+    document.getElementById("prevMonth").addEventListener("click", event => {
+      event.stopPropagation();
+      shiftMonth(-1);
+      document.getElementById("monthPopover").hidden = true;
+    });
+    document.getElementById("nextMonth").addEventListener("click", event => {
+      event.stopPropagation();
+      shiftMonth(1);
+      document.getElementById("monthPopover").hidden = true;
+    });
+    document.getElementById("monthLabel").addEventListener("click", () => {
+      const popover = document.getElementById("monthPopover");
+      if (!popover.hidden) {
+        popover.hidden = true;
+        return;
+      }
+      pickerYear = Number(selectedMonth.slice(0, 4));
+      renderMonthPicker();
+      popover.hidden = false;
+    });
+    document.getElementById("monthLabel").addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        pickerYear = Number(selectedMonth.slice(0, 4));
+        renderMonthPicker();
+        document.getElementById("monthPopover").hidden = false;
+      }
+    });
+    document.getElementById("pickerPrevYear").addEventListener("click", () => {
+      pickerYear -= 1;
+      renderMonthPicker();
+    });
+    document.getElementById("pickerNextYear").addEventListener("click", () => {
+      pickerYear += 1;
+      renderMonthPicker();
+    });
+    document.getElementById("monthChoices").addEventListener("click", event => {
+      const button = event.target.closest(".month-choice");
+      if (button) chooseMonth(button.dataset.month);
+    });
+    document.getElementById("monthPopover").addEventListener("pointerdown", event => {
+      const button = event.target.closest(".month-choice");
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      chooseMonth(button.dataset.month);
+    }, true);
+    document.addEventListener("click", event => {
+      const monthControl = event.target.closest(".month-control");
+      if (!monthControl) document.getElementById("monthPopover").hidden = true;
+      if (!event.target.closest(".date-field-control")) {
+        document.querySelectorAll(".date-popover").forEach(panel => panel.hidden = true);
+      }
+    });
+    setupDateFieldPicker("planDate");
+    setupDateFieldPicker("editDate");
+    document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
+    document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
+    render();
+    showTodayReminder();
+  </script>
+  <script src="date-picker-unified.js"></script>
+</body>
+</html>

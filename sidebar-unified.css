@@ -1,0 +1,283 @@
+/* ==========================================================
+   Unified Dashboard Sidebar
+   One navigation system shared by Inbox Analysis, Order Key-In,
+   and Broadcast Planning. Keep this file loaded after all page CSS.
+   ========================================================== */
+:root {
+  --sidebar-width: 250px;
+  --sidebar-bg-top: #41140E;
+  --sidebar-bg-bottom: #33251B;
+  --sidebar-text: rgba(242, 222, 206, 0.82);
+  --sidebar-text-strong: #F2DECE;
+  --sidebar-text-muted: rgba(242, 222, 206, 0.58);
+  --sidebar-label: rgba(173, 188, 195, 0.82);
+  --sidebar-active: linear-gradient(135deg, rgba(242, 222, 206, 0.17), rgba(173, 188, 195, 0.10));
+  --sidebar-hover: rgba(242, 222, 206, 0.09);
+  --sidebar-line: rgba(242, 222, 206, 0.13);
+}
+
+.shell {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) !important;
+}
+
+.shell > aside {
+  width: var(--sidebar-width) !important;
+  min-width: var(--sidebar-width) !important;
+  max-width: var(--sidebar-width) !important;
+  min-height: 100vh !important;
+  padding: 32px 24px !important;
+  color: var(--sidebar-text) !important;
+  background:
+    radial-gradient(circle at 22% 0%, rgba(242, 222, 206, 0.18), transparent 34%),
+    radial-gradient(circle at 90% 78%, rgba(173, 188, 195, 0.16), transparent 32%),
+    linear-gradient(180deg, var(--sidebar-bg-top) 0%, #4A1615 54%, var(--sidebar-bg-bottom) 100%) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.shell > aside *,
+.shell > aside *::before,
+.shell > aside *::after {
+  box-sizing: border-box !important;
+}
+
+.shell > aside .brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  margin: 0 0 30px !important;
+}
+
+.shell > aside .logo {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  border-radius: 14px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: linear-gradient(135deg, #F2DECE 0%, #ADBCC3 100%) !important;
+  color: #41140E !important;
+  font-size: 17px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.shell > aside .brand strong {
+  display: block !important;
+  margin: 0 !important;
+  color: var(--sidebar-text-strong) !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.shell > aside .brand span {
+  display: block !important;
+  margin: 3px 0 0 !important;
+  color: var(--sidebar-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.shell > aside .account-label,
+.shell > aside .side-title {
+  display: block !important;
+  height: 12px !important;
+  min-height: 12px !important;
+  max-height: 12px !important;
+  margin: 0 0 9px !important;
+  padding: 0 !important;
+  color: var(--sidebar-label) !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+  line-height: 12px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.shell > aside .account-list,
+.shell > aside .nav-list,
+.shell > aside .tool-list {
+  display: grid !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.shell > aside .side-sections {
+  margin-top: 25px !important;
+  padding-top: 17px !important;
+  border-top: 1px solid var(--sidebar-line) !important;
+}
+
+.shell > aside a,
+.shell > aside button,
+.shell > aside .side-button,
+.shell > aside .account-list > a,
+.shell > aside .account-list > button,
+.shell > aside .nav-list > a,
+.shell > aside .nav-list > button,
+.shell > aside .tool-list > a,
+.shell > aside .tool-list > button {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  height: 57px !important;
+  min-height: 57px !important;
+  max-height: 57px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--sidebar-text) !important;
+  text-align: left !important;
+  text-decoration: none !important;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0 !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+.shell > aside a:hover,
+.shell > aside button:hover,
+.shell > aside a:focus,
+.shell > aside button:focus {
+  background: var(--sidebar-hover) !important;
+  border-color: transparent !important;
+  color: var(--sidebar-text-strong) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transform: none !important;
+}
+
+.shell > aside a.active,
+.shell > aside button.active,
+.shell > aside .side-button.active {
+  background: var(--sidebar-active) !important;
+  border-color: rgba(239, 213, 157, 0.20) !important;
+  color: #EFD59D !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.shell > aside b {
+  display: block !important;
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0 !important;
+}
+
+.shell > aside small,
+.shell > aside .tool-list a span,
+.shell > aside .nav-list small,
+.shell > aside .account-list small,
+.shell > aside .channel-list small {
+  display: block !important;
+  margin: 4px 0 0 !important;
+  color: var(--sidebar-text-muted) !important;
+  font-size: 9px !important;
+  font-weight: 650 !important;
+  line-height: 1.25 !important;
+  opacity: 1 !important;
+}
+
+.shell > aside .analysis-toggle,
+.shell > aside .account-toggle {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.shell > aside .analysis-toggle > span:first-child,
+.shell > aside .account-toggle > span:first-child {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+}
+
+.shell > aside .chevron {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 20px !important;
+  color: var(--sidebar-text-muted) !important;
+  transform: rotate(0deg) !important;
+  transition: transform 190ms cubic-bezier(.2,.8,.2,1), color 150ms ease !important;
+}
+
+.shell > aside .analysis-toggle.open .chevron,
+.shell > aside .account-toggle.open .chevron {
+  transform: rotate(90deg) !important;
+  color: var(--sidebar-text-strong) !important;
+}
+
+.shell > aside .channel-list {
+  display: grid !important;
+  gap: 6px !important;
+  margin: 6px 0 4px 10px !important;
+  padding-left: 8px !important;
+  border-left: 1px solid var(--sidebar-line) !important;
+  overflow: hidden !important;
+  transform-origin: top !important;
+  animation: sidebarDropdownSoftIn 180ms cubic-bezier(.2,.8,.2,1) both !important;
+}
+
+.shell > aside .channel-list[hidden] {
+  display: none !important;
+}
+
+.shell > aside .channel-list a,
+.shell > aside .channel-list button {
+  height: 45px !important;
+  min-height: 45px !important;
+  max-height: 45px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+}
+
+.shell > aside .channel-list a:hover,
+.shell > aside .channel-list button:hover {
+  background: var(--sidebar-hover) !important;
+}
+
+@keyframes sidebarDropdownSoftIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .shell > aside {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: auto !important;
+    padding: 18px !important;
+    border-radius: 0 0 28px 28px !important;
+  }
+}

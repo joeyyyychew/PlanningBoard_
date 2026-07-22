@@ -1,0 +1,29 @@
+.embedded-frame body {
+  min-width: 0 !important;
+  background: transparent !important;
+}
+
+.embedded-frame .shell {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  min-height: 100vh !important;
+}
+
+.embedded-frame aside {
+  display: none !important;
+}
+
+.embedded-frame main {
+  min-height: 100vh !important;
+  padding: 34px 42px 48px !important;
+}
+
+.embedded-frame footer {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .embedded-frame main {
+    padding: 24px 18px 36px !important;
+  }
+}

@@ -1,0 +1,1637 @@
+:root {
+  --ink: #33251B !important;
+  --muted: rgba(51, 37, 27, 0.68) !important;
+  --cream: #F2DECE !important;
+  --card: rgba(242, 222, 206, 0.90) !important;
+  --wine: #41140E !important;
+  --wine-dark: #33251B !important;
+  --wine-soft: rgba(65, 20, 14, 0.18) !important;
+  --gold: #EFD59D !important;
+  --rose: #41140E !important;
+  --pink: rgba(65, 20, 14, 0.14) !important;
+  --blush: rgba(242, 222, 206, 0.68) !important;
+  --line: rgba(65, 20, 14, 0.16) !important;
+  --plaster: #F2DECE !important;
+  --concrete: #ADBCC3 !important;
+  --obsidian: #33251B !important;
+  --accent-warm: #EFD59D !important;
+  --accent-warm-soft: rgba(239, 213, 157, 0.54) !important;
+  --accent-cool: #ADBCC3 !important;
+  --accent-cool-deep: #ADBCC3 !important;
+}
+
+body {
+  color: #33251B !important;
+  background:
+    radial-gradient(circle at 80% 4%, rgba(173, 188, 195, 0.48), transparent 31%),
+    radial-gradient(circle at 66% 28%, rgba(173, 188, 195, 0.24), transparent 24%),
+    radial-gradient(circle at 18% 10%, rgba(255, 248, 242, 0.70), transparent 32%),
+    radial-gradient(circle at 38% 44%, rgba(210, 188, 168, 0.58), transparent 30%),
+    radial-gradient(circle at 86% 82%, rgba(65, 20, 14, 0.52), transparent 40%),
+    radial-gradient(circle at 8% 88%, rgba(65, 20, 14, 0.22), transparent 32%),
+    linear-gradient(135deg, #F2DECE 0%, #D8BFAC 36%, #9B6B62 67%, #41140E 100%) !important;
+  background-attachment: fixed !important;
+}
+
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.26), transparent 34%),
+    radial-gradient(circle at 68% 32%, rgba(173, 188, 195, 0.20), transparent 26%),
+    radial-gradient(circle at 8% 92%, rgba(65, 20, 14, 0.22), transparent 30%) !important;
+}
+
+aside {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(242, 222, 206, 0.18), transparent 34%),
+    radial-gradient(circle at 90% 78%, rgba(173, 188, 195, 0.16), transparent 32%),
+    linear-gradient(180deg, #41140E 0%, #4A1615 54%, #33251B 100%) !important;
+  color: #F2DECE !important;
+}
+
+aside .logo {
+  background:
+    linear-gradient(135deg, #F2DECE 0%, rgba(173, 188, 195, 0.72) 100%) !important;
+  color: #41140E !important;
+}
+
+aside .brand strong,
+aside b {
+  color: #F2DECE !important;
+}
+
+aside .brand span,
+aside small,
+aside .tool-list a span,
+aside .nav-list small,
+aside .account-list small,
+aside .channel-list small {
+  color: rgba(242, 222, 206, 0.70) !important;
+}
+
+aside .account-label,
+aside .side-title {
+  color: rgba(173, 188, 195, 0.82) !important;
+}
+
+aside a,
+aside button,
+aside .side-button,
+aside .tool-list a,
+aside .nav-list a,
+aside .nav-list button,
+aside .account-list button,
+aside .channel-list a,
+aside .channel-list button {
+  color: rgba(242, 222, 206, 0.86) !important;
+}
+
+aside a:hover,
+aside button:hover {
+  color: #F2DECE !important;
+  background: rgba(242, 222, 206, 0.10) !important;
+}
+
+aside a.active,
+aside button.active,
+aside .side-button.active,
+aside .tool-list a.active,
+aside .nav-list .active,
+aside .account-list button.active,
+aside .channel-list button.active,
+aside .channel-list a.active {
+  background: linear-gradient(135deg, rgba(242, 222, 206, 0.17), rgba(173, 188, 195, 0.10)) !important;
+  border-color: rgba(239, 213, 157, 0.20) !important;
+  color: #EFD59D !important;
+}
+
+main {
+  background:
+    radial-gradient(circle at 80% 4%, rgba(173, 188, 195, 0.28), transparent 32%),
+    radial-gradient(circle at 86% 82%, rgba(65, 20, 14, 0.26), transparent 38%),
+    linear-gradient(145deg, rgba(242, 222, 206, 0.58), rgba(210, 188, 168, 0.44) 48%, rgba(65, 20, 14, 0.10)) !important;
+}
+
+header,
+.header-actions,
+.confirmed-head,
+.confirmed-controls,
+.confirmed-date,
+.date-control {
+  overflow: visible !important;
+}
+
+header:has(.analysis-date-popover:not([hidden])),
+.confirmed-panel:has(.analysis-date-popover:not([hidden])) {
+  position: relative !important;
+  z-index: 9000 !important;
+}
+
+h1,
+h2,
+.panel h2,
+.summary h2,
+.dialog-head h2 {
+  color: #41140E !important;
+}
+
+.sub,
+.panel-head span,
+.metric label,
+.meta,
+.date span,
+.history td,
+table td,
+table th,
+.customer-sub,
+.frequency-row span,
+.no-event,
+.calendar-weekday {
+  color: rgba(51, 37, 27, 0.68) !important;
+}
+
+.card,
+.panel,
+dialog,
+.month-popover,
+.preview-card,
+.confirmed,
+.summary,
+.history,
+.blockers-panel {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(173, 188, 195, 0.22), transparent 30%),
+    linear-gradient(145deg, rgba(251, 239, 228, 0.76), rgba(210, 188, 168, 0.66) 54%, rgba(122, 69, 61, 0.25)) !important;
+  border-color: rgba(65, 20, 14, 0.18) !important;
+}
+
+.metric,
+.plan-row,
+.day-card,
+.frequency-row,
+.customer,
+.reason,
+.order-row,
+.preview-row,
+.total-card,
+.empty,
+.blocker-section,
+.section-row {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(173, 188, 195, 0.30), transparent 30%),
+    linear-gradient(145deg, rgba(251, 239, 228, 0.78), rgba(210, 188, 168, 0.64) 56%, rgba(122, 69, 61, 0.22)) !important;
+  border-color: rgba(65, 20, 14, 0.18) !important;
+}
+
+.metric::after {
+  background:
+    linear-gradient(135deg, rgba(239, 213, 157, 0.54), rgba(173, 188, 195, 0.62)) !important;
+}
+
+.metric strong,
+.title strong,
+.date strong,
+.amount,
+.frequency-row b,
+strong {
+  color: #33251B !important;
+}
+
+input,
+select,
+textarea,
+.search-box,
+.pill,
+.field,
+.copy-box {
+  background: rgba(251, 239, 228, 0.72) !important;
+  border-color: rgba(65, 20, 14, 0.16) !important;
+  color: #33251B !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.search-box:focus,
+.copy-box:focus {
+  border-color: #41140E !important;
+  box-shadow: 0 0 0 3px rgba(65, 20, 14, 0.10) !important;
+}
+
+.run-button,
+.primary-button,
+.confirm-button,
+button[type="submit"],
+.customer-action,
+.done-toggle,
+.copy-toggle,
+.edit-toggle,
+.reason-count,
+.filter-row button.active,
+.toggle button.active,
+.month-choice.active {
+  background:
+    linear-gradient(135deg, #5A191B 0%, #41140E 100%) !important;
+  border-color: #41140E !important;
+  color: #F2DECE !important;
+}
+
+.download-button,
+.ghost-button,
+.filter-row button,
+.toggle,
+.sheet-button,
+.month-choice {
+  background:
+    linear-gradient(135deg, rgba(251, 239, 228, 0.84), rgba(173, 188, 195, 0.22)) !important;
+  border-color: rgba(65, 20, 14, 0.12) !important;
+  color: #41140E !important;
+}
+
+.filter-row button:hover,
+.download-button:hover,
+.ghost-button:hover,
+.sheet-button:hover,
+.month-choice:hover,
+.day-choice:hover {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.96), rgba(216, 227, 229, 0.44)) !important;
+}
+
+.tag,
+.page-tag,
+.badge,
+.event,
+.done-toggle.done,
+.copy-toggle.saved {
+  background: rgba(250, 239, 231, 0.72) !important;
+  border-color: rgba(65, 20, 14, 0.10) !important;
+  color: #41140E !important;
+}
+
+.tag.new,
+.tag.existing,
+.page-tag,
+.order-chip,
+.tag-badge {
+  background:
+    linear-gradient(135deg, rgba(250, 239, 231, 0.92), rgba(210, 188, 168, 0.42)) !important;
+  border-color: rgba(65, 20, 14, 0.10) !important;
+  color: #41140E !important;
+}
+
+.page-tag {
+  box-shadow: inset 0 1px 0 rgba(255, 250, 247, 0.42) !important;
+}
+
+.done-toggle.done,
+.copy-toggle.saved {
+  background: rgba(250, 239, 231, 0.74) !important;
+  color: #41140E !important;
+}
+
+.rank {
+  background:
+    linear-gradient(135deg, rgba(173, 188, 195, 0.42), rgba(242, 222, 206, 0.36)) !important;
+  color: #41140E !important;
+}
+
+.reason-count {
+  background:
+    linear-gradient(135deg, rgba(239, 213, 157, 0.42), rgba(173, 188, 195, 0.38)) !important;
+  color: #41140E !important;
+}
+
+body:has(#planList) .tag.new {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(245, 220, 168, 0.78)) !important;
+  border-color: rgba(220, 168, 92, 0.30) !important;
+  color: #41140E !important;
+}
+
+body:has(#planList) .tag.existing {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(216, 227, 229, 0.72)) !important;
+  border-color: rgba(121, 143, 152, 0.26) !important;
+  color: #33251B !important;
+}
+
+body:has(#planList) .page-tag.knee {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.88), rgba(245, 220, 168, 0.82)) !important;
+  border-color: rgba(220, 168, 92, 0.28) !important;
+  color: #41140E !important;
+}
+
+body:has(#planList) .page-tag.sg {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.88), rgba(216, 227, 229, 0.86)) !important;
+  border-color: rgba(121, 143, 152, 0.28) !important;
+  color: #33251B !important;
+}
+
+body:has(#planList) .page-tag.old-main {
+  background:
+    linear-gradient(135deg, rgba(244, 225, 214, 0.98), rgba(196, 151, 130, 0.46)) !important;
+  border-color: rgba(139, 89, 72, 0.22) !important;
+  color: #41140E !important;
+}
+
+.mini-track {
+  background: rgba(216, 227, 229, 0.52) !important;
+}
+
+.mini-bar {
+  background:
+    linear-gradient(90deg, #41140E 0%, #F5DCA8 48%, #ADBCC3 100%) !important;
+}
+
+.spark,
+.verified {
+  color: #41140E !important;
+}
+
+footer {
+  color: rgba(65, 20, 14, 0.70) !important;
+}
+
+/* Premium typography scale: refined, compact, and overflow-safe without changing layout. */
+body {
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: geometricPrecision !important;
+}
+
+h1 {
+  font-size: clamp(25px, 2.2vw, 30px) !important;
+  line-height: 1.06 !important;
+  letter-spacing: -0.045em !important;
+}
+
+h2,
+.panel h2,
+.summary h2,
+.dialog-head h2 {
+  font-size: clamp(14px, 1.2vw, 17px) !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.sub,
+.panel-head span {
+  font-size: 12px !important;
+  line-height: 1.58 !important;
+}
+
+button,
+input,
+select,
+textarea,
+.pill,
+.ghost-button,
+.sheet-button,
+.primary-button,
+.secondary-button,
+.confirm-button,
+.run-button,
+.download-button {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+aside .brand strong {
+  font-size: 15px !important;
+  line-height: 1.18 !important;
+}
+
+aside .brand span {
+  font-size: 10.5px !important;
+  line-height: 1.25 !important;
+}
+
+aside b,
+aside .side-button b,
+aside .tool-list a b,
+aside .nav-list b,
+aside .account-list b,
+aside .channel-list b {
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.015em !important;
+}
+
+aside small,
+aside .tool-list a span,
+aside .nav-list small,
+aside .account-list small,
+aside .channel-list small {
+  font-size: 8.8px !important;
+  line-height: 1.25 !important;
+}
+
+.metric label {
+  font-size: 10.5px !important;
+  line-height: 1.28 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.metric strong {
+  font-size: clamp(25px, 2.35vw, 31px) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.055em !important;
+}
+
+.metric small {
+  font-size: 9.8px !important;
+  line-height: 1.26 !important;
+}
+
+.customer-name,
+.reason-title,
+.frequency-row b,
+.channel-total-row b {
+  font-size: 12px !important;
+  line-height: 1.28 !important;
+}
+
+.customer-sub,
+.reason-copy,
+.frequency-row span,
+.channel-total-row span,
+.date span,
+.meta,
+.subtle,
+.sheet-note,
+.no-event {
+  font-size: 9.5px !important;
+  line-height: 1.32 !important;
+}
+
+/* Frequency cards: keep right-side counts away from the card clipping edge. */
+.frequency-row {
+  grid-template-columns: minmax(74px, 92px) minmax(120px, 1fr) minmax(86px, 102px) !important;
+  gap: 12px !important;
+  padding: 10px 14px 10px 0 !important;
+  overflow: visible !important;
+}
+
+.frequency-numbers {
+  min-width: 0 !important;
+  padding-right: 4px !important;
+  justify-items: end !important;
+}
+
+.frequency-numbers b {
+  font-size: 11.2px !important;
+  line-height: 1.16 !important;
+  letter-spacing: -0.02em !important;
+  white-space: nowrap !important;
+}
+
+.frequency-numbers span {
+  font-size: 9px !important;
+  line-height: 1.22 !important;
+  white-space: nowrap !important;
+}
+
+.frequency-row > b {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Analysis date picker: same soft capsule + compact popover language as Broadcast Planning. */
+.analysis-date-control {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 5px 10px !important;
+  border-radius: 999px !important;
+  overflow: visible !important;
+  z-index: 80 !important;
+  isolation: isolate !important;
+}
+
+.analysis-date-control > button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #41140E !important;
+  cursor: pointer !important;
+  font-weight: 950 !important;
+  box-shadow: none !important;
+}
+
+.analysis-date-control > button:not(.date-label) {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+}
+
+.analysis-date-control > button:not(.date-label):hover,
+.analysis-date-control .date-label:hover {
+  background: rgba(65, 20, 14, 0.08) !important;
+}
+
+.analysis-date-control .date-label {
+  min-width: 112px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  color: #33251B !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.analysis-date-popover {
+  position: absolute !important;
+  z-index: 9999 !important;
+  width: 300px !important;
+  right: 0 !important;
+  top: calc(100% + 10px) !important;
+  padding: 14px !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(145deg, rgba(242, 222, 206, 0.98), rgba(242, 222, 206, 0.88)) !important;
+  border-color: rgba(65, 20, 14, 0.14) !important;
+  box-shadow: 0 22px 48px rgba(51, 37, 27, 0.16) !important;
+  pointer-events: auto !important;
+}
+
+.analysis-date-popover:not([hidden]) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.order-date-control .analysis-date-popover {
+  top: auto !important;
+  bottom: calc(100% + 10px) !important;
+}
+
+.analysis-date-popover .year-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+
+.analysis-date-popover .year-row strong {
+  flex: 1 !important;
+  text-align: center !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 250, 247, 0.70) !important;
+  color: #33251B !important;
+  font-size: 13px !important;
+}
+
+.analysis-date-popover .year-row button,
+.analysis-date-popover .month-choice,
+.analysis-date-popover .day-choice {
+  border-color: rgba(65, 20, 14, 0.12) !important;
+  background: rgba(255, 250, 247, 0.72) !important;
+  color: #41140E !important;
+  box-shadow: none !important;
+}
+
+.analysis-date-popover .year-row button {
+  width: 42px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: 14px !important;
+  font-size: 17px !important;
+  font-weight: 950 !important;
+  cursor: pointer !important;
+}
+
+.analysis-date-popover .month-picker-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+.analysis-date-popover .month-choice {
+  padding: 10px 8px !important;
+  border-radius: 14px !important;
+  font-size: 11px !important;
+}
+
+.analysis-date-popover .month-choice.active,
+.analysis-date-popover .day-choice.active {
+  background: #41140E !important;
+  border-color: #41140E !important;
+  color: #F2DECE !important;
+}
+
+.day-picker-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(65, 20, 14, 0.12) !important;
+}
+
+.day-choice {
+  height: 30px !important;
+  border: 1px solid rgba(65, 20, 14, 0.12) !important;
+  border-radius: 11px !important;
+  font: inherit !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.day-choice:hover,
+.analysis-date-popover .month-choice:hover,
+.analysis-date-popover .year-row button:hover {
+  background: rgba(65, 20, 14, 0.08) !important;
+}
+
+/* Broadcast Planning: keep long titles, tags, pax and buttons inside their cells. */
+body:has(#planList) .metrics {
+  gap: 14px !important;
+}
+
+body:has(#planList) .metric {
+  padding: 18px 18px !important;
+}
+
+body:has(#planList) .metric label,
+body:has(#planList) .metric small {
+  display: block !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+body:has(#planList) .metric strong {
+  font-size: clamp(24px, 2.25vw, 30px) !important;
+}
+
+body:has(#planList) .plan-row {
+  align-items: center !important;
+}
+
+body:has(#planList) .plan-row .date strong {
+  font-size: 15.5px !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.045em !important;
+}
+
+body:has(#planList) .plan-row .date span {
+  font-size: 8.8px !important;
+  line-height: 1.22 !important;
+}
+
+body:has(#planList) .plan-row .title strong {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  font-size: 11.6px !important;
+  line-height: 1.13 !important;
+  letter-spacing: -0.02em !important;
+  max-height: 2.35em !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body:has(#planList) .plan-row .title .meta {
+  font-size: 9.2px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+body:has(#planList) .plan-row .tag,
+body:has(#planList) .plan-row .page-tag {
+  font-size: 8.8px !important;
+  line-height: 1.08 !important;
+  letter-spacing: 0.015em !important;
+}
+
+body:has(#planList) .plan-row .pax-input {
+  height: 29px !important;
+  font-size: 10px !important;
+  padding: 6px 8px !important;
+}
+
+body:has(#planList) .plan-row .amount {
+  font-size: 11.3px !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.025em !important;
+}
+
+body:has(#planList) .plan-row .done-toggle,
+body:has(#planList) .plan-row .copy-toggle,
+body:has(#planList) .plan-row .edit-toggle {
+  min-height: 30px !important;
+  font-size: 8.8px !important;
+  line-height: 1 !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+}
+
+body:has(#calendar) .day-card h3 {
+  font-size: 13.5px !important;
+  line-height: 1.2 !important;
+}
+
+#calendar .event {
+  font-size: 9.6px !important;
+  line-height: 1.28 !important;
+  border-left-width: 6px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 247, 0.60) !important;
+}
+
+#calendar .event.new {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(245, 220, 168, 0.48)) !important;
+  border-color: rgba(220, 168, 92, 0.20) !important;
+  border-left-color: rgba(232, 184, 78, 0.48) !important;
+  color: #41140E !important;
+}
+
+#calendar .event.existing {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(216, 227, 229, 0.46)) !important;
+  border-color: rgba(121, 143, 152, 0.18) !important;
+  border-left-color: rgba(143, 168, 177, 0.52) !important;
+  color: #33251B !important;
+}
+
+#calendar .event.knee {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(245, 220, 168, 0.42)) !important;
+  border-color: rgba(220, 168, 92, 0.18) !important;
+  border-left-color: rgba(232, 184, 78, 0.42) !important;
+  outline: 1px solid rgba(232, 184, 78, 0.12) !important;
+}
+
+#calendar .event.sg {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.98), rgba(216, 227, 229, 0.42)) !important;
+  border-color: rgba(121, 143, 152, 0.18) !important;
+  border-left-color: rgba(143, 168, 177, 0.46) !important;
+  outline: 1px solid rgba(143, 168, 177, 0.13) !important;
+}
+
+#calendar .event.old-main {
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.96), rgba(210, 188, 168, 0.68)) !important;
+  border-color: rgba(139, 89, 72, 0.22) !important;
+  border-left-color: #D2BCA8 !important;
+  outline: 1px solid rgba(196, 151, 130, 0.24) !important;
+}
+
+#calendar .event b,
+#calendar .event small {
+  color: inherit !important;
+}
+
+#calendar .event-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+  margin-top: 7px !important;
+}
+
+#calendar .event-tags em {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 18px !important;
+  padding: 3px 6px !important;
+  border-radius: 999px !important;
+  font-style: normal !important;
+  font-size: 7.6px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.02em !important;
+}
+
+#calendar .event-cat.new,
+#calendar .event-page.knee {
+  background: rgba(245, 220, 168, 0.42) !important;
+  color: #41140E !important;
+}
+
+#calendar .event-cat.existing,
+#calendar .event-page.sg {
+  background: rgba(216, 227, 229, 0.58) !important;
+  color: #33251B !important;
+}
+
+#calendar .event-page.old-main {
+  background: rgba(210, 188, 168, 0.52) !important;
+  color: #41140E !important;
+}
+
+#calendar .day-card {
+  background:
+    linear-gradient(145deg, rgba(255, 250, 247, 0.76), rgba(242, 222, 206, 0.50)) !important;
+}
+
+/* Soft premium hover: slight lift only, no sidebar movement and no layout shift. */
+main .card,
+main .metric,
+main .plan-row,
+main .day-card,
+main .event,
+main .reason,
+main .customer,
+main .order-item,
+main .frequency-row,
+main .simple-row,
+main .field,
+main .preview-row,
+main .total-card {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease !important;
+}
+
+main .metric:hover,
+main .plan-row:hover,
+main .day-card:hover,
+main .reason:hover,
+main .customer:hover,
+main .order-item:hover,
+main .frequency-row:hover,
+main .simple-row:hover,
+main .field:hover,
+main .preview-row:hover,
+main .total-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(65, 20, 14, 0.16) !important;
+  box-shadow: 0 18px 42px rgba(51, 37, 27, 0.10) !important;
+}
+
+main .event:hover,
+main .filter-row button:hover,
+main .toggle button:hover,
+main .month-choice:hover,
+main .day-choice:hover,
+main .ghost-button:hover,
+main .sheet-button:hover,
+main .download-button:hover,
+main .primary-button:hover,
+main .secondary-button:hover,
+main button.primary:hover,
+main button.secondary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 28px rgba(51, 37, 27, 0.10) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main .card,
+  main .metric,
+  main .plan-row,
+  main .day-card,
+  main .event,
+  main .reason,
+  main .customer,
+  main .order-item,
+  main .frequency-row,
+  main .simple-row,
+  main .field,
+  main .preview-row,
+  main .total-card {
+    transition: none !important;
+  }
+
+  main .metric:hover,
+  main .plan-row:hover,
+  main .day-card:hover,
+  main .event:hover,
+  main .reason:hover,
+  main .customer:hover,
+  main .order-item:hover,
+  main .frequency-row:hover,
+  main .simple-row:hover,
+  main .field:hover,
+  main .preview-row:hover,
+  main .total-card:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .metric strong {
+    font-size: 24px !important;
+  }
+
+  body:has(#planList) .plan-row .title strong {
+    font-size: 11px !important;
+  }
+
+  body:has(#planList) .plan-row .tag,
+  body:has(#planList) .plan-row .page-tag,
+  body:has(#planList) .plan-row .done-toggle,
+  body:has(#planList) .plan-row .copy-toggle,
+  body:has(#planList) .plan-row .edit-toggle {
+    font-size: 8.4px !important;
+  }
+}
+
+/* Overflow safety pass: keep long names, tags, notes and buttons inside every card/dialog. */
+main,
+main *,
+dialog,
+dialog * {
+  min-width: 0 !important;
+}
+
+dialog {
+  max-width: calc(100vw - 56px) !important;
+}
+
+.dialog-head {
+  gap: 16px !important;
+}
+
+.dialog-head h2 {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.22 !important;
+}
+
+.dialog-head button {
+  flex: none !important;
+}
+
+.customer-list {
+  padding: 10px 22px 22px !important;
+  overflow-x: hidden !important;
+}
+
+.customer {
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 150px) !important;
+  gap: 16px !important;
+  padding: 16px 18px !important;
+  overflow: hidden !important;
+}
+
+.customer > div:first-child,
+.customer-info {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.customer b,
+.customer span,
+.customer-sub,
+.customer-name,
+.reason b,
+.reason p,
+.reason-title,
+.reason-copy,
+.summary p,
+.blocker-section,
+.customer-section {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.customer b {
+  line-height: 1.22 !important;
+}
+
+.customer span,
+.reason p {
+  line-height: 1.42 !important;
+}
+
+.tag-badges {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.tag-badge,
+.badge-return,
+.order-chip,
+.pill,
+.tag,
+.page-tag,
+.event-tags em {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.customer-actions {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 150px !important;
+  justify-content: flex-end !important;
+}
+
+.customer-actions a,
+.customer a,
+.customer-action {
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 112px !important;
+  padding-left: 11px !important;
+  padding-right: 11px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.dismiss-customer {
+  flex: none !important;
+}
+
+.reason {
+  grid-template-columns: 28px minmax(0, 1fr) auto !important;
+  overflow: hidden !important;
+}
+
+.reason-count {
+  flex: none !important;
+  max-width: 72px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+table,
+.mini-table {
+  table-layout: fixed !important;
+}
+
+td,
+th,
+.mini-table td,
+.mini-table th {
+  max-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.simple-row,
+.order-item,
+.preview-row,
+.field,
+.frequency-row {
+  overflow: hidden !important;
+}
+
+.simple-row {
+  grid-template-columns: minmax(78px, 108px) minmax(0, 1fr) !important;
+}
+
+.simple-row strong,
+.field strong,
+.order-item b,
+.order-item span,
+.preview-row strong,
+.preview-row span {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.order-item {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.order-chip {
+  max-width: 180px !important;
+}
+
+body:has(#planList) .plan-row > *,
+#calendar .event,
+#calendar .event b,
+#calendar .event small,
+#calendar .event-tags {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+#calendar .event {
+  overflow: hidden !important;
+}
+
+#calendar .event b {
+  display: block !important;
+  line-height: 1.18 !important;
+}
+
+#calendar .event small {
+  display: block !important;
+  line-height: 1.22 !important;
+}
+
+@media (max-width: 720px) {
+  .customer {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .customer-actions {
+    max-width: 100% !important;
+    justify-content: flex-start !important;
+  }
+}
+
+/* Final unified date picker + sidebar behaviour pass. */
+.analysis-date-popover,
+.month-popover,
+.date-popover {
+  background:
+    radial-gradient(circle at 18% 24%, rgba(255, 250, 247, 0.92), transparent 36%),
+    linear-gradient(145deg, rgba(255, 250, 247, 0.90), rgba(242, 222, 206, 0.82)) !important;
+  border: 1px solid rgba(65, 20, 14, 0.12) !important;
+  box-shadow: 0 20px 48px rgba(51, 37, 27, 0.16) !important;
+  backdrop-filter: blur(18px) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.12) !important;
+}
+
+.analysis-date-popover .year-row strong,
+.month-popover .year-row strong,
+.date-popover .year-row strong {
+  background: rgba(255, 250, 247, 0.72) !important;
+  border-radius: 18px !important;
+  color: #33251B !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.analysis-date-popover .year-row button,
+.month-popover .year-row button,
+.date-popover .year-row button,
+.analysis-date-popover .month-choice,
+.month-popover .month-choice,
+.date-popover .month-choice,
+.analysis-date-popover .day-choice,
+.date-popover .day-choice {
+  background: rgba(255, 250, 247, 0.56) !important;
+  border: 1px solid rgba(65, 20, 14, 0.08) !important;
+  color: #41140E !important;
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease !important;
+}
+
+.analysis-date-popover .year-row button:hover,
+.month-popover .year-row button:hover,
+.date-popover .year-row button:hover,
+.analysis-date-popover .month-choice:hover,
+.month-popover .month-choice:hover,
+.date-popover .month-choice:hover,
+.analysis-date-popover .day-choice:hover,
+.date-popover .day-choice:hover {
+  background: rgba(245, 220, 168, 0.50) !important;
+  transform: translateY(-1px) !important;
+}
+
+.analysis-date-popover .month-choice.active,
+.month-popover .month-choice.active,
+.date-popover .month-choice.active,
+.analysis-date-popover .day-choice.active,
+.date-popover .day-choice.active {
+  background: #41140E !important;
+  border-color: #41140E !important;
+  color: #F2DECE !important;
+  box-shadow: 0 8px 18px rgba(65, 20, 14, 0.14) !important;
+}
+
+.date-field-control {
+  position: relative !important;
+  display: flex !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+dialog:has(.date-popover:not([hidden])),
+.dialog-body:has(.date-popover:not([hidden])),
+.form-grid:has(.date-popover:not([hidden])),
+.field:has(.date-popover:not([hidden])) {
+  overflow: visible !important;
+}
+
+.date-field-control > input {
+  width: 100% !important;
+  cursor: pointer !important;
+  padding-right: 42px !important;
+}
+
+.date-field-control::after {
+  content: "⌄";
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #41140E;
+  font-weight: 950;
+  pointer-events: none;
+}
+
+.date-field-control .date-popover {
+  position: absolute !important;
+  z-index: 9999 !important;
+  width: min(300px, calc(100vw - 40px)) !important;
+  left: 0 !important;
+  top: calc(100% + 10px) !important;
+  padding: 12px !important;
+  border-radius: 24px !important;
+}
+
+.date-field-control.open-up .date-popover {
+  top: auto !important;
+  bottom: calc(100% + 10px) !important;
+}
+
+.date-field-control .year-row,
+.date-field-control .month-picker-grid,
+.date-field-control .day-picker-grid {
+  display: grid !important;
+}
+
+.date-field-control .year-row {
+  grid-template-columns: 42px 1fr 42px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.date-field-control .month-picker-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 7px !important;
+}
+
+.date-field-control .day-picker-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid rgba(65, 20, 14, 0.10) !important;
+}
+
+.date-field-control .month-choice {
+  padding: 8px 7px !important;
+  border-radius: 13px !important;
+  font-size: 10.5px !important;
+  font-weight: 950 !important;
+}
+
+.date-field-control .day-choice {
+  height: 25px !important;
+  border-radius: 10px !important;
+  font-size: 9.5px !important;
+  font-weight: 900 !important;
+}
+
+aside .analysis-toggle .chevron,
+aside .account-toggle .chevron {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  transition: transform 180ms ease, background 180ms ease !important;
+}
+
+aside .analysis-toggle.open .chevron,
+aside .account-toggle.open .chevron {
+  transform: rotate(90deg) !important;
+}
+
+aside .channel-list {
+  transform-origin: top left !important;
+  animation: sidebarDropdownIn 180ms cubic-bezier(.2,.8,.2,1) both !important;
+}
+
+aside .channel-list[hidden] {
+  display: none !important;
+}
+
+aside .analysis-toggle,
+aside .account-toggle,
+aside .channel-list a,
+aside .channel-list button {
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease !important;
+}
+
+aside .analysis-toggle:hover,
+aside .account-toggle:hover,
+aside .channel-list a:hover,
+aside .channel-list button:hover {
+  transform: translateX(2px) !important;
+}
+
+@keyframes sidebarDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.analysis-date-control,
+.order-date-control,
+.month-control,
+.date-field-control {
+  overflow: visible !important;
+}
+
+/* ==========================================================
+   Scale Story Design System
+   Use these tokens for every new dashboard page / feature.
+   ========================================================== */
+:root {
+  --ds-color-espresso: #33251B !important;
+  --ds-color-griotte: #41140E !important;
+  --ds-color-oat: #F2DECE !important;
+  --ds-color-sky: #ADBCC3 !important;
+  --ds-color-paper: rgba(255, 250, 247, 0.78) !important;
+  --ds-color-paper-solid: #FFF8F3 !important;
+  --ds-color-muted: rgba(51, 37, 27, 0.66) !important;
+  --ds-color-line: rgba(65, 20, 14, 0.14) !important;
+  --ds-color-line-strong: rgba(65, 20, 14, 0.22) !important;
+  --ds-radius-xs: 10px !important;
+  --ds-radius-sm: 14px !important;
+  --ds-radius-md: 18px !important;
+  --ds-radius-lg: 24px !important;
+  --ds-radius-xl: 32px !important;
+  --ds-radius-pill: 999px !important;
+  --ds-space-1: 6px !important;
+  --ds-space-2: 10px !important;
+  --ds-space-3: 14px !important;
+  --ds-space-4: 18px !important;
+  --ds-space-5: 24px !important;
+  --ds-space-6: 32px !important;
+  --ds-shadow-soft: 0 16px 42px rgba(51, 37, 27, 0.10) !important;
+  --ds-shadow-lift: 0 22px 56px rgba(51, 37, 27, 0.16) !important;
+  --ds-transition: 170ms cubic-bezier(.2, .8, .2, 1) !important;
+  --radius-xs: var(--ds-radius-xs) !important;
+  --radius-sm: var(--ds-radius-sm) !important;
+  --radius-md: var(--ds-radius-md) !important;
+  --radius-lg: var(--ds-radius-lg) !important;
+  --radius-xl: var(--ds-radius-xl) !important;
+}
+
+html {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+h1, h2, h3,
+.panel h2,
+.dialog-head h2 {
+  letter-spacing: -0.035em !important;
+}
+
+body,
+.workspace,
+main {
+  border-radius: 0 !important;
+}
+
+aside {
+  border-radius: 0 var(--ds-radius-xl) var(--ds-radius-xl) 0 !important;
+}
+
+.card,
+.panel,
+.metric,
+.summary,
+.definition,
+.confirmed-panel,
+.form-panel,
+.preview-panel,
+.add-plan,
+.frequency-card,
+.day-card,
+.plan-row,
+.order-item,
+.sheet-target,
+.sheet-details,
+.simple-row,
+.empty,
+.empty-orders,
+.notice-dialog,
+.run-dialog,
+dialog,
+.dialog-body,
+.customer-list {
+  border-radius: var(--ds-radius-lg) !important;
+}
+
+.metrics .card,
+.metric {
+  border-radius: var(--ds-radius-xl) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.metric label,
+.metric strong,
+.metric small {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: keep-all !important;
+}
+
+.metric label {
+  line-height: 1.35 !important;
+}
+
+.metric strong {
+  display: inline-block !important;
+  line-height: 1.05 !important;
+}
+
+.metric small {
+  display: inline-block !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+}
+
+button,
+.button,
+.primary-button,
+.primary,
+.secondary,
+.run-button,
+.download-button,
+.sheet-button,
+.ghost-button,
+.done-toggle,
+.copy-toggle,
+.edit-toggle,
+.delete-button,
+.dismiss-customer,
+.reason-count,
+.date-label,
+.month-label,
+.event,
+.filter-row button,
+.view-toggle button,
+.tag,
+.page-tag,
+.event-cat,
+.event-page,
+.tag-badge,
+.order-chip,
+.badge-return,
+.spend-preview,
+.preview-pill,
+.pill,
+.rank,
+.dot,
+.logo,
+.notice-icon,
+.run-icon {
+  border-radius: var(--ds-radius-pill) !important;
+}
+
+.logo,
+.dot,
+.rank,
+.notice-icon,
+.run-icon,
+.spark,
+.dialog-head button,
+.dismiss-customer {
+  border-radius: var(--ds-radius-sm) !important;
+}
+
+input,
+textarea,
+select,
+.copy-box,
+.date-field-control input,
+.pax-input,
+.search-box,
+#search,
+#quickPaste {
+  border-radius: var(--ds-radius-md) !important;
+}
+
+.analysis-date-popover,
+.month-popover,
+.date-popover,
+.month-picker,
+.customer-section,
+.blocker-section,
+.reminder-item,
+.detail-item,
+.detail-copy {
+  border-radius: var(--ds-radius-lg) !important;
+}
+
+.analysis-date-popover .year-row strong,
+.month-popover .year-row strong,
+.date-popover .year-row strong,
+.analysis-date-popover .year-row button,
+.month-popover .year-row button,
+.date-popover .year-row button,
+.analysis-date-popover .month-choice,
+.month-popover .month-choice,
+.date-popover .month-choice,
+.analysis-date-popover .day-choice,
+.date-popover .day-choice {
+  border-radius: var(--ds-radius-pill) !important;
+}
+
+table,
+.mini-table {
+  border-radius: var(--ds-radius-lg) !important;
+  overflow: hidden !important;
+}
+
+.customer {
+  border-radius: var(--ds-radius-md) !important;
+  padding-left: var(--ds-space-3) !important;
+  padding-right: var(--ds-space-3) !important;
+}
+
+.customer:hover,
+.plan-row:hover,
+.day-card:hover,
+.event:hover,
+.metric-button:hover,
+.order-item:hover,
+.simple-row:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--ds-shadow-lift) !important;
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition), border-color var(--ds-transition), background var(--ds-transition) !important;
+}
+
+.event,
+.plan-row,
+.day-card,
+.order-item,
+.simple-row,
+.customer,
+.card,
+.panel,
+button,
+a,
+input,
+textarea,
+select {
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition), border-color var(--ds-transition), background var(--ds-transition), color var(--ds-transition) !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(173, 188, 195, 0.42) !important;
+  outline-offset: 3px !important;
+}
+
+@media (max-width: 1100px) {
+  .metrics,
+  .broadcast-metrics,
+  .frequency-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .plan-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: var(--ds-space-3) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  aside {
+    border-radius: 0 0 var(--ds-radius-xl) var(--ds-radius-xl) !important;
+  }
+
+  .metrics,
+  .broadcast-metrics,
+  .frequency-grid,
+  .detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .panel,
+  .metric,
+  .summary,
+  dialog {
+    border-radius: var(--ds-radius-lg) !important;
+  }
+}
