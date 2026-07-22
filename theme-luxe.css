@@ -1407,7 +1407,7 @@ main {
 }
 
 aside {
-  border-radius: 0 var(--ds-radius-xl) var(--ds-radius-xl) 0 !important;
+  border-radius: 0 !important;
 }
 
 .card,
@@ -1527,6 +1527,161 @@ select,
   border-radius: var(--ds-radius-md) !important;
 }
 
+select.native-select-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.custom-select {
+  position: relative !important;
+  width: 100% !important;
+  z-index: 8 !important;
+}
+
+.custom-select.is-open {
+  z-index: 12000 !important;
+}
+
+.field:has(.custom-select),
+.field:has(.custom-select.is-open),
+.inline > div:has(.custom-select),
+.inline > div:has(.custom-select.is-open),
+.dialog-body:has(.custom-select.is-open),
+.form-grid:has(.custom-select.is-open),
+dialog:has(.custom-select.is-open) {
+  overflow: visible !important;
+}
+
+.field:has(.custom-select.is-open),
+.inline > div:has(.custom-select.is-open) {
+  position: relative !important;
+  z-index: 12000 !important;
+}
+
+.custom-select-button {
+  width: 100% !important;
+  min-height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: var(--ds-space-3) !important;
+  padding: 11px 14px !important;
+  border: 1px solid rgba(65, 20, 14, 0.16) !important;
+  border-radius: var(--ds-radius-lg) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.78), rgba(242, 222, 206, 0.44)) !important;
+  color: var(--ds-espresso) !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+}
+
+.custom-select-button:hover,
+.custom-select.is-open .custom-select-button {
+  border-color: rgba(173, 188, 195, 0.82) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 247, 0.88), rgba(173, 188, 195, 0.26)) !important;
+  box-shadow: 0 0 0 4px rgba(173, 188, 195, 0.18) !important;
+}
+
+.custom-select-value {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.custom-select-chevron {
+  flex: none !important;
+  color: var(--ds-griotte) !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  transform: translateY(-1px) !important;
+  transition: transform var(--ds-transition) !important;
+}
+
+.custom-select.is-open .custom-select-chevron {
+  transform: rotate(180deg) translateY(1px) !important;
+}
+
+.custom-select-options {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: calc(100% + 8px) !important;
+  display: grid !important;
+  gap: 6px !important;
+  max-height: 260px !important;
+  overflow: auto !important;
+  padding: 10px !important;
+  border: 1px solid rgba(210, 188, 168, 0.46) !important;
+  border-radius: var(--ds-radius-lg) !important;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 250, 247, 0.95), transparent 36%),
+    linear-gradient(145deg, rgba(242, 222, 206, 0.94), rgba(218, 220, 221, 0.78)) !important;
+  box-shadow: 0 24px 54px rgba(51, 37, 27, 0.22) !important;
+  backdrop-filter: blur(18px) saturate(1.06) !important;
+  opacity: 0 !important;
+  transform: translateY(-5px) scale(0.985) !important;
+  pointer-events: none !important;
+  transition: opacity var(--ds-transition), transform var(--ds-transition) !important;
+}
+
+.custom-select.is-open .custom-select-options {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  pointer-events: auto !important;
+}
+
+.custom-select-option {
+  width: 100% !important;
+  min-height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 9px 12px !important;
+  border: 0 !important;
+  border-radius: var(--ds-radius-md) !important;
+  background: rgba(255, 250, 247, 0.48) !important;
+  color: var(--ds-espresso) !important;
+  font: inherit !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  text-align: left !important;
+}
+
+.custom-select-option:hover,
+.custom-select-option.is-selected {
+  background:
+    linear-gradient(135deg, rgba(255, 238, 182, 0.82), rgba(173, 188, 195, 0.26)) !important;
+  color: var(--ds-griotte) !important;
+}
+
+main:has(.custom-select.is-open),
+.workspace:has(.custom-select.is-open),
+.card:has(.custom-select.is-open),
+.panel:has(.custom-select.is-open),
+.inline:has(.custom-select.is-open),
+.inline > div:has(.custom-select.is-open),
+.edit-order-grid:has(.custom-select.is-open),
+.edit-order-grid > div:has(.custom-select.is-open),
+.form-panel:has(.custom-select.is-open) {
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 12000 !important;
+}
+
+.custom-select.is-open .custom-select-options {
+  z-index: 99999 !important;
+}
+
 .analysis-date-popover,
 .month-popover,
 .date-popover,
@@ -1537,6 +1692,97 @@ select,
 .detail-item,
 .detail-copy {
   border-radius: var(--ds-radius-lg) !important;
+}
+
+.dialog-head,
+.notice-body,
+.run-body,
+.sheet-target,
+.mini-table th,
+.mini-table td,
+.confirmed-head,
+.panel-head,
+.frequency-row,
+.channel-total-row,
+.empty-orders,
+.order-chip,
+.tag,
+.page-tag,
+.status-pill,
+.day-card,
+.event,
+.plan-row,
+.filter-row button,
+.toggle,
+.toggle button {
+  border-radius: var(--ds-radius-md) !important;
+}
+
+.reminder-item {
+  background: rgba(255, 250, 247, 0.42) !important;
+  border-color: rgba(210, 188, 168, 0.42) !important;
+}
+
+#addPlanPanel .form-grid,
+#editDialog .form-grid {
+  gap: var(--ds-space-4) !important;
+}
+
+#addPlanPanel .field,
+#editDialog .field {
+  padding: var(--ds-space-2) !important;
+  border: 1px solid rgba(210, 188, 168, 0.20) !important;
+  border-radius: var(--ds-radius-lg) !important;
+  background: rgba(255, 250, 247, 0.26) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+#addPlanPanel .field.compact-select,
+#editDialog .field.compact-select {
+  grid-column: span 1 !important;
+  min-width: 158px !important;
+}
+
+#addPlanPanel .field.channel-select,
+#editDialog .field.channel-select {
+  grid-column: span 2 !important;
+  min-width: 220px !important;
+}
+
+#addPlanPanel .field.channel-select .custom-select-options,
+#editDialog .field.channel-select .custom-select-options {
+  min-width: 190px !important;
+}
+
+#addPlanPanel .field:has(#smartFill) {
+  padding: var(--ds-space-2) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+}
+
+#addPlanPanel .field input,
+#addPlanPanel .field select,
+#addPlanPanel .field textarea,
+#addPlanPanel .quick-input,
+#editDialog .field input,
+#editDialog .field select,
+#editDialog .field textarea {
+  border-radius: var(--ds-radius-lg) !important;
+  background: rgba(255, 250, 247, 0.54) !important;
+}
+
+#addPlanPanel .audience-picks,
+#editDialog .audience-picks {
+  padding: var(--ds-space-3) !important;
+  border-radius: var(--ds-radius-lg) !important;
+  background: rgba(255, 250, 247, 0.28) !important;
+}
+
+#addPlanPanel .audience-picks label,
+#editDialog .audience-picks label {
+  border-radius: var(--ds-radius-pill) !important;
+  background: rgba(255, 250, 247, 0.68) !important;
 }
 
 .analysis-date-popover .year-row strong,

@@ -185,6 +185,21 @@
     textarea { min-height:260px; resize:vertical; line-height:1.55; }
     textarea:focus, select:focus, input:focus { border-color:#d8a8b2; box-shadow:0 0 0 4px rgba(111,16,39,.08); background:white; }
     .inline { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    main:has(.custom-select.is-open),
+    .workspace:has(.custom-select.is-open),
+    .card:has(.custom-select.is-open),
+    .panel:has(.custom-select.is-open),
+    .inline:has(.custom-select.is-open),
+    .inline > div:has(.custom-select.is-open),
+    .edit-order-grid:has(.custom-select.is-open),
+    .edit-order-grid > div:has(.custom-select.is-open) {
+      overflow:visible !important;
+      position:relative !important;
+      z-index:80 !important;
+    }
+    .custom-select.is-open {
+      z-index:99999 !important;
+    }
     .actions { display:flex; gap:10px; align-items:center; margin-top:16px; }
     button.primary {
       border:0;
@@ -451,7 +466,7 @@
           <h1>Order Key-In</h1>
           <div class="sub">贴上顾客下单资料，选 Page / Account，确认后记录进单。</div>
         </div>
-        <a class="sheet-button" id="sheetButton" href="https://docs.google.com/spreadsheets/d/1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ/edit?gid=1222127904#gid=1222127904">打开 Google Sheet ↗</a>
+        <a class="sheet-button" id="sheetButton" href="https://docs.google.com/spreadsheets/d/1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ/edit?gid=1222127904#gid=1222127904">Order List ↗</a>
       </header>
 
       <section class="workspace">
@@ -517,7 +532,7 @@
             <span>根据日期查看当天进单。</span>
           </div>
           <div class="confirmed-controls">
-            <div class="total-amount" id="confirmedTotal">Total Amount RM 0</div>
+            <div class="total-amount" id="confirmedTotal"><b>Total Sales</b> RM 0</div>
             <div class="confirmed-date">显示日期
               <div class="pill date-control analysis-date-control order-date-control">
                 <button id="orderPrevDay" aria-label="前一天" type="button">‹</button>
@@ -1228,8 +1243,8 @@
     function renderConfirmedOrders() {
       if (!hasConfirmedOrder) {
         confirmedTotal.hidden = false;
-        confirmedTotal.textContent = "Total Amount RM 0";
-        confirmedOrders.innerHTML = `<div class="empty-orders">确认进单后，这里会显示当天订单记录和 Total Amount。</div>`;
+        confirmedTotal.innerHTML = "<b>Total Sales</b> RM 0";
+        confirmedOrders.innerHTML = `<div class="empty-orders">确认进单后，这里会显示当天订单记录和 Total Sales。</div>`;
         return;
       }
       const selected = confirmedDate.value;
@@ -1238,7 +1253,7 @@
         const amount = Number(String(order.total || "").replace(/[^0-9.]/g, ""));
         return sum + (Number.isFinite(amount) ? amount : 0);
       }, 0);
-      confirmedTotal.textContent = `Total Amount RM ${totalAmount.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+      confirmedTotal.innerHTML = `<b>Total Sales</b> RM ${totalAmount.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
       confirmedOrders.innerHTML = items.length
         ? items.map(order => `
           <div class="order-item" data-order-id="${escapeHtml(order.id)}" data-order-row="${escapeHtml(order.row)}" data-order-sheet="${escapeHtml(order.sheet)}" data-order-date-key="${escapeHtml(order.dateKey)}">
@@ -1278,6 +1293,7 @@
       editOrderPayment.value = order.payment || orderData["M · Payment Method"] || "";
       editOrderChannel.value = order.channel || orderData["H · Channel / Chanel"] || pageChannelMap[editOrderPage.value] || "";
       editOrderReceipt.value = order.receipt || orderData["AK · Receipt Link"] || "";
+      window.customSelectRefresh?.();
       editOrderDialog.showModal();
     }
 
@@ -1499,5 +1515,6 @@
     renderConfirmedOrders();
   </script>
   <script src="date-picker-unified.js"></script>
+  <script src="custom-select.js"></script>
 </body>
 </html>

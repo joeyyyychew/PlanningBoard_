@@ -153,8 +153,11 @@
     .track { height:10px; background:#edf0ec; border-radius:999px; overflow:hidden; }
     .bar { height:100%; width:var(--w); border-radius:999px; background:var(--c); }
     .num { text-align:right; font-weight:800; }
-    .reason { display:grid; grid-template-columns:28px 1fr auto; gap:11px; align-items:center; padding:13px 0; border-bottom:1px solid #edf0ec; }
-    .reason:last-child { border:0; }
+    .reason { display:grid; grid-template-columns:28px 1fr auto; gap:11px; align-items:center; padding:11px 12px; border:1px solid rgba(210,188,168,.18); border-radius:16px; background:rgba(255,250,247,.38); margin:4px 0; }
+    .reason:last-child { border:1px solid rgba(210,188,168,.18); }
+    .reason-clickable { cursor:pointer; }
+    .reason-clickable:hover { background:rgba(255,250,247,.58); border-color:rgba(210,188,168,.34); }
+    .reason-clickable:focus-visible { outline:3px solid rgba(173,188,195,.42); outline-offset:3px; }
     .rank { width:26px; height:26px; border-radius:8px; background:#edf3ed; display:grid; place-items:center; font-size:11px; font-weight:800; }
     .reason b { display:block; font-size:12px; margin-bottom:3px; }
     .reason p { margin:0; font-size:10px; color:var(--muted); }
@@ -177,6 +180,7 @@
     .definition.compact summary span { color:var(--muted); font-size:10px; font-weight:500; }
     .definition.compact .rules { padding:0 18px 10px; }
     .blockers-panel { grid-column:1 / -1; }
+    #blockerList { display:grid; gap:7px; }
     .rule { display:grid; grid-template-columns:128px 1fr; gap:14px; padding:12px 0; border-bottom:1px solid #edf0ec; }
     .rule:last-child { border-bottom:0; }
     .rule b { font-size:12px; }
@@ -196,6 +200,10 @@
     .customer-section small { margin-left:7px; color:var(--muted); font-size:10px; font-weight:700; }
     .customer { display:grid; grid-template-columns:minmax(0,1fr) 150px; align-items:center; gap:18px; padding:13px 0; border-bottom:1px solid #edf0ec; }
     .customer:last-child { border-bottom:0; }
+    #customerDialog.blocker-detail .customer-list { display:grid; gap:12px; }
+    #customerDialog.blocker-detail .customer { border-bottom:0; }
+    #customerDialog.metric-detail .customer-list { display:grid; gap:12px; }
+    #customerDialog.metric-detail .customer { min-height:76px; border-bottom:0; }
     .customer b { display:block; font-size:13px; margin-bottom:3px; }
     .customer span { display:block; color:var(--muted); font-size:10px; line-height:1.45; overflow-wrap:anywhere; word-break:break-word; }
     .badge-return { display:inline-flex; margin-left:7px; padding:3px 7px; border-radius:999px; background:#fff0d8; color:#8b5e11; font-size:9px; font-weight:800; vertical-align:middle; }
@@ -387,7 +395,7 @@
         <button class="card metric metric-button" data-detail="pending" style="--tint:#f1cf95"><label>Pending · 点击查看</label><strong id="pendingValue">—</strong><small id="pendingNote">当日待付款</small></button>
         <button class="card metric metric-button" data-detail="active" style="--tint:#ead0d6"><label>有讲话互动 · 点击查看</label><strong id="activeValue">—</strong><small id="activeNote">只算顾客文字/语音</small></button>
         <button class="card metric metric-button" data-detail="orders" style="--tint:#dbc1a2"><label>完成订单 · 点击查看</label><strong id="orderValue">—</strong><small id="orderNote">After Payment / AO</small></button>
-        <button class="card metric metric-button" data-detail="orderAmount" style="--tint:#dbe8e7"><label>进单金额 · 点击查看</label><strong id="orderAmountValue">RM0</strong><small id="orderAmountNote">Order Key-In</small></button>
+        <button class="card metric metric-button" data-detail="orderAmount" style="--tint:#dbe8e7"><label><b>Total Sales</b> · 点击查看</label><strong id="orderAmountValue">RM0</strong><small id="orderAmountNote">Order Key-In</small></button>
       </section>
 
       <section class="grid">
@@ -761,7 +769,7 @@
     function renderBlockerRows(blockers = []) {
       return blockers.map((b,i) => {
         const title = b.displayTitle || b.title;
-        return `<div class="reason"><span class="rank">${i+1}</span><div><b>${title}</b><p>${b.detail}</p></div><button class="reason-count" data-blocker="${i}" aria-label="查看${title}顾客">${b.count}</button></div>`;
+        return `<div class="reason reason-clickable" data-blocker="${i}" role="button" tabindex="0" aria-label="查看${title}顾客"><span class="rank">${i+1}</span><div><b>${title}</b><p>${b.detail}</p></div><button class="reason-count" type="button" tabindex="-1">${b.count}</button></div>`;
       }).join("");
     }
     function renderBlockerSections(blockers = []) {
@@ -777,7 +785,7 @@
         const total = list.reduce((sum, item) => sum + Number(item.count || 0), 0);
         return `<div class="blocker-section">${account.name}<small>${total} 位</small></div>${list.map((b) => {
           const globalIndex = blockers.indexOf(b);
-          return `<div class="reason"><span class="rank">${globalIndex+1}</span><div><b>${b.title}</b><p>${b.detail}</p></div><button class="reason-count" data-blocker="${globalIndex}" aria-label="查看${account.name} ${b.title}顾客">${b.count}</button></div>`;
+          return `<div class="reason reason-clickable" data-blocker="${globalIndex}" role="button" tabindex="0" aria-label="查看${account.name} ${b.title}顾客"><span class="rank">${globalIndex+1}</span><div><b>${b.title}</b><p>${b.detail}</p></div><button class="reason-count" type="button" tabindex="-1">${b.count}</button></div>`;
         }).join("")}`;
       }).join("");
     }
@@ -862,7 +870,10 @@
     }
     function renderOrderAmountDetails(date) {
       const summary = orderSummaryFor(date);
-      return Object.entries(accounts).map(([accountId, account]) => {
+      const accountEntries = currentView === "overview"
+        ? Object.entries(accounts)
+        : [[currentAccount, accounts[currentAccount]]];
+      return accountEntries.map(([accountId, account]) => {
         const item = summary.byAccount?.[accountId] || {total:0,count:0,entries:[]};
         const rows = (item.entries || []).map(entry => {
           const name = escapeHtml(entry.name || entry.order?.["P · Name"] || "未命名订单");
@@ -920,17 +931,26 @@
       return matches.slice(0, Number(blocker.count || matches.length));
     }
     document.getElementById("blockerList").addEventListener("click", event => {
-      const button = event.target.closest("[data-blocker]");
-      if (!button) return;
+      const row = event.target.closest("[data-blocker]");
+      if (!row) return;
       const report = currentView === "overview" ? combinedReport(dateInput.value) : dailyReports[dateInput.value];
-      const blocker = report?.blockers?.[Number(button.dataset.blocker)];
+      const blocker = report?.blockers?.[Number(row.dataset.blocker)];
       if (!blocker) return;
       const people = blockerPeople(report, blocker);
       document.getElementById("dialogTitle").textContent = blocker.displayTitle || blocker.title;
       document.getElementById("customerList").innerHTML = people.length
         ? renderCustomerSections(people.map(p => ({...p, note:p.note || blocker.detail})))
         : `<div class="customer"><div><b>名单待复核</b><span>目前有 ${blocker.count} 位，但还没有足够资料安全对应到顾客姓名。</span></div></div>`;
+      customerDialog.classList.remove("metric-detail");
+      customerDialog.classList.add("blocker-detail");
       customerDialog.showModal();
+    });
+    document.getElementById("blockerList").addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const row = event.target.closest("[data-blocker]");
+      if (!row) return;
+      event.preventDefault();
+      row.click();
     });
     function shiftDate(days) {
       const d = new Date(`${dateInput.value}T12:00:00`);
@@ -1041,8 +1061,11 @@
     function openCustomerList(type) {
       currentDialogType = type;
       const report = currentView === "overview" ? combinedReport(dateInput.value) : dailyReports[dateInput.value];
+      customerDialog.classList.remove("blocker-detail", "metric-detail");
       if (type === "orderAmount") {
-        document.getElementById("dialogTitle").textContent = "Order Key-In 进单金额";
+        document.getElementById("dialogTitle").textContent = currentView === "overview"
+          ? "Order Key-In Total Sales"
+          : `${accounts[currentAccount]?.name || "Channel"} Total Sales`;
         document.getElementById("customerList").innerHTML = renderOrderAmountDetails(dateInput.value);
         customerDialog.showModal();
         return;
@@ -1059,10 +1082,14 @@
       document.getElementById("customerList").innerHTML = people.length
         ? partialNotice + renderCustomerSections(people, type)
         : `<div class="customer"><div><b>${type === "pm" ? "等待 Subscribed 名单同步" : "没有记录"}</b><span>${emptyText}</span></div></div>`;
+      customerDialog.classList.add("metric-detail");
       customerDialog.showModal();
     }
     document.querySelectorAll("[data-detail]").forEach(card => card.addEventListener("click", () => openCustomerList(card.dataset.detail)));
-    document.getElementById("closeDialog").addEventListener("click", () => customerDialog.close());
+    document.getElementById("closeDialog").addEventListener("click", () => {
+      customerDialog.close();
+      customerDialog.classList.remove("blocker-detail", "metric-detail");
+    });
     document.getElementById("runDialogClose").addEventListener("click", () => runDialog.close());
     async function loadAccountDate(accountId, date) {
       const response = await apiFetch(`/api/live?account=${encodeURIComponent(accountId)}&date=${encodeURIComponent(date)}`);

@@ -139,6 +139,19 @@
       text-decoration:none;
     }
     .ghost-button { color:var(--wine); font-weight:850; cursor:pointer; }
+    .icon-button {
+      width:38px;
+      height:38px;
+      display:inline-grid;
+      place-items:center;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.72);
+      color:var(--wine);
+      font-size:16px;
+      cursor:pointer;
+    }
+    .icon-button:hover { transform:translateY(-1px); box-shadow:0 10px 24px rgba(65,20,14,.12); }
     .primary-button {
       border:0;
       padding:10px 17px;
@@ -549,8 +562,10 @@
     .detail-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; padding-top:4px; }
     .event { cursor:pointer; border:0; text-align:left; width:100%; font:inherit; color:inherit; }
     .event:focus-visible { outline:2px solid var(--wine); outline-offset:3px; }
-    .reminder-item { padding:12px; border-radius:14px; background:#fff4f4; border:1px solid #efd1d6; }
+    #reminderList { display:grid; gap:12px; }
+    .reminder-item { padding:14px 16px; border-radius:18px; background:rgba(255,250,247,.42); border:1px solid rgba(239,209,214,.55); backdrop-filter:blur(8px); }
     .reminder-item b { display:block; margin-bottom:4px; }
+    .reminder-item span { display:block; color:var(--muted); font-size:13px; line-height:1.55; }
     /* Sidebar lock: keep the left navigation visually identical on every page. */
     .shell { grid-template-columns:250px minmax(0,1fr) !important; }
     aside {
@@ -775,11 +790,11 @@
       <header>
         <div>
           <h1>Broadcast Planning</h1>
-          <div class="sub">把 Google Sheet 里的 Broadcast 计划整理成 dashboard 可以直接查看、安排和同步的版本。</div>
+          <div class="sub"></div>
         </div>
         <div class="header-actions">
-          <a class="ghost-button" target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470">打开 Google Sheet ↗</a>
-          <span class="pill">Live Plan</span>
+          <a class="ghost-button" target="_blank" rel="noreferrer" href="https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470">Order List ↗</a>
+          <button class="icon-button" id="showReminderBtn" type="button" title="查看今天 Broadcast reminder" aria-label="查看今天 Broadcast reminder">🔔</button>
         </div>
       </header>
 
@@ -831,14 +846,14 @@
               <label>Title</label>
               <input id="planTitle" placeholder="例如：早鸟 Last Call" required />
             </div>
-            <div class="field">
+            <div class="field compact-select">
               <label>Category</label>
               <select id="planCategory">
                 <option>NEW</option>
                 <option>EXSISTING</option>
               </select>
             </div>
-            <div class="field">
+            <div class="field channel-select">
               <label>Channel</label>
               <select id="planPage">
                 <option>KNEE 990</option>
@@ -1009,14 +1024,14 @@
           <label>Title</label>
           <input id="editTitle" type="text" />
         </div>
-        <div class="field">
+        <div class="field compact-select">
           <label>Category</label>
           <select id="editCategory">
             <option>NEW</option>
             <option>EXSISTING</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field channel-select">
           <label>Channel</label>
           <select id="editPage">
             <option>KNEE 990</option>
@@ -1608,6 +1623,7 @@
       document.getElementById("editCategory").value = row.category || "NEW";
       document.getElementById("editPage").value = row.page || "KNEE 990";
       setAudienceChecks("editAudiencePicks", row.audience);
+      window.customSelectRefresh?.();
       document.getElementById("editDialog").showModal();
     }
     function focusForm() {
@@ -1729,6 +1745,7 @@
         const normalized = /knee/i.test(page) ? "KNEE 990" : /old/i.test(page) ? "Old Main Page" : "SG Page";
         document.getElementById("planPage").value = normalized;
       }
+      window.customSelectRefresh?.();
       setAudienceFromText(raw);
     });
     document.getElementById("planList").addEventListener("change", async event => {
@@ -1911,19 +1928,34 @@
         day: "2-digit"
       }).format(new Date());
     }
-    function showTodayReminder() {
+    function todayReminderRows() {
       const today = todayKey();
-      const due = sheetRows.filter(row => row.date === today && row.done !== true);
-      const key = `${REMINDER_KEY}:${today}:${due.map(row => row.title).join("|")}`;
-      if (!due.length || localStorage.getItem(key) === "seen") return;
-      document.getElementById("reminderList").innerHTML = due.map(row => `
+      return sheetRows.filter(row => row.date === today && row.done !== true);
+    }
+    function renderReminderRows(due) {
+      document.getElementById("reminderList").innerHTML = due.length ? due.map(row => `
         <div class="reminder-item">
           <b>${row.title}</b>
           <span>${row.time || "未设时间"} · ${row.audience || "—"} · ${row.page}</span>
         </div>
-      `).join("");
+      `).join("") : `<div class="reminder-item"><b>今天没有待安排 Broadcast</b><span>目前没有需要提醒的 broadcast。</span></div>`;
+    }
+    function openTodayReminder({markSeen = false} = {}) {
+      const due = todayReminderRows();
+      renderReminderRows(due);
       document.getElementById("reminderDialog").showModal();
-      localStorage.setItem(key, "seen");
+      if (markSeen && due.length) {
+        const today = todayKey();
+        const key = `${REMINDER_KEY}:${today}:${due.map(row => row.title).join("|")}`;
+        localStorage.setItem(key, "seen");
+      }
+    }
+    function showTodayReminder() {
+      const today = todayKey();
+      const due = todayReminderRows();
+      const key = `${REMINDER_KEY}:${today}:${due.map(row => row.title).join("|")}`;
+      if (!due.length || localStorage.getItem(key) === "seen") return;
+      openTodayReminder({markSeen: true});
     }
     document.getElementById("newPlan").addEventListener("click", focusForm);
     document.getElementById("closeAddPlan").addEventListener("click", () => {
@@ -1985,11 +2017,13 @@
     });
     setupDateFieldPicker("planDate");
     setupDateFieldPicker("editDate");
+    document.getElementById("showReminderBtn").addEventListener("click", () => openTodayReminder());
     document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
     document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
     render();
     showTodayReminder();
   </script>
   <script src="date-picker-unified.js"></script>
+  <script src="custom-select.js"></script>
 </body>
 </html>

@@ -5,6 +5,8 @@ const files = [
   "dashboard.html",
   "dashboard-shell.css",
   "dashboard-shell.js",
+  "login.html",
+  "auth-client.js",
   "index.html",
   "order-key-in.html",
   "broadcast-planning.html",
@@ -13,6 +15,7 @@ const files = [
   "sidebar-unified.css",
   "embedded-frame.css",
   "date-picker-unified.js",
+  "custom-select.js",
   "data/reports.json"
 ];
 
@@ -65,6 +68,65 @@ function json(body, status = 200) {
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
     }
   });
+}
+
+function parseCookies(header = "") {
+  return Object.fromEntries(String(header).split(";").map(part => {
+    const i = part.indexOf("=");
+    if (i < 0) return null;
+    return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())];
+  }).filter(Boolean));
+}
+
+function authEnabled(env = {}) {
+  return /^(1|true|yes)$/i.test(env.AUTH_ENABLED || "") || Boolean(env.AUTH_PASSWORD || env.AUTH_PASSWORD_HASH);
+}
+
+async function sha256(value = "") {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function authCookie(value, maxAge = 604800) {
+  return "scale_story_session=" + encodeURIComponent(value) + "; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=" + maxAge;
+}
+
+function publicAuthPath(pathname) {
+  return pathname === "/login" ||
+    pathname === "/login.html" ||
+    pathname === "/api/auth/status" ||
+    pathname === "/api/auth/login" ||
+    pathname === "/api/auth/logout" ||
+    pathname === "/api/manychat-event" ||
+    pathname === "/api/events" ||
+    pathname === "/favicon.ico";
+}
+
+async function signedSession(env = {}, expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000) {
+  const secret = env.AUTH_SESSION_SECRET || env.AUTH_PASSWORD || env.EVENT_INGEST_KEY || "scale-story-dashboard";
+  const signature = await sha256(String(expiresAt) + "|" + secret);
+  return String(expiresAt) + ":" + signature;
+}
+
+async function isAuthenticated(request, env = {}) {
+  if (!authEnabled(env)) return true;
+  const token = parseCookies(request.headers.get("cookie") || "").scale_story_session || "";
+  const [expiresAt, signature] = token.split(":");
+  if (!expiresAt || !signature || Number(expiresAt) < Date.now()) return false;
+  return signature === await signedSession(env, Number(expiresAt)).then(value => value.split(":")[1]);
+}
+
+async function checkPassword(env = {}, password = "") {
+  const configuredHash = String(env.AUTH_PASSWORD_HASH || "").replace(/^sha256:/, "").trim().toLowerCase();
+  if (configuredHash) return await sha256(password) === configuredHash;
+  return Boolean(env.AUTH_PASSWORD) && password === env.AUTH_PASSWORD;
+}
+
+async function requireAuth(request, env, url) {
+  if (!authEnabled(env) || publicAuthPath(url.pathname) || await isAuthenticated(request, env)) return null;
+  if (url.pathname.startsWith("/api/")) return json({ ok: false, error: "Login required" }, 401);
+  return Response.redirect("/login?next=" + encodeURIComponent(url.pathname + url.search), 302);
 }
 
 function accountFrom(url) {
@@ -345,6 +407,45 @@ export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return json({}, 204);
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/auth/status") {
+      return json({
+        enabled: authEnabled(env),
+        authenticated: await isAuthenticated(request, env),
+        email: env.AUTH_EMAIL || ""
+      });
+    }
+    if (url.pathname === "/api/auth/login" && request.method === "POST") {
+      if (!authEnabled(env)) return json({ ok: false, error: "Login 还没启用：请先设置 AUTH_PASSWORD。" }, 400);
+      const payload = await request.json().catch(() => ({}));
+      const email = String(payload.email || "").trim().toLowerCase();
+      const allowedEmail = String(env.AUTH_EMAIL || "").trim().toLowerCase();
+      if (allowedEmail && email !== allowedEmail) return json({ ok: false, error: "Email 不正确。" }, 401);
+      if (!await checkPassword(env, String(payload.password || ""))) return json({ ok: false, error: "Password 不正确。" }, 401);
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Set-Cookie": authCookie(await signedSession(env))
+        }
+      });
+    }
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Set-Cookie": authCookie("", 0)
+        }
+      });
+    }
+    if (url.pathname === "/login" || url.pathname === "/login.html") {
+      return serveAsset("/login.html");
+    }
+
+    const authResponse = await requireAuth(request, env, url);
+    if (authResponse) return authResponse;
+
     const account = accountFrom(url);
 
     if (url.pathname === "/api/accounts") {

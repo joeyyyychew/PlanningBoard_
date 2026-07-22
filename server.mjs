@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { readFile, writeFile, mkdir, appendFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,15 +43,22 @@ const INBOX_ANALYSIS_RULES = {
 
 async function loadEnv() {
   const text = await readFile(join(ROOT, ".env"), "utf8").catch(error => error.code === "ENOENT" ? "" : Promise.reject(error));
-  return Object.fromEntries(text.split(/\r?\n/).filter(Boolean).map(line => {
+  const fileEnv = Object.fromEntries(text.split(/\r?\n/).filter(Boolean).map(line => {
     const i = line.indexOf("=");
     return [line.slice(0, i), line.slice(i + 1)];
   }));
+  return { ...fileEnv, ...process.env };
 }
 
 const env = await loadEnv();
 const EVENT_INGEST_SECRET = env.EVENT_INGEST_KEY || env.MANYCHAT_EVENT_KEY || "";
 const PORT = Number(env.PORT || 4173);
+const AUTH_ENABLED = /^(1|true|yes)$/i.test(env.AUTH_ENABLED || "") || Boolean(env.AUTH_PASSWORD || env.AUTH_PASSWORD_HASH);
+const AUTH_EMAIL = String(env.AUTH_EMAIL || "").trim().toLowerCase();
+const AUTH_PASSWORD = String(env.AUTH_PASSWORD || "");
+const AUTH_PASSWORD_HASH = String(env.AUTH_PASSWORD_HASH || "").replace(/^sha256:/, "").trim().toLowerCase();
+const AUTH_COOKIE = "scale_story_session";
+const AUTH_SESSIONS = new Map();
 const API = "https://api.manychat.com";
 const ACCOUNTS = {
   fb108701968299986: {
@@ -77,6 +85,75 @@ function accountFrom(url) {
   const id = url.searchParams.get("account") || "fb108701968299986";
   if (!ACCOUNTS[id]) throw new Error("Unknown ManyChat account");
   return { id, ...ACCOUNTS[id] };
+}
+
+function parseCookies(header = "") {
+  return Object.fromEntries(String(header).split(";").map(part => {
+    const i = part.indexOf("=");
+    if (i < 0) return null;
+    return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())];
+  }).filter(Boolean));
+}
+
+function sha256(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function safeEqual(a = "", b = "") {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function isAuthenticated(req) {
+  if (!AUTH_ENABLED) return true;
+  const token = parseCookies(req.headers.cookie || "")[AUTH_COOKIE];
+  if (!token) return false;
+  const session = AUTH_SESSIONS.get(token);
+  if (!session || session.expiresAt < Date.now()) {
+    AUTH_SESSIONS.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function publicAuthPath(pathname) {
+  return pathname === "/login" ||
+    pathname === "/login.html" ||
+    pathname === "/api/auth/status" ||
+    pathname === "/api/auth/login" ||
+    pathname === "/api/auth/logout" ||
+    pathname === "/api/manychat-event" ||
+    pathname === "/api/events" ||
+    pathname === "/favicon.ico";
+}
+
+function requireAuth(req, res, url) {
+  if (!AUTH_ENABLED || publicAuthPath(url.pathname) || isAuthenticated(req)) return true;
+  if (url.pathname.startsWith("/api/")) {
+    json(res, 401, { ok: false, error: "Login required" });
+    return false;
+  }
+  const next = `${url.pathname}${url.search}`;
+  res.writeHead(302, {
+    Location: `/login?next=${encodeURIComponent(next)}`,
+    "Cache-Control": "no-store"
+  });
+  res.end();
+  return false;
+}
+
+function loginCookie(token) {
+  return `${AUTH_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`;
+}
+
+function logoutCookie() {
+  return `${AUTH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+function checkPassword(password) {
+  if (AUTH_PASSWORD_HASH) return safeEqual(sha256(password), AUTH_PASSWORD_HASH);
+  return AUTH_PASSWORD ? safeEqual(password, AUTH_PASSWORD) : false;
 }
 
 async function manychat(account, path, options = {}) {
@@ -1004,6 +1081,54 @@ const server = http.createServer(async (req, res) => {
       return res.end();
     }
     const url = new URL(req.url, `http://${req.headers.host}`);
+
+    if (url.pathname === "/api/auth/status" && req.method === "GET") {
+      return json(res, 200, {
+        enabled: AUTH_ENABLED,
+        authenticated: isAuthenticated(req),
+        email: AUTH_EMAIL
+      });
+    }
+
+    if (url.pathname === "/api/auth/login" && req.method === "POST") {
+      if (!AUTH_ENABLED) return json(res, 400, { ok: false, error: "Login 还没启用：请先设置 AUTH_PASSWORD。" });
+      const request = await readBody(req);
+      const email = String(request.email || "").trim().toLowerCase();
+      const password = String(request.password || "");
+      if (AUTH_EMAIL && email !== AUTH_EMAIL) return json(res, 401, { ok: false, error: "Email 不正确。" });
+      if (!checkPassword(password)) return json(res, 401, { ok: false, error: "Password 不正确。" });
+      const token = randomBytes(32).toString("hex");
+      AUTH_SESSIONS.set(token, {
+        email: email || AUTH_EMAIL || "dashboard-user",
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      });
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Set-Cookie": loginCookie(token)
+      });
+      return res.end(JSON.stringify({ ok: true }));
+    }
+
+    if (url.pathname === "/api/auth/logout" && req.method === "POST") {
+      const token = parseCookies(req.headers.cookie || "")[AUTH_COOKIE];
+      if (token) AUTH_SESSIONS.delete(token);
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Set-Cookie": logoutCookie()
+      });
+      return res.end(JSON.stringify({ ok: true }));
+    }
+
+    if (url.pathname === "/login" || url.pathname === "/login.html") {
+      const content = await readFile(join(ROOT, "login.html"));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      return res.end(content);
+    }
+
+    if (!requireAuth(req, res, url)) return;
+
     const account = accountFrom(url);
 
     if (url.pathname === "/api/accounts") {
@@ -1430,7 +1555,8 @@ const server = http.createServer(async (req, res) => {
       "/order-key-in.html": embedded ? "order-key-in.html" : "dashboard.html",
       "/broadcast-planning": embedded ? "broadcast-planning.html" : "dashboard.html",
       "/broadcast-planning.html": embedded ? "broadcast-planning.html" : "dashboard.html",
-      "/manychat-setup": "manychat-setup.html"
+      "/manychat-setup": "manychat-setup.html",
+      "/auth-client.js": "auth-client.js"
     };
     const requested = routeFiles[url.pathname] || url.pathname.slice(1);
     const file = normalize(join(ROOT, requested));
