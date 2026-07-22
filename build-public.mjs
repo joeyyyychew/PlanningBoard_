@@ -126,7 +126,10 @@ async function checkPassword(env = {}, password = "") {
 async function requireAuth(request, env, url) {
   if (!authEnabled(env) || publicAuthPath(url.pathname) || await isAuthenticated(request, env)) return null;
   if (url.pathname.startsWith("/api/")) return json({ ok: false, error: "Login required" }, 401);
-  return Response.redirect("/login?next=" + encodeURIComponent(url.pathname + url.search), 302);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: "/login?next=" + encodeURIComponent(url.pathname + url.search) }
+  });
 }
 
 function accountFrom(url) {
@@ -147,7 +150,10 @@ function serveAsset(pathname) {
     if (cleanPathname === "/order-key-in.html") url.searchParams.set("view", "order-key-in");
     else if (cleanPathname === "/broadcast-planning.html") url.searchParams.set("view", "broadcast-planning");
     else url.searchParams.set("view", url.searchParams.get("account") ? "analysis-account" : "analysis-overview");
-    return Response.redirect(url.pathname + url.search, 302);
+    return new Response(null, {
+      status: 302,
+      headers: { Location: url.pathname + url.search }
+    });
   }
   const routes = {
     "/": "/dashboard.html",

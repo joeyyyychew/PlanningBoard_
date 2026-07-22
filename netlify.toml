@@ -1,0 +1,10 @@
+[build]
+command = "node build-public.mjs"
+publish = "dist"
+
+[build.environment]
+NODE_VERSION = "20"
+
+[[edge_functions]]
+function = "dashboard"
+path = "/*"
