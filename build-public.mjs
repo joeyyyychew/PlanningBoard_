@@ -15,9 +15,12 @@ const files = [
   "sidebar-unified.css",
   "embedded-frame.css",
   "date-picker-unified.js",
-  "custom-select.js",
-  "data/reports.json"
+  "custom-select.js"
 ];
+
+const optionalJsonFiles = {
+  "data/reports.json": {}
+};
 
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -41,6 +44,20 @@ for (const file of files) {
   const body = await readFile(file, "utf8");
   assets[publicPath(file)] = {
     mime: mime[extname(file)] || "application/octet-stream",
+    body
+  };
+}
+
+for (const [file, fallback] of Object.entries(optionalJsonFiles)) {
+  let body;
+  try {
+    body = await readFile(file, "utf8");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+    body = JSON.stringify(fallback);
+  }
+  assets[publicPath(file)] = {
+    mime: "application/json; charset=utf-8",
     body
   };
 }
