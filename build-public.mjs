@@ -67,9 +67,9 @@ const reports = JSON.parse(assets["/data/reports.json"]?.body || "{}");
 const worker = String.raw`const ASSETS = ${JSON.stringify(assets)};
 const REPORTS = ${JSON.stringify(reports)};
 const ACCOUNTS = {
-  fb108701968299986: { name: "Scalestory - 天然胶原蛋白", inbox: "https://app.manychat.com/fb108701968299986/chat" },
-  fb1177107122151553: { name: "鳞记 - 天然胶原蛋白", inbox: "https://app.manychat.com/fb1177107122151553/chat" },
-  fb701760706347255: { name: "鳞记 SG", inbox: "https://app.manychat.com/fb701760706347255/chat" }
+  fb108701968299986: { name: "Scalestory - 天然胶原蛋白", inbox: "https://app.manychat.com/fb108701968299986/chat", tags: { pending: ["PENDING"], afterPayment: [] } },
+  fb1177107122151553: { name: "鳞记 - 天然胶原蛋白", inbox: "https://app.manychat.com/fb1177107122151553/chat", tags: { pending: ["PENDING", "Pending"], afterPayment: [] } },
+  fb701760706347255: { name: "鳞记 SG", inbox: "https://app.manychat.com/fb701760706347255/chat", tags: { pending: ["Pending Payment 【SG】"], afterPayment: [] } }
 };
 const ORDER_SHEET_URL = "https://docs.google.com/spreadsheets/d/1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ/edit";
 const BROADCAST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470";
@@ -152,6 +152,12 @@ async function requireAuth(request, env, url) {
 function accountFrom(url) {
   const id = url.searchParams.get("account") || "fb108701968299986";
   return ACCOUNTS[id] ? { id, ...ACCOUNTS[id] } : { id: "fb108701968299986", ...ACCOUNTS.fb108701968299986 };
+}
+
+function manychatKeyFor(env = {}, accountId = "") {
+  if (accountId === "fb1177107122151553") return env.MANYCHAT_API_KEY_FB1177107122151553 || "";
+  if (accountId === "fb701760706347255") return env.MANYCHAT_API_KEY_FB701760706347255 || "";
+  return env.MANYCHAT_API_KEY || "";
 }
 
 function serveAsset(pathname) {
@@ -402,6 +408,20 @@ async function forwardWebhookPost(env, eventType, payload) {
   return json(result, response.status);
 }
 
+async function forwardManyChatEvent(request, env, url, account) {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted event database 尚未连接。" }, 503);
+  const suppliedKey = url.searchParams.get("key") || request.headers.get("x-ingest-key") || "";
+  if (env.EVENT_INGEST_KEY && suppliedKey !== env.EVENT_INGEST_KEY) {
+    return json({ ok: false, error: "Unauthorized" }, 401);
+  }
+  const payload = await request.json().catch(() => ({}));
+  const accountId = payload.account || url.searchParams.get("account") || account.id;
+  if (!ACCOUNTS[accountId]) return json({ ok: false, error: "Valid account required" }, 400);
+  const eventType = payload.event_type || url.searchParams.get("event_type") || "";
+  if (!eventType) return json({ ok: false, error: "event_type required" }, 400);
+  return forwardWebhookPost(env, eventType, { ...payload, account: accountId, event_type: eventType });
+}
+
 function combinedReport(date) {
   return Object.entries(ACCOUNTS).map(([id, account]) => {
     const report = REPORTS[id]?.[date] || {};
@@ -472,7 +492,16 @@ export default {
     const account = accountFrom(url);
 
     if (url.pathname === "/api/accounts") {
-      return json({ accounts: Object.entries(ACCOUNTS).map(([id, item]) => ({ id, name: item.name, inbox: item.inbox, connected: false })) });
+      return json({ accounts: Object.entries(ACCOUNTS).map(([id, item]) => ({ id, name: item.name, inbox: item.inbox, connected: Boolean(manychatKeyFor(env, id)) })) });
+    }
+    if (url.pathname === "/api/meta") {
+      return json({
+        connected: Boolean(manychatKeyFor(env, account.id)),
+        account: { id: account.id, name: account.name, timezone: "Asia/Kuala_Lumpur" },
+        expectedTags: account.tags,
+        tags: [],
+        fields: []
+      });
     }
     if (url.pathname === "/api/reports") {
       const date = url.searchParams.get("date");
@@ -531,14 +560,20 @@ export default {
       const payload = await request.json().catch(() => ({}));
       return forwardWebhookPost(env, "order_update", payload);
     }
+    if (url.pathname === "/api/order-entry/delete" && request.method === "POST") {
+      const payload = await request.json().catch(() => ({}));
+      return forwardWebhookPost(env, "order_delete", payload);
+    }
     if (url.pathname === "/api/order-entry" || url.pathname === "/api/broadcast-plan") {
       const payload = await request.json().catch(() => ({}));
       const eventType = url.pathname === "/api/order-entry" ? "order_entry" : "broadcast_plan_update";
       return forwardWebhookPost(env, eventType, payload);
     }
+    if (url.pathname === "/api/manychat-event" && request.method === "POST") {
+      return forwardManyChatEvent(request, env, url, account);
+    }
     if (url.pathname === "/api/manychat-event") {
-      if (!env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted event database 尚未连接。" }, 503);
-      return json({ ok: true, accepted: true, note: "Event endpoint is reachable. Durable database connection is the next setup step." }, 202);
+      return json({ ok: true, accepted: true, note: "Event endpoint is reachable. Use POST with event_type to save events." }, 202);
     }
     return serveAsset(url.pathname + url.search);
   }
