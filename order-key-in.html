@@ -704,6 +704,7 @@
       const keys = [];
       if (order.sheet && order.row) keys.push(`row:${order.sheet}:${order.row}`);
       if (order.id) keys.push(`id:${order.id}`);
+      if (keys.length) return keys;
       const name = String(order.name || order.order?.["P · Name"] || "").trim().toLowerCase();
       const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
       const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");

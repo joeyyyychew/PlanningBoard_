@@ -259,10 +259,11 @@ function orderRecordSignature_(record) {
 function removeOrderRecord_(dateKey, record) {
   if (!dateKey) return;
   const signature = orderRecordSignature_(record);
+  const hasExactKey = String(record.id || '') || (String(record.sheet || '') && String(record.row || ''));
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
     const sameId = String(item.id || '') === String(record.id || '');
     const sameRow = String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
-    const sameSignature = signature !== '||||' && orderRecordSignature_(item) === signature;
+    const sameSignature = !hasExactKey && signature !== '||||' && orderRecordSignature_(item) === signature;
     return !(sameId || sameRow || sameSignature);
   });
   saveOrderEntriesStore_(dateKey, entries);
