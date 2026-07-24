@@ -239,8 +239,10 @@ function upsertOrderRecord_(record) {
   const dateKey = record.dateKey || orderDateKey_(record.date);
   record.source = 'dashboard';
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    return !(String(item.id || '') === String(record.id || '') ||
-      (String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '')));
+    const sameId = String(record.id || '') && String(item.id || '') === String(record.id || '');
+    const sameRow = String(record.sheet || '') && String(record.row || '') &&
+      String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
+    return !(sameId || sameRow);
   });
   entries.unshift(record);
   saveOrderEntriesStore_(dateKey, entries.slice(0, 500));
@@ -261,8 +263,9 @@ function removeOrderRecord_(dateKey, record) {
   const signature = orderRecordSignature_(record);
   const hasExactKey = String(record.id || '') || (String(record.sheet || '') && String(record.row || ''));
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    const sameId = String(item.id || '') === String(record.id || '');
-    const sameRow = String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
+    const sameId = String(record.id || '') && String(item.id || '') === String(record.id || '');
+    const sameRow = String(record.sheet || '') && String(record.row || '') &&
+      String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
     const sameSignature = !hasExactKey && signature !== '||||' && orderRecordSignature_(item) === signature;
     return !(sameId || sameRow || sameSignature);
   });

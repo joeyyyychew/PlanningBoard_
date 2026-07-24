@@ -704,15 +704,6 @@
       const keys = [];
       if (order.sheet && order.row) keys.push(`row:${order.sheet}:${order.row}`);
       if (order.id) keys.push(`id:${order.id}`);
-      if (keys.length) return keys;
-      const name = String(order.name || order.order?.["P · Name"] || "").trim().toLowerCase();
-      const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
-      const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
-      const phone = String(order.phone || order.order?.["Q · Phone"] || "").replace(/\D/g, "");
-      const product = String(order.product || order.order?.["N · Variant"] || order.order?.["O · Remark"] || "").trim().toLowerCase();
-      if (dateKey && name && total && (phone || product)) {
-        keys.push(`sig:${dateKey}:${name}:${phone}:${total}:${product}`);
-      }
       return keys;
     }
 
@@ -1365,8 +1356,10 @@
       }, 0);
       confirmedTotal.innerHTML = `<b>Total Sales</b> RM ${totalAmount.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
       confirmedOrders.innerHTML = items.length
-        ? items.map(order => `
-          <div class="order-item" data-order-id="${escapeHtml(order.id)}" data-order-row="${escapeHtml(order.row)}" data-order-sheet="${escapeHtml(order.sheet)}" data-order-date-key="${escapeHtml(order.dateKey)}">
+        ? items.map(order => {
+          const previewIndex = previewOrders.indexOf(order);
+          return `
+          <div class="order-item" data-order-index="${previewIndex}" data-order-id="${escapeHtml(order.id)}" data-order-row="${escapeHtml(order.row)}" data-order-sheet="${escapeHtml(order.sheet)}" data-order-date-key="${escapeHtml(order.dateKey)}">
             <div>
               <b>${escapeHtml(order.name)} ${order.phone ? `· ${escapeHtml(order.phone)}` : ""}</b>
               <span>${escapeHtml(order.product)}</span>
@@ -1379,14 +1372,16 @@
               <button class="order-delete" type="button" data-delete-order aria-label="删除 ${escapeHtml(order.name)} 的订单" title="删除订单">🗑</button>
             </div>
           </div>
-        `).join("")
+        `}).join("")
         : `<div class="empty-orders">${orderRecordsLoaded.has(selected) ? "这个日期还没有确认进单记录。" : "正在读取 Google Sheet 记录；如果暂时读不到，会先显示本机保存的记录。"}</div>`;
     }
 
     function findOrderFromItem(item) {
+      const index = Number(item.dataset.orderIndex);
+      if (Number.isInteger(index) && previewOrders[index]) return previewOrders[index];
       return previewOrders.find(record =>
-        String(record.id) === String(item.dataset.orderId) ||
-        (String(record.sheet) === String(item.dataset.orderSheet) && String(record.row) === String(item.dataset.orderRow))
+        (item.dataset.orderId && String(record.id) === String(item.dataset.orderId)) ||
+        (item.dataset.orderSheet && item.dataset.orderRow && String(record.sheet) === String(item.dataset.orderSheet) && String(record.row) === String(item.dataset.orderRow))
       );
     }
 
@@ -1492,8 +1487,8 @@
       const hasSheetRow = order.sheet && order.row;
       const removeLocal = () => {
         markOrderDeleted(order);
-        const deletedKeys = new Set(orderDeleteKeys(order));
-        previewOrders = previewOrders.filter(record => !orderDeleteKeys(record).some(key => deletedKeys.has(key)));
+        const targetIndex = previewOrders.indexOf(order);
+        previewOrders = previewOrders.filter((record, index) => index !== targetIndex);
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
         hasConfirmedOrder = previewOrders.length > 0;
         renderConfirmedOrders();
