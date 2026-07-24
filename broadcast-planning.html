@@ -716,6 +716,31 @@
       padding:14px 16px !important;
       border-radius:20px !important;
     }
+    .plan-row.completed {
+      background:linear-gradient(135deg,rgba(156,157,155,.30),rgba(218,220,221,.46)) !important;
+      border-color:rgba(156,157,155,.55) !important;
+      color:rgba(32,32,32,.68) !important;
+      box-shadow:none !important;
+    }
+    .plan-row.completed:hover {
+      border-color:rgba(156,157,155,.65) !important;
+      box-shadow:0 8px 20px rgba(32,32,32,.06) !important;
+    }
+    .plan-row.completed .tag,
+    .plan-row.completed .page-tag,
+    .plan-row.completed .done-toggle,
+    .plan-row.completed .copy-toggle,
+    .plan-row.completed .edit-toggle,
+    .plan-row.completed .pax-input {
+      background:rgba(218,220,221,.70) !important;
+      border-color:rgba(156,157,155,.42) !important;
+      color:rgba(32,32,32,.58) !important;
+    }
+    .plan-row.completed .amount,
+    .plan-row.completed .title strong,
+    .plan-row.completed .date strong {
+      color:rgba(32,32,32,.62) !important;
+    }
     .plan-row > * { min-width:0 !important; }
     .title strong,
     .title .meta {
@@ -749,6 +774,16 @@
       min-width:0 !important;
       padding:8px 6px !important;
       text-align:center !important;
+    }
+    .event.completed {
+      background:linear-gradient(135deg,rgba(156,157,155,.30),rgba(218,220,221,.48)) !important;
+      border-left-color:rgba(156,157,155,.88) !important;
+      color:rgba(32,32,32,.62) !important;
+      box-shadow:none !important;
+    }
+    .event.completed small,
+    .event.completed .event-tags em {
+      color:rgba(32,32,32,.55) !important;
     }
     
   </style>
@@ -1297,7 +1332,7 @@
         const catClass = row.category === "NEW" ? "new" : "existing";
         const pageClass = row.page === "SG Page" ? "sg" : row.page === "Old Main Page" ? "old-main" : "knee";
         return `
-          <div class="plan-row">
+          <div class="plan-row ${row.done === true ? "completed" : ""}">
             <div class="date"><strong>${fmt.format(d)}</strong><span>${weekday.format(d)}${row.time ? ` · ${row.time}` : ""}</span></div>
             <div class="title"><strong>${row.title}</strong><div class="meta">${row.audience || "—"}</div></div>
             <div class="tag ${catClass}">${row.category || "—"}</div>
@@ -1342,7 +1377,7 @@
             ${cell.rows.length ? cell.rows.map(row => {
               const categoryClass = row.category === "NEW" ? "new" : "existing";
               const pageClass = row.page === "SG Page" ? "sg" : row.page === "Old Main Page" ? "old-main" : "knee";
-              return `<button class="event ${categoryClass} ${pageClass}" data-index="${row.index}" type="button"><b>${escapeHtml(row.title)}</b><small>${escapeHtml(row.audience || "—")}</small><span class="event-tags"><em class="event-cat ${categoryClass}">${escapeHtml(row.category || "—")}</em><em class="event-page ${pageClass}">${escapeHtml((row.page || "—").replace(" Page",""))}</em></span></button>`;
+              return `<button class="event ${categoryClass} ${pageClass} ${row.done === true ? "completed" : ""}" data-index="${row.index}" type="button"><b>${escapeHtml(row.title)}</b><small>${escapeHtml(row.audience || "—")}</small><span class="event-tags"><em class="event-cat ${categoryClass}">${escapeHtml(row.category || "—")}</em><em class="event-page ${pageClass}">${escapeHtml((row.page || "—").replace(" Page",""))}</em></span></button>`;
             }).join("") : `<div class="no-event">No Broadcast</div>`}
           </div>`;
       }).join("");
