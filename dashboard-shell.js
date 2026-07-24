@@ -13,7 +13,6 @@
   }
 
   function currentDate(target = activeTarget) {
-    if (target === "analysis-overview" || target === "analysis-account") return todayDate();
     return params.get("date") || todayDate();
   }
 
@@ -111,5 +110,12 @@
       ? "broadcast-planning"
       : "";
   const initialTarget = params.get("view") || pathTarget || (accounts.has(params.get("account")) ? "analysis-account" : "analysis-overview");
+  if (initialTarget === "analysis-overview" || initialTarget === "analysis-account") {
+    const today = todayDate();
+    params.set("date", today);
+    const next = new URL(window.location.href);
+    next.searchParams.set("date", today);
+    history.replaceState(history.state || {}, "", next);
+  }
   setActive(initialTarget, params.get("account") || "", false);
 })();

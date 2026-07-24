@@ -452,6 +452,7 @@
     const orderSummariesByDate = {};
     const urlParams = new URLSearchParams(location.search);
     const requestedAccount = urlParams.get("account");
+    const embeddedMode = urlParams.get("embedded") === "1";
     let currentView = accounts[requestedAccount] ? "account" : "overview";
     let currentAccount = accounts[requestedAccount]
       ? requestedAccount
@@ -462,7 +463,10 @@
       timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit"
     }).formatToParts(new Date()).reduce((all, part) => ({...all, [part.type]: part.value}), {});
     const todayDate = `${klTodayParts.year}-${klTodayParts.month}-${klTodayParts.day}`;
-    dateInput.value = todayDate;
+    const requestedDate = urlParams.get("date");
+    dateInput.value = embeddedMode && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "")
+      ? requestedDate
+      : todayDate;
     const dateLabel = document.getElementById("dateLabel");
     const datePopover = document.getElementById("datePopover");
     const datePickerYearEl = document.getElementById("datePickerYear");
@@ -543,6 +547,23 @@
       const all = Object.values(byAccount);
       return {total: all.reduce((sum, item) => sum + item.total, 0), count: all.reduce((sum, item) => sum + item.count, 0), byAccount};
     }
+    const deletedOrderEntriesKey = "orderSheetDeletedOrdersV1";
+    function deletedOrderKeys() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(deletedOrderEntriesKey) || "[]").filter(Boolean));
+      } catch {
+        return new Set();
+      }
+    }
+    function orderDeleteKeys(order = {}) {
+      if (order.sheet && order.row) return [`row:${order.sheet}:${order.row}`];
+      if (order.id) return [`id:${order.id}`];
+      return [];
+    }
+    function isDeletedOrderEntry(order = {}) {
+      const deleted = deletedOrderKeys();
+      return orderDeleteKeys(order).some(key => deleted.has(key));
+    }
     function orderSummaryFor(date) {
       return orderSummariesByDate[date] || summarizeOrderEntries([]);
     }
@@ -551,7 +572,7 @@
         const response = await apiFetch(`/api/order-entries?date=${encodeURIComponent(date)}`);
         if (!response.ok) throw new Error("Order entries failed");
         const payload = await response.json();
-        orderSummariesByDate[date] = summarizeOrderEntries(payload.entries || []);
+        orderSummariesByDate[date] = summarizeOrderEntries((payload.entries || []).filter(entry => !isDeletedOrderEntry(entry)));
       } catch {
         orderSummariesByDate[date] = orderSummariesByDate[date] || summarizeOrderEntries([]);
       }
@@ -609,6 +630,9 @@
       datePickerYear = Number(value.slice(0, 4));
       datePickerMonth = Number(value.slice(5, 7));
       updateDateLabel();
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "dashboard-date-change", value }, window.location.origin);
+      }
       render(dateInput.value);
       if (currentView === "overview") connectAllAccounts();
       else refreshLive(dateInput.value);
