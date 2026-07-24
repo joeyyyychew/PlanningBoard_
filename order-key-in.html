@@ -703,8 +703,7 @@
     function orderDeleteKeys(order = {}) {
       return [
         order.id ? `id:${order.id}` : "",
-        order.sheet && order.row ? `row:${order.sheet}:${order.row}` : "",
-        order.dateKey && order.name && order.total ? `order:${order.dateKey}:${String(order.name).trim().toLowerCase()}:${String(order.total).trim()}` : ""
+        order.sheet && order.row ? `row:${order.sheet}:${order.row}` : ""
       ].filter(Boolean);
     }
 
