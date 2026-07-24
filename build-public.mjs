@@ -224,6 +224,18 @@ function isButtonLike(text = "") {
     /^(我想了解更多.*|我想了解(养颜|护膝|护肤|关节)?系列～?|开始了解鳞记鱼鳞冻|了解这个月配套|can share more info\??|can i make a purchase\??|能帮我查看一件商品的价格吗？?|我要了解最新优惠|了解collagen drink|我要免费试吃|新品荔枝玫瑰|rm 1promotion|5月闪电优惠|西马|东马|新加坡|马来西亚|west malaysia|east malaysia|singapore|sg)$/i.test(plain);
 }
 
+function isSyntheticPerson(person = {}) {
+  const id = String(person.id || person.contact_id || "").trim();
+  const name = String(person.name || person.contact_name || "").trim();
+  const note = String(person.note || person.text || "").trim();
+  const hasTemplatePlaceholder = [id, name, note].some(value => /\{\{[^}]+\}\}/.test(value));
+  return /^default_reply_contact$/i.test(id) ||
+    hasTemplatePlaceholder ||
+    /^whatsapp customer(?:\s+\d+)?$/i.test(name) ||
+    /^whatsapp_message$/i.test(note) ||
+    /^(Webhook：)?顾客有真实留言$/i.test(note);
+}
+
 function isAudio(value = "") {
   return /\.(ogg|mp3|m4a|wav|aac)(\?|$)/i.test(String(value || "")) || /audioclip|voice/i.test(String(value || ""));
 }
@@ -274,25 +286,6 @@ function personFromWebhook(person = {}, accountId, fallbackNote = "") {
   const name = String(person.name || person.full_name || person.contact_name || id || "Unknown").trim();
   const directInbox = /^\d+$/.test(id) ? "https://app.manychat.com/" + accountId + "/chat/" + id : "";
   const suppliedInbox = person.inbox || person.inbox_url || person.live_chat_url || "";
-  const afterPaymentCount = Number(counts.after_payment || 0);
-  const pmEventCount = Number(counts.pm || 0) +
-    Number(counts.new_pm || 0) +
-    Number(counts.pm_subscribed || 0) +
-    (contacts.pm || []).length +
-    (contacts.new_pm || []).length +
-    (contacts.pm_subscribed || []).length;
-  const trackedActivityCount = events.length +
-    Number(counts.customer_message || 0) +
-    Number(counts.active || 0) +
-    Number(counts.pending || 0) +
-    Number(counts.after_payment || 0);
-  const syncWarnings = [];
-  if (trackedActivityCount > 0 && pmEventCount === 0) {
-    syncWarnings.push("PM 事件还没有接上：这个 Channel 有收到 ManyChat 事件，但没有收到 Subscribed on / PM 名单，所以 RUN 不能准确统计当日 PM 人数。请在顾客进入的 Default Reply / 入口 Flow 加 pm_subscribed External Request。");
-  }
-  if (afterPaymentCount > orders.length) {
-    syncWarnings.push("After Payment 收到 " + afterPaymentCount + " 个事件，但只有 " + orders.length + " 位顾客名单；请检查 ManyChat External Request 是否有带 contact_id/name/inbox。");
-  }
   return {
     id: id || name,
     name,
@@ -318,18 +311,38 @@ function reportFromWebhook(live, accountId, fallback = null) {
   const events = Array.isArray(live?.events) ? live.events : [];
   const hasData = Boolean(live?.updated_at) || events.length || Object.values(counts).some(value => Number(value || 0) > 0);
   if (!hasData) return fallback || null;
-  const pm = uniquePeople([...(contacts.pm || []), ...(contacts.new_pm || []), ...(contacts.pm_subscribed || [])].map(person => personFromWebhook(person, accountId, "Subscribed on 当日")));
-  const pending = uniquePeople([...(contacts.pending || [])].map(person => personFromWebhook(person, accountId, "今天加入 Pending")));
-  const orders = uniquePeople([...(contacts.after_payment || [])].map(person => personFromWebhook(person, accountId, "完成订单 / After Payment")));
+  const pm = uniquePeople([...(contacts.pm || []), ...(contacts.new_pm || []), ...(contacts.pm_subscribed || [])].map(person => personFromWebhook(person, accountId, "Subscribed on 当日")).filter(person => !isSyntheticPerson(person)));
+  const pending = uniquePeople([...(contacts.pending || [])].map(person => personFromWebhook(person, accountId, "今天加入 Pending")).filter(person => !isSyntheticPerson(person)));
+  const orders = uniquePeople([...(contacts.after_payment || [])].map(person => personFromWebhook(person, accountId, "完成订单 / After Payment")).filter(person => !isSyntheticPerson(person)));
   const activeFromContacts = [...(contacts.active || []), ...(contacts.customer_message || [])]
     .map(person => personFromWebhook(person, accountId))
-    .filter(person => person.note && !isButtonLike(person.note));
+    .filter(person => !isSyntheticPerson(person) && person.note && !isButtonLike(person.note));
   const activeFromEvents = events
     .filter(event => String(event.type || "").toLowerCase().replace(/[ -]+/g, "_") === "customer_message")
     .map(event => personFromWebhook({ id: event.contact_id, name: event.name, inbox: event.inbox, text: event.text, tags: event.tags }, accountId))
-    .filter(person => person.note && !isButtonLike(person.note));
+    .filter(person => !isSyntheticPerson(person) && person.note && !isButtonLike(person.note));
   const active = uniquePeople([...activeFromContacts, ...activeFromEvents]);
   const pendingAfterOrders = pending.filter(person => !orders.some(order => samePerson(person, order)));
+  const afterPaymentCount = Number(counts.after_payment || 0);
+  const pmEventCount = Number(counts.pm || 0) +
+    Number(counts.new_pm || 0) +
+    Number(counts.pm_subscribed || 0) +
+    (contacts.pm || []).length +
+    (contacts.new_pm || []).length +
+    (contacts.pm_subscribed || []).length +
+    pm.length;
+  const trackedActivityCount = events.length +
+    Number(counts.customer_message || 0) +
+    Number(counts.active || 0) +
+    Number(counts.pending || 0) +
+    Number(counts.after_payment || 0);
+  const syncWarnings = [];
+  if (trackedActivityCount > 0 && pmEventCount === 0) {
+    syncWarnings.push("PM 事件还没有接上：这个 Channel 有收到 ManyChat 事件，但没有收到 Subscribed on / PM 名单，所以 RUN 不能准确统计当日 PM 人数。请在顾客进入的 Default Reply / 入口 Flow 加 pm_subscribed External Request。");
+  }
+  if (afterPaymentCount > orders.length) {
+    syncWarnings.push("After Payment 收到 " + afterPaymentCount + " 个事件，但只有 " + orders.length + " 位顾客名单；请检查 ManyChat External Request 是否有带 contact_id/name/inbox。");
+  }
   const blockerMap = new Map();
   active.forEach(person => {
     if (orders.some(order => samePerson(person, order))) return;
