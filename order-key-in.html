@@ -749,6 +749,11 @@
       "鳞记 - 天然胶原蛋白": "Main Front",
       "鳞记 SG": "SG 997 WA"
     };
+    const accountPageMap = {
+      fb108701968299986: "Scalestory - 天然胶原蛋白",
+      fb1177107122151553: "鳞记 - 天然胶原蛋白",
+      fb701760706347255: "鳞记 SG"
+    };
     const orderSheetGids = {
       0: "1376338968",
       1: "1263496879",
@@ -759,6 +764,7 @@
       6: "1222127904"
     };
     const spreadsheetId = "1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ";
+    if (accountPageMap[currentPreviewAccount]) page.value = accountPageMap[currentPreviewAccount];
     orderEntryDate.value = formatDateLabel(todayInputDate());
     confirmedDate.value = normalizeTypedOrderDate(orderEntryDate.value);
 
@@ -1205,6 +1211,8 @@
     }
 
     function buildOrderRecord(data, response = {}) {
+      const selectedPage = response.page || data["Page / Account"] || page.value;
+      const selectedChannel = response.channel || data["H · Channel / Chanel"] || pageChannelMap[selectedPage] || "";
       const productLine = [
         data["I · Classic BTL"] !== "-" ? `Classic ${data["I · Classic BTL"]} BTL` : "",
         data["J · Knee BTL"] !== "-" ? `Knee ${data["J · Knee BTL"]} BTL` : "",
@@ -1224,12 +1232,12 @@
         product: response.product || productLine,
         total: response.total || data["S · Total/RM"] || "",
         payment: response.payment || data["M · Payment Method"] || "",
-        page: response.page || page.value,
-        channel: response.channel || data["H · Channel / Chanel"],
+        page: selectedPage,
+        channel: selectedChannel,
         receipt: response.receipt || data["AK · Receipt Link"] || "",
         address: response.address || data["R · Address"] || "",
         source: response.source || "dashboard",
-        order: response.order || data
+        order: response.order || { ...data, "Page / Account": selectedPage, "H · Channel / Chanel": selectedChannel }
       };
     }
 
@@ -1304,7 +1312,11 @@
       const saved = [];
       try {
         for (let index = 0; index < ordersToWrite.length; index += 1) {
-          const data = ordersToWrite[index];
+          const data = {
+            ...ordersToWrite[index],
+            "Page / Account": page.value,
+            "H · Channel / Chanel": channelForPage()
+          };
           button.textContent = ordersToWrite.length > 1 ? `保存 ${index + 1}/${ordersToWrite.length}…` : "保存中…";
           const response = await fetch(`${apiBase}/api/order-entry`, {
             method: "POST",
