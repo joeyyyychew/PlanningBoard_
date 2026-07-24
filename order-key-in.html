@@ -1178,9 +1178,8 @@
     function render() {
       channelPreview.value = channelForPage();
       const entryDate = normalizeTypedOrderDate(orderEntryDate.value);
-      confirmedDate.value = entryDate;
       updateOrderDateLabel();
-      updateSheetButton(entryDate);
+      updateSheetButton(confirmedDate.value || entryDate);
       const blocks = splitOrderBlocks();
       if (!blocks.length) {
         simplePreview.innerHTML = "";
@@ -1508,7 +1507,14 @@
               sheet: order.sheet,
               row: order.row,
               oldDateKey: order.dateKey,
-              dateKey: order.dateKey
+              dateKey: order.dateKey,
+              name: order.name,
+              phone: order.phone,
+              total: order.total,
+              product: order.product,
+              page: order.page,
+              channel: order.channel,
+              order: order.order || {}
             })
           });
           const result = await response.json().catch(() => ({}));

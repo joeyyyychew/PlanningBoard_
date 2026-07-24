@@ -246,11 +246,24 @@ function upsertOrderRecord_(record) {
   saveOrderEntriesStore_(dateKey, entries.slice(0, 500));
 }
 
+function orderRecordSignature_(record) {
+  const order = record.order || {};
+  const dateKey = String(record.dateKey || orderDateKey_(record.date || value_(order, 'F · Date')) || '').trim();
+  const name = String(record.name || value_(order, 'P · Name') || '').trim().toLowerCase();
+  const phone = String(record.phone || value_(order, 'Q · Phone') || '').replace(/\D/g, '');
+  const total = String(record.total || value_(order, 'S · Total/RM') || '').replace(/[^0-9.]/g, '');
+  const product = String(record.product || value_(order, 'N · Variant') || value_(order, 'O · Remark') || '').trim().toLowerCase();
+  return [dateKey, name, phone, total, product].join('|');
+}
+
 function removeOrderRecord_(dateKey, record) {
   if (!dateKey) return;
+  const signature = orderRecordSignature_(record);
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    return !(String(item.id || '') === String(record.id || '') ||
-      (String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '')));
+    const sameId = String(item.id || '') === String(record.id || '');
+    const sameRow = String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
+    const sameSignature = signature !== '||||' && orderRecordSignature_(item) === signature;
+    return !(sameId || sameRow || sameSignature);
   });
   saveOrderEntriesStore_(dateKey, entries);
 }
