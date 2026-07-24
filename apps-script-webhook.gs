@@ -371,32 +371,9 @@ function ensureRows_(sheet, targetRow) {
 }
 
 function reserveOrderRow_(sheet, orderDate) {
-  const targetDate = normalizeOrderDate_(orderDate);
-  const last = lastFilledOrderRow_(sheet);
-  if (last < 2) return {row: 2, shifted: false};
-  const values = sheet.getRange(2, 4, last - 1, 16).getValues(); // D:S
-  let lastSame = 0;
-  let firstLater = 0;
-  values.forEach(function(row, index) {
-    if (!row.some(function(cell) { return String(cell || '').trim() !== ''; })) return;
-    const rowDate = normalizeOrderDate_(row[2]);
-    const rowNo = index + 2;
-    if (compareDateKey_(rowDate, targetDate) === 0) lastSame = rowNo;
-    if (!firstLater && compareDateKey_(rowDate, targetDate) > 0) firstLater = rowNo;
-  });
-  if (lastSame) {
-    const insertAt = lastSame + 1;
-    ensureRows_(sheet, insertAt);
-    sheet.insertRowsBefore(insertAt, 1);
-    return {row: insertAt, shifted: true, delta: 1};
-  }
-  if (firstLater) {
-    sheet.insertRowsBefore(firstLater, 3);
-    return {row: firstLater, shifted: true, delta: 3};
-  }
-  const insertAt = last + 3;
-  ensureRows_(sheet, insertAt);
-  return {row: insertAt, shifted: false};
+  const nextRow = nextOrderRow_(sheet, orderDate);
+  ensureRows_(sheet, nextRow);
+  return {row: nextRow, shifted: false};
 }
 
 function rowDSFromOrder_(order, orderNo) {

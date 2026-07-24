@@ -662,6 +662,7 @@
     const analysisToggle = document.getElementById("analysisToggle");
     const analysisChannels = document.getElementById("analysisChannels");
     const orderEntriesKey = "orderSheetConfirmedOrdersV2";
+    const deletedOrderEntriesKey = "orderSheetDeletedOrdersV1";
     const apiBase = location.protocol === "file:" ? "http://127.0.0.1:4173" : "";
     const orderUrlParams = new URLSearchParams(location.search);
     const currentPreviewAccount = orderUrlParams.get("account") || localStorage.getItem("manychatDashboardAccount") || "";
@@ -691,6 +692,33 @@
     let editingOrderId = "";
     let orderDatePickerYear = new Date().toLocaleString("en", {timeZone:"Asia/Kuala_Lumpur", year:"numeric"});
     let orderDatePickerMonth = new Date().toLocaleString("en", {timeZone:"Asia/Kuala_Lumpur", month:"numeric"});
+    function deletedOrderKeys() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(deletedOrderEntriesKey) || "[]").filter(Boolean));
+      } catch (error) {
+        return new Set();
+      }
+    }
+
+    function orderDeleteKeys(order = {}) {
+      return [
+        order.id ? `id:${order.id}` : "",
+        order.sheet && order.row ? `row:${order.sheet}:${order.row}` : "",
+        order.dateKey && order.name && order.total ? `order:${order.dateKey}:${String(order.name).trim().toLowerCase()}:${String(order.total).trim()}` : ""
+      ].filter(Boolean);
+    }
+
+    function isDeletedOrder(order) {
+      const deleted = deletedOrderKeys();
+      return orderDeleteKeys(order).some(key => deleted.has(key));
+    }
+
+    function markOrderDeleted(order) {
+      const deleted = deletedOrderKeys();
+      orderDeleteKeys(order).forEach(key => deleted.add(key));
+      localStorage.setItem(deletedOrderEntriesKey, JSON.stringify([...deleted]));
+    }
+
     function setAnalysisDropdown(open) {
       analysisToggle.classList.toggle("open", open);
       analysisToggle.setAttribute("aria-expanded", String(open));
@@ -1166,7 +1194,8 @@
     function mergeOrderRecords(records) {
       const normalized = records
         .map(normalizeOrderRecord)
-        .filter(order => order.source === "dashboard");
+        .filter(order => order.source === "dashboard")
+        .filter(order => !isDeletedOrder(order));
       const keys = new Set(normalized.map(order => `${order.id}|${order.sheet}|${order.row}`));
       previewOrders = [
         ...normalized,
@@ -1248,7 +1277,7 @@
         return;
       }
       const selected = confirmedDate.value;
-      const items = previewOrders.filter(order => order.dateKey === selected);
+      const items = previewOrders.filter(order => order.dateKey === selected && !isDeletedOrder(order));
       const totalAmount = items.reduce((sum, order) => {
         const amount = Number(String(order.total || "").replace(/[^0-9.]/g, ""));
         return sum + (Number.isFinite(amount) ? amount : 0);
@@ -1381,6 +1410,7 @@
       if (!order) return;
       const hasSheetRow = order.sheet && order.row;
       const removeLocal = () => {
+        markOrderDeleted(order);
         previewOrders = previewOrders.filter(record =>
           !(String(record.id) === String(order.id) || (String(record.sheet) === String(order.sheet) && String(record.row) === String(order.row)))
         );
