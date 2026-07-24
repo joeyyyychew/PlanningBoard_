@@ -8,12 +8,17 @@
   let activeTarget = "";
   let activeAccount = "";
 
-  function currentDate() {
-    return params.get("date") || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  function todayDate() {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  }
+
+  function currentDate(target = activeTarget) {
+    if (target === "analysis-overview" || target === "analysis-account") return todayDate();
+    return params.get("date") || todayDate();
   }
 
   function buildSrc(target, account) {
-    const date = currentDate();
+    const date = currentDate(target);
     if (target === "order-key-in") {
       return `/order-key-in?account=${encodeURIComponent(account || params.get("account") || "fb108701968299986")}&date=${encodeURIComponent(date)}&embedded=1`;
     }
@@ -31,11 +36,11 @@
     next.searchParams.set("view", target);
     if (account) next.searchParams.set("account", account);
     else if (target === "analysis-overview") next.searchParams.delete("account");
-    next.searchParams.set("date", currentDate());
+    next.searchParams.set("date", currentDate(target));
     params.set("view", target);
     if (account) params.set("account", account);
     else if (target === "analysis-overview") params.delete("account");
-    params.set("date", currentDate());
+    params.set("date", currentDate(target));
     history.pushState({ target, account }, "", next);
   }
 

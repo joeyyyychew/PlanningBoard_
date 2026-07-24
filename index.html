@@ -461,10 +461,8 @@
     const klTodayParts = new Intl.DateTimeFormat("en", {
       timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit"
     }).formatToParts(new Date()).reduce((all, part) => ({...all, [part.type]: part.value}), {});
-    const requestedDate = urlParams.get("date");
-    dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "")
-      ? requestedDate
-      : `${klTodayParts.year}-${klTodayParts.month}-${klTodayParts.day}`;
+    const todayDate = `${klTodayParts.year}-${klTodayParts.month}-${klTodayParts.day}`;
+    dateInput.value = todayDate;
     const dateLabel = document.getElementById("dateLabel");
     const datePopover = document.getElementById("datePopover");
     const datePickerYearEl = document.getElementById("datePickerYear");

@@ -920,6 +920,39 @@ async function readWebhookReport(accountId, date) {
   return body.report || null;
 }
 
+async function forwardManyChatEventToWebhook(raw, event) {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return null;
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("account", event.account);
+  const contact = event.contact || {};
+  const payload = {
+    ...raw,
+    account: event.account,
+    event_type: event.event_type,
+    event_date: event.date,
+    date: event.date,
+    occurred_at: event.occurred_at,
+    contact_id: raw.contact_id || raw.subscriber_id || contact.id || "",
+    name: raw.name || raw.contact_name || contact.name || "",
+    phone: raw.phone || contact.phone || "",
+    inbox: raw.inbox || raw.inbox_url || raw.chat_url || contact.inbox || "",
+    text: raw.text || raw.message || event.text || "",
+    tags: raw.tags || event.tags || [],
+    source: raw.source || raw.flow || raw.step || event.source || ""
+  };
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    redirect: "follow",
+    cache: "no-store"
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.ok) throw new Error(body.error || `Webhook ${response.status}`);
+  return body;
+}
+
 async function writeOrderEntry(payload) {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) {
     throw new Error("Google Sheet webhook 尚未连接");
@@ -1317,10 +1350,14 @@ const server = http.createServer(async (req, res) => {
       const event = normalizeManyChatEvent(raw, account.id);
       if (!event.account || !ACCOUNTS[event.account]) return json(res, 400, { ok: false, error: "Valid account required" });
       if (!event.event_type) return json(res, 400, { ok: false, error: "event_type required" });
-      await appendFile(EVENTS_FILE, `${JSON.stringify(event)}\n`);
+      let webhook = null;
+      if (env.WEBHOOK_URL && env.EVENT_INGEST_KEY) {
+        webhook = await forwardManyChatEventToWebhook(raw, event);
+      }
+      await appendFile(EVENTS_FILE, `${JSON.stringify(event)}\n`).catch(() => null);
       return json(res, 202, { ok: true, accepted: true, event: {
         id: event.id, account: event.account, date: event.date, event_type: event.event_type, contact: event.contact
-      }});
+      }, webhook });
     }
 
     if (url.pathname === "/api/rebuild-report" && req.method === "POST") {
@@ -1408,6 +1445,16 @@ const server = http.createServer(async (req, res) => {
           tags: ["{{tag.name}}"]
         },
         templates: {
+          pmSubscribed: {
+            event_type: "pm_subscribed",
+            account: account.id,
+            contact_id: "{{subscriber.id}}",
+            name: "{{subscriber.name}}",
+            phone: "{{subscriber.phone}}",
+            inbox: "{{inbox_link}}",
+            text: "广告入口 / Subscribed 当日",
+            source: "default_reply_or_entry_flow"
+          },
           customerMessage: {
             event_type: "customer_message",
             account: account.id,
