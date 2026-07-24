@@ -701,10 +701,9 @@
     }
 
     function orderDeleteKeys(order = {}) {
-      return [
-        order.id ? `id:${order.id}` : "",
-        order.sheet && order.row ? `row:${order.sheet}:${order.row}` : ""
-      ].filter(Boolean);
+      if (order.sheet && order.row) return [`row:${order.sheet}:${order.row}`];
+      if (order.id) return [`id:${order.id}`];
+      return [];
     }
 
     function isDeletedOrder(order) {
@@ -1410,9 +1409,8 @@
       const hasSheetRow = order.sheet && order.row;
       const removeLocal = () => {
         markOrderDeleted(order);
-        previewOrders = previewOrders.filter(record =>
-          !(String(record.id) === String(order.id) || (String(record.sheet) === String(order.sheet) && String(record.row) === String(order.row)))
-        );
+        const deletedKeys = new Set(orderDeleteKeys(order));
+        previewOrders = previewOrders.filter(record => !orderDeleteKeys(record).some(key => deletedKeys.has(key)));
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
         hasConfirmedOrder = previewOrders.length > 0;
         renderConfirmedOrders();
