@@ -720,6 +720,17 @@
       return orderDeleteKeys(order).some(key => deleted.has(key));
     }
 
+    function orderUniqueKey(order = {}) {
+      if (order.sheet && order.row) return `row:${order.sheet}:${order.row}`;
+      if (order.id) return `id:${order.id}`;
+      const name = String(order.name || order.order?.["P · Name"] || "").trim().toLowerCase();
+      const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
+      const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+      const phone = String(order.phone || order.order?.["Q · Phone"] || "").replace(/\D/g, "");
+      const product = String(order.product || order.order?.["N · Variant"] || order.order?.["O · Remark"] || "").trim().toLowerCase();
+      return `sig:${dateKey}:${name}:${phone}:${total}:${product}`;
+    }
+
     function markOrderDeleted(order) {
       const deleted = deletedOrderKeys();
       orderDeleteKeys(order).forEach(key => deleted.add(key));
@@ -999,21 +1010,44 @@
         /\b\d{6}\b/.test(text);
     }
 
+    function isAddressLine(line = "") {
+      const text = String(line || "").trim();
+      return isSingaporeAddressLine(text) ||
+        /(?:jalan|jln|taman|lorong|kampung|kg\b|persiaran|lebuh|lebuhraya|bandar|seksyen|section|no\.?|lot|unit|floor|tingkat|apartment|apt\b|condo|residence|residensi|suite|postcode|poskod|selangor|kuala lumpur|kl\b|johor|bahru|penang|pulau pinang|perak|ipoh|kedah|kelantan|melaka|malacca|negeri sembilan|pahang|perlis|sabah|sarawak|terengganu|putrajaya|cyberjaya)/i.test(text) ||
+        /^\d+[a-z]?\s+/.test(text) ||
+        /\b\d{5}\b/.test(text);
+    }
+
+    function isProductLine(line = "") {
+      const text = String(line || "").trim();
+      return /\b(?:BOX|BTL|BOTTLE|盒|瓶)\b/i.test(text) ||
+        /\b(?:CLASSIC|LYCHEE|LONGAN|OSMANTHUS|PASSION\s*FRUIT|GINSENG|LEMON\s*GRASS|LEMONGRASS|FLORAL|GIFT\s*BOX|SKIN|KNEE)\b/i.test(text);
+    }
+
+    function isLikelyNameLine(line = "") {
+      const text = String(line || "").trim();
+      if (!text || text.length > 60) return false;
+      if (phoneRegex().test(text) || /(?:RM|SGD|S\$)\s*\d/i.test(text) || /^https?:\/\//i.test(text)) return false;
+      if (/\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|FPX)\b/i.test(text)) return false;
+      if (isProductLine(text) || isAddressLine(text)) return false;
+      return /[a-z\u4e00-\u9fff]/i.test(text);
+    }
+
     function inferLooseOrder(text) {
       const lines = cleanLines(text);
       const urls = lines.filter(line => /^https?:\/\//i.test(line));
       const phoneLine = lines.find(line => phoneRegex().test(line)) || "";
       const amountLine = lines.find(line => /(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i.test(line)) || "";
       const paymentLine = lines.find(line => /\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|FPX)\b/i.test(line)) || "";
-      const productLine = lines.find(line =>
-        /\b(?:BOX|BTL|BOTTLE|盒|瓶)\b/i.test(line) ||
-        /\b(?:CLASSIC|LYCHEE|LONGAN|OSMANTHUS|PASSION\s*FRUIT|GINSENG|LEMON\s*GRASS|LEMONGRASS|FLORAL|GIFT\s*BOX)\b/i.test(line)
-      ) || "";
+      const productLine = lines.find(isProductLine) || "";
       const used = new Set([phoneLine, amountLine, paymentLine, productLine, ...urls].filter(Boolean));
       const candidates = lines.filter(line => !used.has(line));
-      const name = candidates[0] || "";
-      const addressLines = candidates.slice(name ? 1 : 0);
-      const address = addressLines.length ? addressLines.join("\n") : lines.filter(isSingaporeAddressLine).join("\n");
+      const name = candidates.find(isLikelyNameLine) || "";
+      const addressLines = lines
+        .filter(line => !used.has(line))
+        .filter(line => line !== name)
+        .filter(line => isAddressLine(line) || !isLikelyNameLine(line));
+      const address = addressLines.join("\n");
       return { name, phone: extractPhone(phoneLine), amount: amountLine, payment: paymentLine, product: productLine, receipt: urls[0] || "", address };
     }
 
@@ -1220,10 +1254,10 @@
         .map(normalizeOrderRecord)
         .filter(order => order.source === "dashboard" || order.sheet || order.row || order.order?.["H · Channel / Chanel"])
         .filter(order => !isDeletedOrder(order));
-      const keys = new Set(normalized.map(order => `${order.id}|${order.sheet}|${order.row}`));
+      const keys = new Set(normalized.map(orderUniqueKey));
       previewOrders = [
         ...normalized,
-        ...previewOrders.filter(order => !keys.has(`${order.id}|${order.sheet}|${order.row}`))
+        ...previewOrders.filter(order => !keys.has(orderUniqueKey(order)))
       ];
       localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
       hasConfirmedOrder = previewOrders.length > 0;
@@ -1275,7 +1309,7 @@
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
         hasConfirmedOrder = true;
         setConfirmedDate(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
-        loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
+        await loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
         rawInfo.value = "";
         render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
