@@ -701,9 +701,18 @@
     }
 
     function orderDeleteKeys(order = {}) {
-      if (order.sheet && order.row) return [`row:${order.sheet}:${order.row}`];
-      if (order.id) return [`id:${order.id}`];
-      return [];
+      const keys = [];
+      if (order.sheet && order.row) keys.push(`row:${order.sheet}:${order.row}`);
+      if (order.id) keys.push(`id:${order.id}`);
+      const name = String(order.name || order.order?.["P · Name"] || "").trim().toLowerCase();
+      const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
+      const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+      const phone = String(order.phone || order.order?.["Q · Phone"] || "").replace(/\D/g, "");
+      const product = String(order.product || order.order?.["N · Variant"] || order.order?.["O · Remark"] || "").trim().toLowerCase();
+      if (dateKey && name && total && (phone || product)) {
+        keys.push(`sig:${dateKey}:${name}:${phone}:${total}:${product}`);
+      }
+      return keys;
     }
 
     function isDeletedOrder(order) {
