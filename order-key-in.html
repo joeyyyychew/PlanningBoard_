@@ -737,6 +737,15 @@
       localStorage.setItem(deletedOrderEntriesKey, JSON.stringify([...deleted]));
     }
 
+    function unmarkOrderDeleted(order) {
+      const deleted = deletedOrderKeys();
+      let changed = false;
+      orderDeleteKeys(order).forEach(key => {
+        if (deleted.delete(key)) changed = true;
+      });
+      if (changed) localStorage.setItem(deletedOrderEntriesKey, JSON.stringify([...deleted]));
+    }
+
     function setAnalysisDropdown(open) {
       analysisToggle.classList.toggle("open", open);
       analysisToggle.setAttribute("aria-expanded", String(open));
@@ -787,6 +796,14 @@
 
     function channelForPage() {
       return pageChannelMap[page.value] || "";
+    }
+
+    function pageForChannel(channel = "") {
+      const normalized = String(channel).trim().toLowerCase();
+      const entry = Object.entries(pageChannelMap).find(([, mappedChannel]) =>
+        String(mappedChannel).trim().toLowerCase() === normalized
+      );
+      return entry?.[0] || "";
     }
 
     function escapeHtml(value) {
@@ -1228,6 +1245,8 @@
     function normalizeOrderRecord(record) {
       const dateKey = record.dateKey || dateToInputValue(record.date) || confirmedDate.value;
       const order = record.order || {};
+      const channel = record.channel || order["H · Channel / Chanel"] || pageChannelMap[record.page] || "";
+      const recordPage = record.page || order["Page / Account"] || pageForChannel(channel) || "";
       return {
         id: record.id || `${record.sheet || "sheet"}-${record.row || Math.random().toString(16).slice(2)}`,
         sheet: record.sheet || "",
@@ -1235,14 +1254,14 @@
         no: record.no || "",
         date: record.date || inputDateToSheetDate(dateKey),
         dateKey,
-        name: record.name || "待确认",
-        phone: record.phone || "",
-        product: record.product || "待确认",
-        total: record.total || "",
-        payment: record.payment || "",
-        page: record.page || "",
-        channel: record.channel || "",
-        receipt: record.receipt || "",
+        name: record.name || order["P · Name"] || "待确认",
+        phone: record.phone || order["Q · Phone"] || "",
+        product: record.product || order["N · Variant"] || order["O · Remark"] || "待确认",
+        total: record.total || order["S · Total/RM"] || "",
+        payment: record.payment || order["M · Payment Method"] || "",
+        page: recordPage,
+        channel,
+        receipt: record.receipt || order["AK · Receipt Link"] || "",
         address: record.address || order["R · Address"] || "",
         source: record.source || "dashboard",
         order
@@ -1305,6 +1324,7 @@
           if (!response.ok || !result.ok) throw new Error(result.error || `第 ${index + 1} 单写入 Google Sheet 失败`);
           saved.push(buildOrderRecord(data, result.entry?.record || result.entry || {}));
         }
+        saved.forEach(unmarkOrderDeleted);
         previewOrders = [...saved.reverse(), ...previewOrders];
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
         hasConfirmedOrder = true;
@@ -1317,6 +1337,7 @@
         showNotice("success", "已确认进单", `${saved.length} 单资料已经成功填进 ${sheetText}${rows ? `，位置：Row ${rows}` : ""}。`);
       } catch (error) {
         if (saved.length) {
+          saved.forEach(unmarkOrderDeleted);
           previewOrders = [...saved.reverse(), ...previewOrders];
           localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
           hasConfirmedOrder = true;
