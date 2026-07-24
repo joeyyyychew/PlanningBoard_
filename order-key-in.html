@@ -974,10 +974,26 @@
         .filter(Boolean);
     }
 
+    function phoneRegex() {
+      return /(?:\+?6?0?1[0-9][\s-]?[0-9]{3,4}[\s-]?[0-9]{4}|\+?65[\s-]?[89][0-9]{3}[\s-]?[0-9]{4}|(?:^|[^\d])(?:65)?[89][0-9]{7}(?=$|[^\d]))/i;
+    }
+
+    function extractPhone(text) {
+      const match = String(text || "").match(phoneRegex());
+      return match ? match[0].replace(/^[^\d+]*/, "").trim() : "";
+    }
+
+    function isSingaporeAddressLine(line = "") {
+      const text = String(line || "").trim();
+      return /(?:singapore|sg\b|blk\b|block\b|hdb\b|street\b|st\b|road\b|rd\b|avenue\b|ave\b|lane\b|ln\b|drive\b|dr\b|crescent\b|close\b|walk\b|jurong|tampines|woodlands|yishun|bedok|ang mo kio|bukit|toa payoh|sengkang|punggol|hougang|serangoon|clementi|pasir ris|chua chu kang|choa chu kang|bishan|queenstown|sembawang|marine parade|geylang|orchard|novena|kallang|telok|ubi|eunos|boon lay|jurong west|jurong east)/i.test(text) ||
+        /\bSingapore\s*\d{6}\b/i.test(text) ||
+        /\b\d{6}\b/.test(text);
+    }
+
     function inferLooseOrder(text) {
       const lines = cleanLines(text);
       const urls = lines.filter(line => /^https?:\/\//i.test(line));
-      const phoneLine = lines.find(line => /(?:\+?6?0)?1[0-9][\s-]?[0-9]{3,4}[\s-]?[0-9]{4}/.test(line)) || "";
+      const phoneLine = lines.find(line => phoneRegex().test(line)) || "";
       const amountLine = lines.find(line => /(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i.test(line)) || "";
       const paymentLine = lines.find(line => /\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|FPX)\b/i.test(line)) || "";
       const productLine = lines.find(line =>
@@ -987,8 +1003,9 @@
       const used = new Set([phoneLine, amountLine, paymentLine, productLine, ...urls].filter(Boolean));
       const candidates = lines.filter(line => !used.has(line));
       const name = candidates[0] || "";
-      const address = candidates.slice(name ? 1 : 0).join("\n");
-      return { name, phone: phoneLine, amount: amountLine, payment: paymentLine, product: productLine, receipt: urls[0] || "", address };
+      const addressLines = candidates.slice(name ? 1 : 0);
+      const address = addressLines.length ? addressLines.join("\n") : lines.filter(isSingaporeAddressLine).join("\n");
+      return { name, phone: extractPhone(phoneLine), amount: amountLine, payment: paymentLine, product: productLine, receipt: urls[0] || "", address };
     }
 
     function productQuantities(productText) {
@@ -1040,7 +1057,7 @@
 
     function parseOrder(text = rawInfo.value.trim()) {
       const loose = inferLooseOrder(text);
-      const phone = pick(text, ["电话", "手机号", "phone", "tel", "contact"]) || loose.phone || (text.match(/(?:\\+?6?0)?1[0-9][\\s-]?[0-9]{3,4}[\\s-]?[0-9]{4}/)?.[0] || "");
+      const phone = pick(text, ["电话", "手机号", "phone", "tel", "contact"]) || loose.phone || extractPhone(text);
       const amount = pick(text, ["金额", "总额", "价格", "amount", "total"]) || loose.amount || (text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "");
       const product = pick(text, ["产品", "商品", "item", "product"]) || loose.product;
       const quantities = productQuantities(product);
@@ -1192,7 +1209,7 @@
     function mergeOrderRecords(records) {
       const normalized = records
         .map(normalizeOrderRecord)
-        .filter(order => order.source === "dashboard")
+        .filter(order => order.source === "dashboard" || order.sheet || order.row || order.order?.["H · Channel / Chanel"])
         .filter(order => !isDeletedOrder(order));
       const keys = new Set(normalized.map(order => `${order.id}|${order.sheet}|${order.row}`));
       previewOrders = [
@@ -1250,6 +1267,8 @@
         hasConfirmedOrder = true;
         setConfirmedDate(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
         loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
+        rawInfo.value = "";
+        render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
         showNotice("success", "已确认进单", `${saved.length} 单资料已经成功填进 ${sheetText}${rows ? `，位置：Row ${rows}` : ""}。`);
