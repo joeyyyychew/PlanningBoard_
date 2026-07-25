@@ -272,6 +272,24 @@ function removeOrderRecord_(dateKey, record) {
   saveOrderEntriesStore_(dateKey, entries);
 }
 
+function orderRecordRowStillFilled_(record) {
+  const sheetName = String(record.sheet || '').trim();
+  const row = Number(record.row || 0);
+  if (!sheetName || !Number.isFinite(row) || row < 2) return true;
+  try {
+    const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) return false;
+    const values = sheet.getRange(row, 4, 1, 16).getValues()[0]; // D:S
+    const receipt = sheet.getRange(row, 37).getValue(); // AK
+    return values.some(function(cell) {
+      return String(cell || '').trim() !== '';
+    }) || String(receipt || '').trim() !== '';
+  } catch (err) {
+    return true;
+  }
+}
+
 function styleSgdRemark_(range) {
   const text = String(range.getValue() || '');
   if (!/SGD\s*\d/i.test(text)) return;
@@ -331,7 +349,7 @@ function orderRecordFromRow_(sheet, row, id) {
 function getOrderEntries_(dateValue) {
   const dateKey = orderDateKey_(dateValue);
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    return String(item.source || '') === 'dashboard';
+    return String(item.source || '') === 'dashboard' && orderRecordRowStillFilled_(item);
   });
   return {ok:true, date:dateKey, entries:entries};
 }
