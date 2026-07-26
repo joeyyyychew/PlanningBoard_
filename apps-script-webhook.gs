@@ -58,7 +58,20 @@ function contactKeys_(contact) {
   ];
   return values
     .map(function(value) { return String(value || '').trim().toLowerCase(); })
+    .filter(function(value) { return !placeholderValue_(value); })
     .filter(Boolean);
+}
+
+function placeholderValue_(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return !text ||
+    text === 'no field selected' ||
+    /^\{[^{}]+\}$/.test(text) ||
+    /^\{\{[^{}]+\}\}$/.test(text) ||
+    text.indexOf('subscriber.') >= 0 ||
+    text.indexOf('contact id') >= 0 ||
+    text.indexOf('full name') >= 0 ||
+    text.indexOf('last text input') >= 0;
 }
 
 function contactKey_(contact) {

@@ -239,7 +239,7 @@ function isSyntheticWebhookPerson(person = {}) {
   const id = String(person.id || person.contact_id || "").trim();
   const name = String(person.name || person.contact_name || "").trim();
   const note = String(person.note || person.text || "").trim();
-  const hasTemplatePlaceholder = [id, name, note].some(value => /\{\{[^}]+\}\}/.test(value));
+  const hasTemplatePlaceholder = [id, name, note].some(value => isPlaceholderValue(value) || /\{\{[^}]+\}\}/.test(value));
   return /^default_reply_contact$/i.test(id) ||
     hasTemplatePlaceholder ||
     /^whatsapp customer(?:\s+\d+)?$/i.test(name) ||
@@ -301,6 +301,24 @@ function firstValue(...values) {
   return values.map(value => String(value || "").trim()).find(Boolean) || "";
 }
 
+function isPlaceholderValue(value = "") {
+  const text = String(value || "").trim().toLowerCase();
+  return !text ||
+    text === "no field selected" ||
+    /^\{[^{}]+\}$/.test(text) ||
+    /^\{\{[^{}]+\}\}$/.test(text) ||
+    text.includes("subscriber.") ||
+    text.includes("contact id") ||
+    text.includes("full name") ||
+    text.includes("last text input");
+}
+
+function firstRealValue(...values) {
+  return values
+    .map(value => String(value || "").trim())
+    .find(value => value && !isPlaceholderValue(value)) || "";
+}
+
 function extractChatIdFromUrl(value = "") {
   const match = String(value || "").match(/app\.manychat\.com\/fb\d+\/chat\/(\d+)/);
   return match?.[1] || "";
@@ -308,8 +326,8 @@ function extractChatIdFromUrl(value = "") {
 
 function manychatContactId(source = {}) {
   const contact = source.contact || source.subscriber || source.user || {};
-  const inbox = firstValue(source.inbox, source.inbox_url, source.live_chat_url, contact.inbox, contact.inbox_url, contact.live_chat_url);
-  return firstValue(
+  const inbox = firstRealValue(source.inbox, source.inbox_url, source.live_chat_url, contact.inbox, contact.inbox_url, contact.live_chat_url);
+  return firstRealValue(
     source.contact_id,
     source.subscriber_id,
     source.subscriberId,
@@ -334,7 +352,7 @@ function manychatContactId(source = {}) {
 function contactFromEvent(event, accountId) {
   const contact = event.contact || {};
   const id = manychatContactId(event);
-  const name = String(event.name || contact.name || contact.full_name || contact.first_name || id || "Unknown").trim();
+  const name = firstRealValue(event.name, contact.name, contact.full_name, contact.first_name, id) || "Unknown";
   const directInbox = /^\d+$/.test(id) ? `https://app.manychat.com/${accountId}/chat/${id}` : "";
   const suppliedInbox = event.inbox || contact.inbox || contact.inbox_url || "";
   const inbox = directInbox || ACCOUNTS[accountId]?.inbox || suppliedInbox;
@@ -391,7 +409,7 @@ function personKeys(item = {}) {
     item.inbox_url,
     item.live_chat_url,
     item.name
-  ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
+  ].map(value => String(value || "").trim().toLowerCase()).filter(value => value && !isPlaceholderValue(value));
 }
 
 function personKey(item = {}) {
@@ -608,7 +626,7 @@ function buildCombinedReport(reports, date) {
 
 function contactFromWebhook(person = {}, accountId, note = "") {
   const id = manychatContactId(person);
-  const name = String(person.name || person.full_name || id || "Unknown").trim();
+  const name = firstRealValue(person.name, person.full_name, id) || "Unknown";
   const directInbox = /^\d+$/.test(id) ? `https://app.manychat.com/${accountId}/chat/${id}` : "";
   const suppliedInbox = person.inbox || person.inbox_url || person.live_chat_url || "";
   return {
@@ -1436,10 +1454,7 @@ const server = http.createServer(async (req, res) => {
           account: account.id,
           event_type: "customer_message",
           occurred_at: "{{now}}",
-          contact_id: "{{subscriber.id}}",
-          name: "{{subscriber.name}}",
-          phone: "{{subscriber.phone}}",
-          inbox: "{{inbox_link}}",
+          contact: "{Full Contact Data}",
           text: "{{last_text_input}}",
           source: "flow_or_keyword_name",
           tags: ["{{tag.name}}"]
@@ -1448,10 +1463,7 @@ const server = http.createServer(async (req, res) => {
           pmSubscribed: {
             event_type: "pm_subscribed",
             account: account.id,
-            contact_id: "{{subscriber.id}}",
-            name: "{{subscriber.name}}",
-            phone: "{{subscriber.phone}}",
-            inbox: "{{inbox_link}}",
+            contact: "{Full Contact Data}",
             text: "广告入口 / Subscribed 当日",
             source: "default_reply_or_entry_flow"
           },
@@ -1481,19 +1493,13 @@ const server = http.createServer(async (req, res) => {
           pending: {
             event_type: "pending_added",
             account: account.id,
-            contact_id: "{{subscriber.id}}",
-            name: "{{subscriber.name}}",
-            phone: "{{subscriber.phone}}",
-            inbox: "{{inbox_link}}",
+            contact: "{Full Contact Data}",
             source: "pending_payment_flow"
           },
           afterPayment: {
             event_type: "after_payment",
             account: account.id,
-            contact_id: "{{subscriber.id}}",
-            name: "{{subscriber.name}}",
-            phone: "{{subscriber.phone}}",
-            inbox: "{{inbox_link}}",
+            contact: "{Full Contact Data}",
             source: "after_payment_flow"
           }
         }

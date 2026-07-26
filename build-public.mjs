@@ -203,14 +203,32 @@ function firstValue(...values) {
   return values.map(value => String(value || "").trim()).find(Boolean) || "";
 }
 
+function isPlaceholderValue(value = "") {
+  const text = String(value || "").trim().toLowerCase();
+  return !text ||
+    text === "no field selected" ||
+    /^\{[^{}]+\}$/.test(text) ||
+    /^\{\{[^{}]+\}\}$/.test(text) ||
+    text.includes("subscriber.") ||
+    text.includes("contact id") ||
+    text.includes("full name") ||
+    text.includes("last text input");
+}
+
+function firstRealValue(...values) {
+  return values
+    .map(value => String(value || "").trim())
+    .find(value => value && !isPlaceholderValue(value)) || "";
+}
+
 function extractChatIdFromUrl(value = "") {
   return String(value || "").match(/app\.manychat\.com\/fb\d+\/chat\/(\d+)/)?.[1] || "";
 }
 
 function contactId(source = {}) {
   const contact = source.contact || source.subscriber || source.user || {};
-  const inbox = firstValue(source.inbox, source.inbox_url, source.live_chat_url, contact.inbox, contact.inbox_url, contact.live_chat_url);
-  return firstValue(source.contact_id, source.subscriber_id, source.manychat_contact_id, source.id, contact.id, contact.contact_id, contact.subscriber_id, extractChatIdFromUrl(inbox));
+  const inbox = firstRealValue(source.inbox, source.inbox_url, source.live_chat_url, contact.inbox, contact.inbox_url, contact.live_chat_url);
+  return firstRealValue(source.contact_id, source.subscriber_id, source.manychat_contact_id, source.id, contact.id, contact.contact_id, contact.subscriber_id, extractChatIdFromUrl(inbox));
 }
 
 function isButtonLike(text = "") {
@@ -228,7 +246,7 @@ function isSyntheticPerson(person = {}) {
   const id = String(person.id || person.contact_id || "").trim();
   const name = String(person.name || person.contact_name || "").trim();
   const note = String(person.note || person.text || "").trim();
-  const hasTemplatePlaceholder = [id, name, note].some(value => /\{\{[^}]+\}\}/.test(value));
+  const hasTemplatePlaceholder = [id, name, note].some(value => isPlaceholderValue(value) || /\{\{[^}]+\}\}/.test(value));
   return /^default_reply_contact$/i.test(id) ||
     hasTemplatePlaceholder ||
     /^whatsapp customer(?:\s+\d+)?$/i.test(name) ||
@@ -268,7 +286,7 @@ function personKeys(item = {}) {
     item.inbox_url,
     item.live_chat_url,
     item.name
-  ].map(value => String(value || "").trim().toLowerCase()).filter(Boolean);
+  ].map(value => String(value || "").trim().toLowerCase()).filter(value => value && !isPlaceholderValue(value));
 }
 
 function personKey(item = {}) {
@@ -283,7 +301,7 @@ function samePerson(a = {}, b = {}) {
 
 function personFromWebhook(person = {}, accountId, fallbackNote = "") {
   const id = contactId(person);
-  const name = String(person.name || person.full_name || person.contact_name || id || "Unknown").trim();
+  const name = firstRealValue(person.name, person.full_name, person.contact_name, id) || "Unknown";
   const directInbox = /^\d+$/.test(id) ? "https://app.manychat.com/" + accountId + "/chat/" + id : "";
   const suppliedInbox = person.inbox || person.inbox_url || person.live_chat_url || "";
   return {
