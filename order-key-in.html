@@ -185,7 +185,9 @@
     textarea { min-height:260px; resize:vertical; line-height:1.55; }
     .paste-blocks { display:grid; gap:12px; }
     .paste-block { display:grid; gap:7px; }
+    .paste-block-head { display:grid; grid-template-columns:auto minmax(210px, 280px); gap:10px; align-items:end; }
     .paste-block small { color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.04em; }
+    .paste-block label { margin:0 0 5px; }
     .paste-block textarea { min-height:190px; }
     textarea:focus, select:focus, input:focus { border-color:#d8a8b2; box-shadow:0 0 0 4px rgba(111,16,39,.08); background:white; }
     .inline { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -488,7 +490,17 @@
           <label for="rawInfo">邮寄资料</label>
           <div class="paste-blocks" id="pasteBlocks">
             <div class="paste-block">
-              <small>订单 1</small>
+              <div class="paste-block-head">
+                <small>订单 1</small>
+                <div>
+                  <label>这单 Channel</label>
+                  <select class="order-page-select">
+                    <option>Scalestory - 天然胶原蛋白</option>
+                    <option>鳞记 - 天然胶原蛋白</option>
+                    <option>鳞记 SG</option>
+                  </select>
+                </div>
+              </div>
               <textarea id="rawInfo" class="order-paste"></textarea>
             </div>
           </div>
@@ -775,6 +787,7 @@
     };
     const spreadsheetId = "1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ";
     if (accountPageMap[currentPreviewAccount]) page.value = accountPageMap[currentPreviewAccount];
+    pasteBlocks.querySelectorAll(".order-page-select").forEach(select => { select.value = page.value; });
     orderEntryDate.value = formatDateLabel(todayInputDate());
     confirmedDate.value = normalizeTypedOrderDate(orderEntryDate.value);
 
@@ -802,8 +815,8 @@
     });
     setAnalysisDropdown(false);
 
-    function channelForPage() {
-      return pageChannelMap[page.value] || "";
+    function channelForPage(pageName = page.value) {
+      return pageChannelMap[pageName] || "";
     }
 
     function pageForChannel(channel = "") {
@@ -1127,6 +1140,10 @@
       return [...pasteBlocks.querySelectorAll(".order-paste")];
     }
 
+    function pasteSelectFor(input) {
+      return input.closest(".paste-block")?.querySelector(".order-page-select");
+    }
+
     function splitSinglePasteValue(value = "") {
       return String(value || "")
         .split(/^\s*[—–-]{4,}\s*$|^\s*[-─━]{4,}\s*$/gm)
@@ -1138,12 +1155,32 @@
       return pasteTextareas().flatMap(input => splitSinglePasteValue(input.value));
     }
 
+    function orderPasteEntries() {
+      return pasteTextareas().flatMap(input => {
+        const selectedPage = pasteSelectFor(input)?.value || page.value;
+        return splitSinglePasteValue(input.value).map(text => ({ text, page: selectedPage }));
+      });
+    }
+
     function createPasteBlock(index, value = "") {
       const block = document.createElement("div");
       block.className = "paste-block";
-      block.innerHTML = `<small>订单 ${index}</small><textarea class="order-paste"></textarea>`;
+      block.innerHTML = `
+        <div class="paste-block-head">
+          <small>订单 ${index}</small>
+          <div>
+            <label>这单 Channel</label>
+            <select class="order-page-select">
+              ${Object.keys(pageChannelMap).map(name => `<option>${escapeHtml(name)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <textarea class="order-paste"></textarea>
+      `;
       const textarea = block.querySelector("textarea");
+      const select = block.querySelector(".order-page-select");
       textarea.value = value;
+      select.value = page.value;
       if (index === 1) textarea.id = "rawInfo";
       return block;
     }
@@ -1155,6 +1192,7 @@
         if (index === 0) input.id = "rawInfo";
         else input.removeAttribute("id");
       });
+      window.customSelectRefresh?.();
     }
 
     function ensureTrailingPasteBar() {
@@ -1166,6 +1204,7 @@
       const last = inputs[inputs.length - 1];
       if (last.value.trim()) {
         pasteBlocks.appendChild(createPasteBlock(inputs.length + 1));
+        window.customSelectRefresh?.();
       }
       const updated = pasteTextareas();
       for (let index = updated.length - 1; index > 0; index -= 1) {
@@ -1179,9 +1218,10 @@
     function resetPasteBars() {
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
+      window.customSelectRefresh?.();
     }
 
-    function parseOrder(text = splitOrderBlocks()[0] || "") {
+    function parseOrder(text = splitOrderBlocks()[0] || "", selectedPage = page.value) {
       const loose = inferLooseOrder(text);
       const phone = pick(text, ["电话", "手机号", "phone", "tel", "contact"]) || loose.phone || extractPhone(text);
       const amount = pick(text, ["金额", "总额", "价格", "amount", "total"]) || loose.amount || (text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "");
@@ -1201,7 +1241,7 @@
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
         "G · Platform Name": platformName || "",
-        "H · Channel / Chanel": channelForPage(),
+        "H · Channel / Chanel": channelForPage(selectedPage),
         "I · Classic BTL": quantities.totals.classic || "-",
         "J · Knee BTL": quantities.totals.knee || "-",
         "K · Ginseng BTL": quantities.totals.ginseng || "-",
@@ -1228,6 +1268,7 @@
     }
 
     function previewRowsForData(data) {
+      const selectedPage = data["Page / Account"] || page.value;
       return [
         ["日期", data["F · Date"] || sheetDateFromTypedInput()],
         ["顾客", data["P · Name"] || "待确认"],
@@ -1235,7 +1276,7 @@
         ["地址", data["R · Address"] || "待确认"],
         ["产品", productLineFromData(data)],
         ["金额 / 付款", `${data["S · Total/RM"] || "待确认"}${data["M · Payment Method"] ? ` · ${data["M · Payment Method"]}` : ""}`],
-        ["Page / Channel", `${page.value} → ${data["H · Channel / Chanel"]}`],
+        ["Page / Channel", `${selectedPage} → ${data["H · Channel / Chanel"]}`],
         ["备注", data["O · Remark"] || "—"],
         ["Receipt", data["AK · Receipt Link"] || "—"]
       ];
@@ -1246,14 +1287,18 @@
       const entryDate = normalizeTypedOrderDate(orderEntryDate.value);
       updateOrderDateLabel();
       updateSheetButton(confirmedDate.value || entryDate);
-      const blocks = splitOrderBlocks();
-      if (!blocks.length) {
+      const entries = orderPasteEntries();
+      if (!entries.length) {
         simplePreview.innerHTML = "";
         sheetRows.innerHTML = "";
         renderConfirmedOrders();
         return;
       }
-      const orders = blocks.map(block => parseOrder(block));
+      const orders = entries.map(entry => ({
+        ...parseOrder(entry.text, entry.page),
+        "Page / Account": entry.page,
+        "H · Channel / Chanel": channelForPage(entry.page)
+      }));
       simplePreview.innerHTML = orders.map((data, index) => `
         <div class="order-preview-card">
           <h3>订单 ${index + 1}</h3>
@@ -1368,12 +1413,16 @@
     }
 
     async function confirmOrder() {
-      const blocks = splitOrderBlocks();
-      if (!blocks.length) {
+      const entries = orderPasteEntries();
+      if (!entries.length) {
         showNotice("error", "没有资料", "请先 paste 至少一组顾客下单资料。");
         return;
       }
-      const ordersToWrite = blocks.map(block => parseOrder(block));
+      const ordersToWrite = entries.map(entry => ({
+        ...parseOrder(entry.text, entry.page),
+        "Page / Account": entry.page,
+        "H · Channel / Chanel": channelForPage(entry.page)
+      }));
       const button = document.getElementById("confirmPreviewBtn");
       button.disabled = true;
       button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
@@ -1382,14 +1431,14 @@
         for (let index = 0; index < ordersToWrite.length; index += 1) {
           const data = {
             ...ordersToWrite[index],
-            "Page / Account": page.value,
-            "H · Channel / Chanel": channelForPage()
+            "Page / Account": ordersToWrite[index]["Page / Account"],
+            "H · Channel / Chanel": ordersToWrite[index]["H · Channel / Chanel"]
           };
           button.textContent = ordersToWrite.length > 1 ? `保存 ${index + 1}/${ordersToWrite.length}…` : "保存中…";
           const response = await fetch(`${apiBase}/api/order-entry`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ page: page.value, raw: blocks[index], order: data })
+            body: JSON.stringify({ page: data["Page / Account"], raw: entries[index].text, order: data })
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.ok) throw new Error(result.error || `第 ${index + 1} 单写入 Google Sheet 失败`);
@@ -1633,7 +1682,16 @@
       render();
     });
     orderEntryDate.addEventListener("input", render);
-    page.addEventListener("change", render);
+    page.addEventListener("change", () => {
+      pasteTextareas().forEach(input => {
+        if (!input.value.trim()) {
+          const select = pasteSelectFor(input);
+          if (select) select.value = page.value;
+        }
+      });
+      window.customSelectRefresh?.();
+      render();
+    });
     confirmedDate.addEventListener("change", () => {
       updateOrderDateLabel();
       updateSheetButton(confirmedDate.value);

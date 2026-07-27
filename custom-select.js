@@ -88,7 +88,8 @@
     window.customSelectRefresh();
   }
 
-  window.customSelectRefresh = function customSelectRefresh() {
+  window.customSelectRefresh = function customSelectRefresh(root = document) {
+    root.querySelectorAll("select").forEach(enhance);
     document.querySelectorAll("select.native-select-hidden").forEach(sync);
   };
 
