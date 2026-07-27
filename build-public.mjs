@@ -605,6 +605,28 @@ export default {
       }
       return json({ ok: true, accepted: true, date, results }, 200);
     }
+    if (url.pathname === "/api/events" && request.method === "POST") {
+      const suppliedKey = request.headers.get("x-ingest-key") || url.searchParams.get("key") || "";
+      if (env.EVENT_INGEST_KEY && suppliedKey !== env.EVENT_INGEST_KEY) {
+        return json({ ok: false, error: "Unauthorized" }, 401);
+      }
+      const payload = await request.json().catch(() => ({}));
+      const eventType = payload.event_type || payload.type || url.searchParams.get("event_type") || "";
+      if (!eventType) return json({ ok: false, error: "event_type required" }, 400);
+      return forwardManyChatEvent(
+        new Request(request.url, {
+          method: "POST",
+          headers: request.headers,
+          body: JSON.stringify({ ...payload, event_type: eventType, account: payload.account || account.id })
+        }),
+        env,
+        url,
+        account
+      );
+    }
+    if (url.pathname === "/api/events") {
+      return json({ ok: true, accepted: true, note: "Event endpoint is reachable. Use POST with event_type to save events." }, 202);
+    }
     if (url.pathname === "/api/order-entry/date" && request.method === "POST") {
       const payload = await request.json().catch(() => ({}));
       return forwardWebhookPost(env, "order_update_date", payload);
