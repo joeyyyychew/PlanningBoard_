@@ -449,8 +449,10 @@
     const apiFetch = (path, options = {}) => fetch(`${apiBase}${path}`, {cache:"no-store", ...options});
     const reportsByAccount = {fb108701968299986:{}, fb1177107122151553:{}, fb701760706347255:{}};
     const REPORT_CACHE_KEY = "manychatDashboardReportsCacheV1";
+    const ORDER_CACHE_KEY = "manychatDashboardOrderEntriesCacheV1";
     const orderSummariesByDate = {};
     const orderEntriesByDate = {};
+    const loadingOrderSummaries = new Map();
     const urlParams = new URLSearchParams(location.search);
     const requestedAccount = urlParams.get("account");
     const embeddedMode = urlParams.get("embedded") === "1";
@@ -505,6 +507,22 @@
       } catch {}
     }
     restoreReportCache();
+    function restoreOrderCache() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(ORDER_CACHE_KEY) || "{}");
+        Object.entries(cached || {}).forEach(([date, entries]) => {
+          if (!Array.isArray(entries)) return;
+          orderEntriesByDate[date] = entries;
+          orderSummariesByDate[date] = orderSummaryFor(date);
+        });
+      } catch {}
+    }
+    function saveOrderCache() {
+      try {
+        localStorage.setItem(ORDER_CACHE_KEY, JSON.stringify(orderEntriesByDate));
+      } catch {}
+    }
+    restoreOrderCache();
     function setAnalysisDropdown(open) {
       analysisToggle.classList.toggle("open", open);
       analysisToggle.setAttribute("aria-expanded", String(open));
@@ -571,18 +589,32 @@
       }
       return orderSummariesByDate[date] || summarizeOrderEntries([]);
     }
-    async function loadOrderSummary(date) {
-      try {
-        const response = await apiFetch(`/api/order-entries?date=${encodeURIComponent(date)}`);
-        if (!response.ok) throw new Error("Order entries failed");
-        const payload = await response.json();
-        orderEntriesByDate[date] = payload.entries || [];
-        orderSummariesByDate[date] = orderSummaryFor(date);
-      } catch {
-        orderSummariesByDate[date] = orderSummariesByDate[date] || summarizeOrderEntries([]);
+    async function loadOrderSummary(date, shouldRender = true) {
+      if (loadingOrderSummaries.has(date)) {
+        const summary = await loadingOrderSummaries.get(date);
+        if (shouldRender) render(date);
+        return summary;
       }
-      render(date);
-      return orderSummariesByDate[date];
+      const request = (async () => {
+        try {
+          const response = await apiFetch(`/api/order-entries?date=${encodeURIComponent(date)}`);
+          if (!response.ok) throw new Error("Order entries failed");
+          const payload = await response.json();
+          orderEntriesByDate[date] = payload.entries || [];
+          orderSummariesByDate[date] = orderSummaryFor(date);
+          saveOrderCache();
+        } catch {
+          orderEntriesByDate[date] = orderEntriesByDate[date] || [];
+          orderSummariesByDate[date] = orderSummariesByDate[date] || summarizeOrderEntries([]);
+        } finally {
+          loadingOrderSummaries.delete(date);
+        }
+        return orderSummariesByDate[date];
+      })();
+      loadingOrderSummaries.set(date, request);
+      const summary = await request;
+      if (shouldRender) render(date);
+      return summary;
     }
     const formatDate = value => {
       const [y,m,d] = value.split("-");
@@ -818,6 +850,9 @@
     }
 
     function render(date) {
+      if (!orderEntriesByDate[date] && !loadingOrderSummaries.has(date)) {
+        loadOrderSummary(date, true);
+      }
       updateDateLabel();
       const report = currentView === "overview" ? combinedReport(date) : dailyReports[date];
       const account = accounts[currentAccount];
@@ -1133,8 +1168,8 @@
       try {
         const report = await loadAccountDate(currentAccount, date);
         dailyReports = reportsByAccount[currentAccount];
+        await loadOrderSummary(date, false);
         render(date);
-        await loadOrderSummary(date);
         document.getElementById("syncBadge").textContent = report?.lastUpdated
           ? `Webhook 已更新 · ${displayTime(report.lastUpdated)}`
           : "Webhook 已连接 · 暂无这个日期数据";
@@ -1150,6 +1185,7 @@
         mergeReports({[currentAccount]: payload.reports || {}});
         saveReportCache();
         dailyReports = reportsByAccount[currentAccount];
+        await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
         const report = dailyReports[dateInput.value];
         document.getElementById("syncBadge").textContent = report?.lastUpdated
@@ -1165,7 +1201,6 @@
           }
         } catch {}
         await refreshLive(dateInput.value);
-        await loadOrderSummary(dateInput.value);
       } catch {
         document.getElementById("syncBadge").textContent = "日报载入失败 · 请确认本机服务已开启";
       }
@@ -1180,11 +1215,12 @@
         }));
         reportsPayloads.filter(Boolean).forEach(mergeReports);
         saveReportCache();
+        await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
         await Promise.all(Object.keys(accounts).map(accountId => loadAccountDate(accountId, dateInput.value).catch(() => null)));
         dailyReports = reportsByAccount[currentAccount];
+        await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
-        await loadOrderSummary(dateInput.value);
         document.getElementById("syncBadge").textContent = "Dashboard 已更新";
       } catch {
         document.getElementById("syncBadge").textContent = "Dashboard 载入失败 · 请确认本机服务已开启";
@@ -1232,8 +1268,8 @@
         });
         saveReportCache();
         dailyReports = reportsByAccount[currentAccount] ||= {};
+        await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
-        await loadOrderSummary(dateInput.value);
         button.disabled = false;
         button.textContent = "▶ RUN";
         document.getElementById("syncBadge").textContent = currentView === "overview"

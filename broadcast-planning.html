@@ -1251,7 +1251,26 @@
     function monthlyRows() {
       return sheetRows
         .map((row, index) => ({...row, index}))
-        .filter(row => monthLabel(row.date) === selectedMonth);
+        .filter(row => monthLabel(row.date) === selectedMonth)
+        .sort(comparePlanRows);
+    }
+    function comparePlanRows(a, b) {
+      const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));
+      if (dateCompare) return dateCompare;
+      const timeCompare = timeMinutes(a.time) - timeMinutes(b.time);
+      if (timeCompare) return timeCompare;
+      return String(a.title || "").localeCompare(String(b.title || ""));
+    }
+    function timeMinutes(value) {
+      const text = String(value || "").trim().toLowerCase();
+      const match = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+      if (!match) return 24 * 60;
+      let hour = Number(match[1]);
+      const minute = Number(match[2] || 0);
+      const suffix = match[3] || "";
+      if (suffix === "pm" && hour < 12) hour += 12;
+      if (suffix === "am" && hour === 12) hour = 0;
+      return hour * 60 + minute;
     }
     function doneMonthlyRows() {
       return monthlyRows().filter(row => row.done === true);
@@ -1622,9 +1641,18 @@
       }
       const result = body.result || {};
       if (result.row) {
+        if (result.inserted === true) {
+          sheetRows.forEach(existing => {
+            if (existing === row) return;
+            const existingRow = Number(existing.sheetRow || 0);
+            if (existingRow >= Number(result.row)) existing.sheetRow = existingRow + 1;
+          });
+          saveRowEdits();
+        }
         row.sheetRow = Number(result.row);
         row.preview = false;
         row._key = row._key || rowKey(row);
+        savePreviewRows();
         persistRow(row);
       }
       return result;
@@ -1725,6 +1753,7 @@
       selectedMonth = monthLabel(row.date);
       savePreviewRows();
       await syncWithNotice(row, "append", "已同步到 Google Sheet：{sheet} row {row}");
+      savePreviewRows();
       event.target.reset();
       document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
       document.getElementById("addPlanPanel").hidden = true;

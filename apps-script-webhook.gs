@@ -653,6 +653,34 @@ function lastBroadcastRow_(sheet) {
   return 1;
 }
 
+function broadcastDateKey_(value) {
+  const raw = normalizeBroadcastDate_(value);
+  const slash = String(raw || '').match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if (!slash) return '';
+  const year = slash[3].length === 2 ? '20' + slash[3] : slash[3];
+  return year + '-' + slash[2].padStart(2, '0') + '-' + slash[1].padStart(2, '0');
+}
+
+function nextBroadcastRowForDate_(sheet, planDate) {
+  const lastDataRow = lastBroadcastRow_(sheet);
+  const targetKey = broadcastDateKey_(planDate);
+  if (!targetKey || lastDataRow < 2) return {row: 2, inserted: false};
+
+  const values = sheet.getRange(2, 1, lastDataRow - 1, 9).getValues(); // A:I
+  for (let index = 0; index < values.length; index++) {
+    const row = values[index];
+    const hasData = row.some(cell => String(cell || '').trim() !== '');
+    if (!hasData) return {row: index + 2, inserted: false};
+    const rowKey = broadcastDateKey_(row[1]); // B Date
+    if (rowKey && rowKey > targetKey) {
+      const targetRow = index + 2;
+      sheet.insertRowsBefore(targetRow, 1);
+      return {row: targetRow, inserted: true};
+    }
+  }
+  return {row: lastDataRow + 1, inserted: false};
+}
+
 function updateBroadcastPlan_(body) {
   const plan = body.plan || {};
   const action = String(body.action || 'update');
@@ -663,8 +691,11 @@ function updateBroadcastPlan_(body) {
     const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
     if (!sheet) throw new Error('broadcast_sheet_tab_not_found_' + BROADCAST_SHEET_NAME);
     let row = Number(plan.sheetRow || plan.row || 0);
+    let inserted = false;
     if (action === 'append' || !row) {
-      row = lastBroadcastRow_(sheet) + 1;
+      const reservation = nextBroadcastRowForDate_(sheet, plan.date);
+      row = reservation.row;
+      inserted = reservation.inserted === true;
     }
     if (!Number.isFinite(row) || row < 2) throw new Error('invalid_broadcast_row');
 
@@ -697,6 +728,7 @@ function updateBroadcastPlan_(body) {
       action: action,
       sheet: sheet.getName(),
       row: row,
+      inserted: inserted,
       pax: pax,
       spend: spend
     };

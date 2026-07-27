@@ -1754,6 +1754,35 @@ main:has(.custom-select.is-open),
   min-width: 190px !important;
 }
 
+#addPlanPanel .field:has(.date-field-control),
+#editDialog .field:has(.date-field-control) {
+  position: relative !important;
+  z-index: 50000 !important;
+}
+
+#addPlanPanel .field:has(.date-field-control .date-popover:not([hidden])),
+#editDialog .field:has(.date-field-control .date-popover:not([hidden])) {
+  z-index: 90000 !important;
+}
+
+#addPlanPanel .date-field-control .date-popover,
+#editDialog .date-field-control .date-popover {
+  z-index: 95000 !important;
+}
+
+#addPlanPanel .field:has(.custom-select),
+#editDialog .field:has(.custom-select),
+#addPlanPanel .audience-field,
+#editDialog .audience-field {
+  position: relative !important;
+  z-index: 20 !important;
+}
+
+#addPlanPanel .field:has(.custom-select.is-open),
+#editDialog .field:has(.custom-select.is-open) {
+  z-index: 80000 !important;
+}
+
 #addPlanPanel .field:has(#smartFill) {
   padding: var(--ds-space-2) !important;
   background: transparent !important;
