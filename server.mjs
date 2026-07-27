@@ -838,6 +838,14 @@ function mergeWebhookReport(baseReport, live, accountId) {
   const mergePeople = (key, incoming) => {
     report.customers[key] = peopleUnique([...(incoming || []), ...(report.customers[key] || [])]);
   };
+  const isLiveAfterPaymentEvent = (event = {}) => {
+    const type = cleanEventType(event.type || event.event_type || "");
+    const source = String(event.source || event.flow || event.step || "").toLowerCase();
+    const text = String(event.text || event.blocker || "").toLowerCase();
+    return ["after_payment", "ao", "order_completed", "completed_order"].includes(type) ||
+      /after[_\s-]*payment|after payment flow|ao\s*flow|main payment flow/.test(source) ||
+      /after[_\s-]*payment|after payment flow|ao\s*flow|main payment flow/.test(text);
+  };
 
   const pmPeople = [
     ...(contacts.pm || []),
@@ -848,6 +856,14 @@ function mergeWebhookReport(baseReport, live, accountId) {
     .filter(person => !isSyntheticWebhookPerson(person));
   const pendingPeople = (contacts.pending || []).map(person => contactFromWebhook(person, accountId, "今天加入 Pending"));
   const orderPeople = (contacts.after_payment || []).map(person => contactFromWebhook(person, accountId, "完成订单 / After Payment"));
+  const eventOrderPeople = liveEvents.filter(isLiveAfterPaymentEvent).map((event, index) => contactFromWebhook({
+    id: event.contact_id || event.subscriber_id || event.manychat_contact_id || "",
+    name: event.name || event.contact_name || event.full_name || `After Payment Customer ${index + 1}`,
+    phone: event.phone || "",
+    text: event.text || "",
+    inbox: event.inbox || ""
+  }, accountId, "完成订单 / After Payment"))
+    .filter(person => !isSyntheticWebhookPerson(person));
   const eventActivePeople = eventsByType("customer_message").map((event, index) => contactFromWebhook({
     id: event.contact_id || event.subscriber_id || event.manychat_contact_id || "",
     name: event.name || event.contact_name || event.full_name || `WhatsApp Customer ${index + 1}`,
@@ -870,7 +886,7 @@ function mergeWebhookReport(baseReport, live, accountId) {
 
   mergePeople("pm", pmPeople);
   mergePeople("pending", pendingPeople);
-  mergePeople("orders", orderPeople);
+  mergePeople("orders", [...orderPeople, ...eventOrderPeople]);
   mergePeople("active", activePeople);
 
   report.customers.pending = (report.customers.pending || []).filter(person =>
@@ -883,7 +899,7 @@ function mergeWebhookReport(baseReport, live, accountId) {
     eventsByType("subscribed").length +
     eventsByType("new_contact").length +
     eventsByType("subscriber_created").length;
-  const afterPaymentEventTotal = eventsByType("after_payment").length +
+  const afterPaymentEventTotal = liveEvents.filter(isLiveAfterPaymentEvent).length +
     eventsByType("ao").length +
     eventsByType("order_completed").length +
     eventsByType("completed_order").length;

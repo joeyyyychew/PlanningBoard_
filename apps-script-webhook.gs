@@ -140,13 +140,41 @@ function removeContact_(day, type, contact) {
   day.counts[type] = (day.contacts[type] || []).length;
 }
 
+function removePendingFromStoredDays_(account, contact, currentDate) {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const prefix = 'DAY_' + safe_(account) + '_';
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    const day = JSON.parse(all[key] || '{}');
+    if (!day || !day.date || String(day.date) > String(currentDate)) return;
+    const before = (day.contacts && day.contacts.pending || []).length;
+    removeContact_(day, 'pending', contact);
+    const after = (day.contacts && day.contacts.pending || []).length;
+    if (after !== before) {
+      day.updated_at = new Date().toISOString();
+      saveDay_(day);
+    }
+  });
+}
+
 function normalizedType_(body, rawType) {
-  const text = String(body.text || body.message || body.tag || body.tag_name || '').toLowerCase();
+  const text = String([
+    body.text,
+    body.message,
+    body.tag,
+    body.tag_name,
+    body.source,
+    body.flow,
+    body.step,
+    body.blocker
+  ].filter(Boolean).join(' ')).toLowerCase();
   const type = String(rawType || '').toLowerCase().replace(/[^a-z0-9_ -]/g, '').replace(/[ -]+/g, '_');
   if (['pm', 'new_pm', 'subscribed', 'pm_subscribed', 'new_contact', 'subscriber_created'].indexOf(type) >= 0) return 'pm_subscribed';
   if (['pending', 'pending_added', 'pending_payment'].indexOf(type) >= 0) return 'pending';
   if (type === 'tag_added' && text.indexOf('pending') >= 0) return 'pending';
-  if (['after_payment', 'ao', 'order_completed', 'completed_order'].indexOf(type) >= 0) return 'after_payment';
+  if (['after_payment', 'ao', 'order_completed', 'completed_order'].indexOf(type) >= 0 ||
+      /after[_\s-]*payment|after payment flow|ao\s*flow|main payment flow/.test(text)) return 'after_payment';
   if (['customer_message', 'message', 'inbox_message', 'reply'].indexOf(type) >= 0 || body.direction === 'in') return 'customer_message';
   if (['page_reply', 'admin_reply', 'agent_reply'].indexOf(type) >= 0 || body.direction === 'out') return 'page_reply';
   if (type === 'tag_added') return 'tag_added';
@@ -818,6 +846,7 @@ function doPost(e) {
           pendingDay.updated_at = now.toISOString();
           if (previous.pending_date !== date) saveDay_(pendingDay);
         }
+        removePendingFromStoredDays_(account, contact, date);
         if (contactStateKey) props.setProperty(contactStateKey, JSON.stringify({status:'completed', completed_date:date}));
       }
     } else if (type === 'pm_subscribed') {
