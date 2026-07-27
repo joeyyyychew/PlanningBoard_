@@ -23,7 +23,13 @@
   }
 
   function enhance(select) {
-    if (!(select instanceof HTMLSelectElement) || enhanced.has(select)) return;
+    if (
+      !(select instanceof HTMLSelectElement) ||
+      enhanced.has(select) ||
+      select.hidden ||
+      select.getAttribute("aria-hidden") === "true" ||
+      select.dataset.native === "true"
+    ) return;
     const wrapper = document.createElement("div");
     wrapper.className = "custom-select";
     const button = document.createElement("button");
