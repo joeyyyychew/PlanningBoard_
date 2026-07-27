@@ -331,6 +331,101 @@ function orderRecordRowStillFilled_(record) {
   }
 }
 
+function dashboardOrderRowLikelyMatches_(rowValues, dateKey, storedEntries) {
+  const record = {
+    dateKey: dateKey,
+    name: String(rowValues[12] || rowValues[3] || ''),
+    phone: String(rowValues[13] || ''),
+    total: rowValues[15],
+    product: String(rowValues[10] || rowValues[11] || ''),
+    order: {
+      'F · Date': normalizeOrderDate_(rowValues[2]),
+      'N · Variant': rowValues[10],
+      'O · Remark': rowValues[11],
+      'P · Name': rowValues[12],
+      'Q · Phone': rowValues[13],
+      'S · Total/RM': rowValues[15]
+    }
+  };
+  const signature = orderRecordSignature_(record);
+  const name = String(record.name || '').trim().toLowerCase();
+  const phone = String(record.phone || '').replace(/\D/g, '');
+  const total = String(record.total || '').replace(/[^0-9.]/g, '');
+  const matchedStoredOrder = (storedEntries || []).some(function(item) {
+    const itemSignature = orderRecordSignature_(item);
+    const itemName = String(item.name || value_(item.order || {}, 'P · Name') || '').trim().toLowerCase();
+    const itemPhone = String(item.phone || value_(item.order || {}, 'Q · Phone') || '').replace(/\D/g, '');
+    const itemTotal = String(item.total || value_(item.order || {}, 'S · Total/RM') || '').replace(/[^0-9.]/g, '');
+    if (signature !== '||||' && itemSignature === signature) return true;
+    if (phone && itemPhone && phone === itemPhone && total && itemTotal === total) return true;
+    return name && itemName && name === itemName && total && itemTotal === total;
+  });
+  if (matchedStoredOrder) return true;
+  const salesPerson = String(rowValues[0] || '').trim().toLowerCase();
+  const channel = String(rowValues[4] || '').trim().toLowerCase();
+  const hasDashboardShape = salesPerson === 'joey' &&
+    (channel.indexOf('knee 990') >= 0 || channel.indexOf('sg 997') >= 0 || channel.indexOf('main front') >= 0);
+  return hasDashboardShape && name && total;
+}
+
+function orderRecordsFromSheetDate_(dateValue, storedEntries) {
+  const dateKey = orderDateKey_(dateValue);
+  const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
+  const sheetName = ORDER_MONTH_SHEETS[monthIndexFromDate_(dateKey)];
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) return [];
+  const last = Math.max(2, sheet.getLastRow());
+  if (last < 2) return [];
+  const values = sheet.getRange(2, 4, last - 1, 16).getValues(); // D:S
+  const receipts = sheet.getRange(2, 37, last - 1, 1).getValues(); // AK
+  const records = [];
+  values.forEach(function(rowValues, index) {
+    const row = index + 2;
+    const hasOrderData = rowValues.some(function(cell) {
+      return String(cell || '').trim() !== '';
+    }) || String(receipts[index][0] || '').trim() !== '';
+    if (!hasOrderData) return;
+    const rowDateKey = orderDateKey_(rowValues[2]);
+    if (rowDateKey !== dateKey) return;
+    if (!dashboardOrderRowLikelyMatches_(rowValues, dateKey, storedEntries)) return;
+    const record = orderRecordFromRow_(sheet, row, sheet.getName() + '-' + row);
+    record.source = 'dashboard';
+    records.push(record);
+  });
+  return records;
+}
+
+function mergeOrderRecords_(storedEntries, sheetEntries) {
+  const seen = {};
+  const merged = [];
+  function keyFor(item) {
+    const sheet = String(item.sheet || '').trim();
+    const row = String(item.row || '').trim();
+    if (sheet && row) return 'row:' + sheet + ':' + row;
+    if (String(item.id || '').trim()) return 'id:' + String(item.id).trim();
+    return 'sig:' + orderRecordSignature_(item);
+  }
+  (storedEntries || []).forEach(function(item) {
+    const key = keyFor(item);
+    if (seen[key]) return;
+    seen[key] = true;
+    merged.push(item);
+  });
+  (sheetEntries || []).forEach(function(item) {
+    const key = keyFor(item);
+    if (seen[key]) return;
+    seen[key] = true;
+    merged.push(item);
+  });
+  merged.sort(function(a, b) {
+    const rowA = Number(a.row || 0);
+    const rowB = Number(b.row || 0);
+    if (rowA && rowB && rowA !== rowB) return rowB - rowA;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+  return merged;
+}
+
 function styleSgdRemark_(range) {
   const text = String(range.getValue() || '');
   if (!/SGD\s*\d/i.test(text)) return;
@@ -389,9 +484,11 @@ function orderRecordFromRow_(sheet, row, id) {
 
 function getOrderEntries_(dateValue) {
   const dateKey = orderDateKey_(dateValue);
-  const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
+  const storedEntries = readOrderEntriesStore_(dateKey).filter(function(item) {
     return String(item.source || '') === 'dashboard' && orderRecordRowStillFilled_(item);
   });
+  const sheetEntries = orderRecordsFromSheetDate_(dateKey, storedEntries);
+  const entries = mergeOrderRecords_(storedEntries, sheetEntries);
   return {ok:true, date:dateKey, entries:entries};
 }
 
@@ -660,6 +757,9 @@ function deleteOrderEntry_(body) {
 }
 
 function normalizeBroadcastDate_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, TZ, 'dd/MM/yyyy');
+  }
   const raw = String(value || '').trim();
   const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (iso) return iso[3] + '/' + iso[2] + '/' + iso[1];
@@ -669,6 +769,13 @@ function normalizeBroadcastDate_(value) {
     return slash[1].padStart(2, '0') + '/' + slash[2].padStart(2, '0') + '/' + year;
   }
   return raw;
+}
+
+function broadcastNumber_(value) {
+  if (typeof value === 'number') return value;
+  const raw = String(value || '').replace(/,/g, '');
+  const match = raw.match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : 0;
 }
 
 function lastBroadcastRow_(sheet) {
@@ -735,10 +842,9 @@ function updateBroadcastPlan_(body) {
 
     const pax = Number(plan.pax || 0);
     const spend = Number(plan.spend || (pax * 0.5) || 0);
-    const rowAI = [
+    const rowAH = [
       plan.done === true || plan.done === 'true',
       normalizeBroadcastDate_(plan.date),
-      String(plan.time || ''),
       String(plan.title || ''),
       String(plan.category || ''),
       String(plan.audience || ''),
@@ -746,9 +852,9 @@ function updateBroadcastPlan_(body) {
       String(plan.page || ''),
       spend
     ];
-    sheet.getRange(row, 1, 1, rowAI.length).setValues([rowAI]);
+    sheet.getRange(row, 1, 1, rowAH.length).setValues([rowAH]);
     if (plan.copy || plan.broadcastCopy) {
-      sheet.getRange(row, 10).setValue(String(plan.copy || plan.broadcastCopy || ''));
+      sheet.getRange(row, 9).setValue(String(plan.copy || plan.broadcastCopy || ''));
     }
     SpreadsheetApp.flush();
     return {
@@ -763,6 +869,52 @@ function updateBroadcastPlan_(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function getBroadcastPlans_(monthValue) {
+  const spreadsheet = SpreadsheetApp.openById(BROADCAST_SHEET_ID);
+  const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
+  if (!sheet) throw new Error('broadcast_sheet_tab_not_found_' + BROADCAST_SHEET_NAME);
+  const last = Math.max(2, sheet.getLastRow());
+  if (last < 2) return {ok:true, sheet:sheet.getName(), rows:[]};
+  const values = sheet.getRange(2, 1, last - 1, 9).getValues(); // A:I
+  const targetMonth = String(monthValue || '').trim();
+  const rows = [];
+  values.forEach(function(row, index) {
+    const hasData = row.some(function(cell) {
+      return String(cell || '').trim() !== '';
+    });
+    if (!hasData) return;
+    const dateKey = broadcastDateKey_(row[1]);
+    if (targetMonth && dateKey && dateKey.slice(0, 7) !== targetMonth) return;
+    const doneRaw = row[0];
+    rows.push({
+      sheetRow: index + 2,
+      done: doneRaw === true || String(doneRaw).toLowerCase() === 'true' || String(doneRaw).trim() === '✓',
+      date: dateKey,
+      time: '',
+      title: String(row[2] || ''),
+      category: String(row[3] || ''),
+      audience: String(row[4] || ''),
+      pax: broadcastNumber_(row[5]),
+      page: String(row[6] || ''),
+      spend: broadcastNumber_(row[7]),
+      copy: String(row[8] || ''),
+      preview: false
+    });
+  });
+  return {ok:true, sheet:sheet.getName(), rows:rows};
+}
+
+function getBroadcastRawRows_(limitValue) {
+  const spreadsheet = SpreadsheetApp.openById(BROADCAST_SHEET_ID);
+  const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
+  if (!sheet) throw new Error('broadcast_sheet_tab_not_found_' + BROADCAST_SHEET_NAME);
+  const limit = Math.max(1, Math.min(Number(limitValue || 10), 25));
+  const last = Math.max(1, Math.min(sheet.getLastRow(), limit));
+  const width = Math.max(1, Math.min(sheet.getLastColumn(), 20));
+  const rows = sheet.getRange(1, 1, last, width).getDisplayValues();
+  return {ok:true, sheet:sheet.getName(), rows:rows};
 }
 
 function doPost(e) {
@@ -879,6 +1031,20 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'order_entries') {
     try {
       return json_(getOrderEntries_(date));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'broadcast_plans') {
+    try {
+      return json_(getBroadcastPlans_(e.parameter.month || ''));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'broadcast_raw') {
+    try {
+      return json_(getBroadcastRawRows_(e.parameter.limit || 10));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

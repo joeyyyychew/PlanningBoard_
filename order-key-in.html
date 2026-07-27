@@ -285,6 +285,24 @@
     }
     .confirmed-date { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:11px; font-weight:850; }
     .confirmed-date input { width:150px; padding:9px 11px; border-radius:999px; font-size:12px; font-weight:800; }
+    .confirmed-search {
+      width:min(260px,100%);
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(94,30,43,.14);
+      background:rgba(255,255,255,.58);
+      color:var(--ink);
+      font-size:12px;
+      font-weight:800;
+      outline:none;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.6);
+    }
+    .confirmed-search::placeholder { color:rgba(64,46,48,.48); }
+    .confirmed-search:focus {
+      border-color:rgba(94,30,43,.42);
+      background:rgba(255,255,255,.78);
+      box-shadow:0 0 0 4px rgba(173,188,195,.24);
+    }
     .order-list { display:grid; gap:10px; }
     .order-item { display:grid; grid-template-columns:1fr auto; gap:14px; align-items:start; padding:14px; border:1px solid #f0dfdc; border-radius:16px; background:rgba(255,255,255,.62); }
     .order-item b { display:block; font-size:13px; margin-bottom:5px; }
@@ -551,7 +569,8 @@
             <span>根据日期查看当天进单。</span>
           </div>
           <div class="confirmed-controls">
-            <div class="total-amount" id="confirmedTotal"><b>Total Sales</b> RM 0</div>
+            <div class="total-amount" id="confirmedTotal"><b>Total Sales</b> · 0 单&nbsp;&nbsp; RM 0</div>
+            <input class="confirmed-search" id="confirmedSearch" type="search" placeholder="Search order…" autocomplete="off" />
             <div class="confirmed-date">显示日期
               <div class="pill date-control analysis-date-control order-date-control">
                 <button id="orderPrevDay" aria-label="前一天" type="button">‹</button>
@@ -662,6 +681,7 @@
     const orderDateDayChoices = document.getElementById("orderDateDayChoices");
     const confirmedOrders = document.getElementById("confirmedOrders");
     const confirmedTotal = document.getElementById("confirmedTotal");
+    const confirmedSearch = document.getElementById("confirmedSearch");
     const noticeDialog = document.getElementById("noticeDialog");
     const noticeIcon = document.getElementById("noticeIcon");
     const noticeTitle = document.getElementById("noticeTitle");
@@ -1490,19 +1510,36 @@
     function renderConfirmedOrders() {
       if (!hasConfirmedOrder) {
         confirmedTotal.hidden = false;
-        confirmedTotal.innerHTML = "<b>Total Sales</b> RM 0";
+        confirmedTotal.innerHTML = "<b>Total Sales</b> · 0 单&nbsp;&nbsp; RM 0";
         confirmedOrders.innerHTML = `<div class="empty-orders">确认进单后，这里会显示当天订单记录和 Total Sales。</div>`;
         return;
       }
       const selected = confirmedDate.value;
       const items = previewOrders.filter(order => order.dateKey === selected && !isDeletedOrder(order));
+      const searchText = String(confirmedSearch?.value || "").trim().toLowerCase();
+      const visibleItems = searchText
+        ? items.filter(order => [
+          order.name,
+          order.phone,
+          order.product,
+          order.page,
+          order.channel,
+          order.payment,
+          order.total,
+          order.sheet,
+          order.row,
+          order.order?.["O · Remark"],
+          order.order?.["N · Variant"],
+          order.order?.["R · Address"]
+        ].join(" ").toLowerCase().includes(searchText))
+        : items;
       const totalAmount = items.reduce((sum, order) => {
         const amount = Number(String(order.total || "").replace(/[^0-9.]/g, ""));
         return sum + (Number.isFinite(amount) ? amount : 0);
       }, 0);
-      confirmedTotal.innerHTML = `<b>Total Sales</b> RM ${totalAmount.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-      confirmedOrders.innerHTML = items.length
-        ? items.map(order => {
+      confirmedTotal.innerHTML = `<b>Total Sales</b> · ${items.length} 单&nbsp;&nbsp; RM ${totalAmount.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+      confirmedOrders.innerHTML = visibleItems.length
+        ? visibleItems.map(order => {
           const previewIndex = previewOrders.indexOf(order);
           return `
           <div class="order-item" data-order-index="${previewIndex}" data-order-id="${escapeHtml(order.id)}" data-order-row="${escapeHtml(order.row)}" data-order-sheet="${escapeHtml(order.sheet)}" data-order-date-key="${escapeHtml(order.dateKey)}">
@@ -1519,7 +1556,7 @@
             </div>
           </div>
         `}).join("")
-        : `<div class="empty-orders">${orderRecordsLoaded.has(selected) ? "这个日期还没有确认进单记录。" : "正在读取 Google Sheet 记录；如果暂时读不到，会先显示本机保存的记录。"}</div>`;
+        : `<div class="empty-orders">${items.length && searchText ? "找不到符合 search 的订单。" : (orderRecordsLoaded.has(selected) ? "这个日期还没有确认进单记录。" : "正在读取 Google Sheet 记录；如果暂时读不到，会先显示本机保存的记录。")}</div>`;
     }
 
     function findOrderFromItem(item) {
@@ -1720,6 +1757,7 @@
       renderConfirmedOrders();
       loadConfirmedOrders(confirmedDate.value);
     });
+    confirmedSearch?.addEventListener("input", renderConfirmedOrders);
     document.getElementById("orderPrevDay").addEventListener("click", event => {
       event.stopPropagation();
       shiftConfirmedDate(-1);

@@ -1141,6 +1141,25 @@ async function writeBroadcastPlan(payload) {
   return body;
 }
 
+async function readBroadcastPlans(month = "") {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) {
+    throw new Error("Google Sheet webhook 尚未连接");
+  }
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "broadcast_plans");
+  if (month) endpoint.searchParams.set("month", month);
+  const response = await fetch(endpoint, { redirect: "follow", cache: "no-store" });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error || `Google Sheet webhook ${response.status}`);
+  }
+  if (!Array.isArray(body.rows)) {
+    throw new Error("Apps Script 还没更新到 Broadcast Planning 读取版本，请先重新部署 apps-script-webhook.gs");
+  }
+  return body;
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -1324,6 +1343,12 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/broadcast-sheet-url" && req.method === "GET") {
       return json(res, 200, { url: broadcastSheetUrl() });
+    }
+
+    if (url.pathname === "/api/broadcast-plans" && req.method === "GET") {
+      const month = url.searchParams.get("month") || "";
+      const result = await readBroadcastPlans(month);
+      return json(res, 200, result);
     }
 
     if (url.pathname === "/api/order-entry" && req.method === "POST") {

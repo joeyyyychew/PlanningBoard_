@@ -1248,6 +1248,43 @@
       }
       return "";
     }
+    function normalizeBroadcastSheetRow(row = {}) {
+      const normalized = {
+        preview: false,
+        done: row.done === true,
+        date: normalizePlanDate(row.date),
+        time: String(row.time || ""),
+        title: String(row.title || ""),
+        category: String(row.category || ""),
+        audience: String(row.audience || ""),
+        pax: Number(row.pax || 0),
+        page: String(row.page || ""),
+        spend: Number(row.spend || 0),
+        copy: String(row.copy || ""),
+        sheetRow: Number(row.sheetRow || row.row || 0)
+      };
+      normalized._key = row._key || rowKey(normalized);
+      return normalized;
+    }
+    async function loadBroadcastPlansFromSheet() {
+      try {
+        const response = await fetch("/api/broadcast-plans", { cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok || !Array.isArray(payload.rows)) return false;
+        const pendingPreviewRows = sheetRows.filter(row => row.preview === true);
+        const sheetSourceRows = payload.rows
+          .map(normalizeBroadcastSheetRow)
+          .filter(row => row.date && row.title);
+        sheetRows.splice(0, sheetRows.length, ...sheetSourceRows, ...pendingPreviewRows);
+        localStorage.removeItem(EDITS_KEY);
+        localStorage.removeItem(DELETED_KEY);
+        savePreviewRows();
+        render();
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
     function monthlyRows() {
       return sheetRows
         .map((row, index) => ({...row, index}))
@@ -2085,7 +2122,7 @@
     document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
     document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
     render();
-    showTodayReminder();
+    loadBroadcastPlansFromSheet().finally(showTodayReminder);
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>

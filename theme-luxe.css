@@ -1151,6 +1151,35 @@ body:has(#planList) .plan-row > *,
   }
 }
 
+/* Broadcast add/edit date picker: keep the calendar layer above the rest of the form. */
+#addPlanPanel,
+#addPlanPanel .form-grid,
+#addPlanPanel .field:has(.date-field-control),
+#editDialog,
+#editDialog .dialog-body,
+#editDialog .form-grid,
+#editDialog .field:has(.date-field-control) {
+  overflow: visible !important;
+}
+
+#addPlanPanel .form-grid:has(.date-popover:not([hidden])) .field,
+#editDialog .form-grid:has(.date-popover:not([hidden])) .field {
+  z-index: 1 !important;
+}
+
+#addPlanPanel .form-grid:has(.date-popover:not([hidden])) .field:has(.date-popover:not([hidden])),
+#editDialog .form-grid:has(.date-popover:not([hidden])) .field:has(.date-popover:not([hidden])) {
+  position: relative !important;
+  z-index: 2147483000 !important;
+  isolation: isolate !important;
+}
+
+#addPlanPanel .date-field-control .date-popover:not([hidden]),
+#editDialog .date-field-control .date-popover:not([hidden]) {
+  z-index: 2147483001 !important;
+  box-shadow: 0 28px 80px rgba(65, 20, 14, 0.28) !important;
+}
+
 /* Final unified date picker + sidebar behaviour pass. */
 .analysis-date-popover,
 .month-popover,
