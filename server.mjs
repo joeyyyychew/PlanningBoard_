@@ -1581,14 +1581,28 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/api/events" && req.method === "POST") {
-      if (!env.EVENT_INGEST_KEY || req.headers["x-ingest-key"] !== env.EVENT_INGEST_KEY) {
-        return json(res, 401, { error: "Unauthorized" });
+      const suppliedKey = url.searchParams.get("key") || req.headers["x-ingest-key"] || "";
+      if (EVENT_INGEST_SECRET && suppliedKey !== EVENT_INGEST_SECRET) {
+        return json(res, 401, { ok: false, error: "Unauthorized" });
       }
-      const event = await readBody(req);
-      if (!event.type || !event.contact_id) return json(res, 400, { error: "type and contact_id required" });
-      const record = { received_at: new Date().toISOString(), ...event };
-      await appendFile(EVENTS_FILE, `${JSON.stringify(record)}\n`);
-      return json(res, 202, { accepted: true });
+      const raw = await readBody(req);
+      const eventType = raw.event_type || raw.type || url.searchParams.get("event_type") || "";
+      if (!eventType) return json(res, 400, { ok: false, error: "event_type required" });
+      const normalizedRaw = { ...raw, event_type: eventType, account: raw.account || url.searchParams.get("account") || account.id };
+      const event = normalizeManyChatEvent(normalizedRaw, account.id);
+      if (!event.account || !ACCOUNTS[event.account]) return json(res, 400, { ok: false, error: "Valid account required" });
+      let webhook = null;
+      if (env.WEBHOOK_URL && env.EVENT_INGEST_KEY) {
+        webhook = await forwardManyChatEventToWebhook(normalizedRaw, event);
+      }
+      await appendFile(EVENTS_FILE, `${JSON.stringify(event)}\n`).catch(() => null);
+      return json(res, 202, { ok: true, accepted: true, event: {
+        id: event.id, account: event.account, date: event.date, event_type: event.event_type, contact: event.contact
+      }, webhook });
+    }
+
+    if (url.pathname === "/api/events") {
+      return json(res, 202, { ok: true, accepted: true, note: "Event endpoint is reachable. Use POST with event_type to save events." });
     }
 
     if (url.pathname === "/favicon.ico") {
