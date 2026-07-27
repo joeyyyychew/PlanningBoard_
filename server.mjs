@@ -944,20 +944,28 @@ async function forwardManyChatEventToWebhook(raw, event) {
   endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
   endpoint.searchParams.set("account", event.account);
   const contact = event.contact || {};
+  const rawContact = raw.contact || raw.subscriber || raw.user || {};
+  const cleanContact = {
+    id: firstRealValue(raw.contact_id, raw.subscriber_id, raw.manychat_contact_id, raw.id, rawContact.id, rawContact.contact_id, rawContact.subscriber_id, contact.id),
+    name: firstRealValue(raw.name, raw.contact_name, raw.full_name, rawContact.name, rawContact.full_name, contact.name),
+    phone: firstRealValue(raw.phone, raw.whatsapp_id, raw.wa_id, rawContact.phone, rawContact.whatsapp_id, rawContact.wa_id, contact.phone),
+    inbox: firstRealValue(raw.inbox, raw.inbox_url, raw.chat_url, raw.live_chat_url, rawContact.inbox, rawContact.inbox_url, rawContact.live_chat_url, contact.inbox)
+  };
   const payload = {
-    ...raw,
     account: event.account,
     event_type: event.event_type,
     event_date: event.date,
     date: event.date,
     occurred_at: event.occurred_at,
-    contact_id: raw.contact_id || raw.subscriber_id || contact.id || "",
-    name: raw.name || raw.contact_name || contact.name || "",
-    phone: raw.phone || contact.phone || "",
-    inbox: raw.inbox || raw.inbox_url || raw.chat_url || contact.inbox || "",
-    text: raw.text || raw.message || event.text || "",
+    contact: cleanContact,
+    contact_id: cleanContact.id,
+    name: cleanContact.name,
+    phone: cleanContact.phone,
+    inbox: cleanContact.inbox,
+    text: firstRealValue(raw.text, raw.message, raw.last_text_input, raw.last_input, raw.last_input_text, event.text),
     tags: raw.tags || event.tags || [],
-    source: raw.source || raw.flow || raw.step || event.source || ""
+    source: firstRealValue(raw.source, raw.flow, raw.step, event.source),
+    blocker: firstRealValue(raw.blocker, raw.reason, raw.category)
   };
   const response = await fetch(endpoint, {
     method: "POST",
