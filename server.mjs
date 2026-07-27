@@ -558,9 +558,21 @@ function mergeReportWithoutDowngrade(existingReport, incomingReport) {
     !(merged.customers.orders || []).some(order => samePerson(person, order))
   );
   merged.pending = merged.customers.pending.length;
-  merged.pm = merged.customers.pm.length;
-  merged.active = merged.customers.active.length;
-  merged.orders = merged.customers.orders.length;
+  merged.pm = Math.max(
+    merged.customers.pm.length,
+    Number(existingReport.pm || 0),
+    Number(incomingReport.pm || 0)
+  );
+  merged.active = Math.max(
+    merged.customers.active.length,
+    Number(existingReport.active || 0),
+    Number(incomingReport.active || 0)
+  );
+  merged.orders = Math.max(
+    merged.customers.orders.length,
+    Number(existingReport.orders || 0),
+    Number(incomingReport.orders || 0)
+  );
   const blockerByTitle = new Map();
   for (const blocker of [...(existingReport.blockers || []), ...(incomingReport.blockers || [])]) {
     const title = String(blocker.title || "").trim();
@@ -865,8 +877,18 @@ function mergeWebhookReport(baseReport, live, accountId) {
     !(report.customers.orders || []).some(order => samePerson(person, order))
   );
 
-  report.pm = report.customers.pm.length;
-  report.orders = report.customers.orders.length;
+  const pmEventTotal = eventsByType("pm_subscribed").length +
+    eventsByType("pm").length +
+    eventsByType("new_pm").length +
+    eventsByType("subscribed").length +
+    eventsByType("new_contact").length +
+    eventsByType("subscriber_created").length;
+  const afterPaymentEventTotal = eventsByType("after_payment").length +
+    eventsByType("ao").length +
+    eventsByType("order_completed").length +
+    eventsByType("completed_order").length;
+  report.pm = Math.max(report.customers.pm.length, pmEventTotal);
+  report.orders = Math.max(report.customers.orders.length, afterPaymentEventTotal);
   report.pending = report.customers.pending.length;
   report.active = report.customers.active.length;
   report.unanswered = 0;
@@ -894,6 +916,10 @@ function mergeWebhookReport(baseReport, live, accountId) {
   }
   if (afterPaymentCount > report.customers.orders.length) {
     const message = `After Payment 收到 ${afterPaymentCount} 个事件，但只有 ${report.customers.orders.length} 位顾客名单；请检查 ManyChat External Request 是否有带 contact_id/name/inbox。`;
+    if (!report.syncWarnings.includes(message)) report.syncWarnings.push(message);
+  }
+  if (pmEventTotal > report.customers.pm.length) {
+    const message = `PM 收到 ${pmEventTotal} 个入口事件，但只有 ${report.customers.pm.length} 位有效顾客名单；目前人数先按 event 统计，名单/inbox 需要 ManyChat External Request 带真实 contact_id/name。`;
     if (!report.syncWarnings.includes(message)) report.syncWarnings.push(message);
   }
   report.lastUpdated = live.updated_at || new Date().toISOString();

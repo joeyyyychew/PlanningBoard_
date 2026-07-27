@@ -342,6 +342,17 @@ function reportFromWebhook(live, accountId, fallback = null) {
   const active = uniquePeople([...activeFromContacts, ...activeFromEvents]);
   const pendingAfterOrders = pending.filter(person => !orders.some(order => samePerson(person, order)));
   const afterPaymentCount = Number(counts.after_payment || 0);
+  const eventsByType = (type) => events.filter(event => String(event.type || "").toLowerCase().replace(/[ -]+/g, "_") === type);
+  const pmEventTotal = eventsByType("pm_subscribed").length +
+    eventsByType("pm").length +
+    eventsByType("new_pm").length +
+    eventsByType("subscribed").length +
+    eventsByType("new_contact").length +
+    eventsByType("subscriber_created").length;
+  const afterPaymentEventTotal = eventsByType("after_payment").length +
+    eventsByType("ao").length +
+    eventsByType("order_completed").length +
+    eventsByType("completed_order").length;
   const pmEventCount = Number(counts.pm || 0) +
     Number(counts.new_pm || 0) +
     Number(counts.pm_subscribed || 0) +
@@ -361,6 +372,9 @@ function reportFromWebhook(live, accountId, fallback = null) {
   if (afterPaymentCount > orders.length) {
     syncWarnings.push("After Payment 收到 " + afterPaymentCount + " 个事件，但只有 " + orders.length + " 位顾客名单；请检查 ManyChat External Request 是否有带 contact_id/name/inbox。");
   }
+  if (pmEventTotal > pm.length) {
+    syncWarnings.push("PM 收到 " + pmEventTotal + " 个入口事件，但只有 " + pm.length + " 位有效顾客名单；目前人数先按 event 统计，名单/inbox 需要 ManyChat External Request 带真实 contact_id/name。");
+  }
   const blockerMap = new Map();
   active.forEach(person => {
     if (orders.some(order => samePerson(person, order))) return;
@@ -377,10 +391,10 @@ function reportFromWebhook(live, accountId, fallback = null) {
     dontDisturb: Number(counts.dont_disturb || 0)
   };
   return {
-    pm: pm.length,
+    pm: Math.max(pm.length, pmEventTotal),
     pending: pendingAfterOrders.length,
     active: active.length,
-    orders: orders.length,
+    orders: Math.max(orders.length, afterPaymentEventTotal),
     pmTags,
     customers: { pm, pending: pendingAfterOrders, active, orders },
     syncWarnings,
