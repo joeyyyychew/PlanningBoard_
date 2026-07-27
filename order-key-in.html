@@ -183,6 +183,10 @@
       outline:0;
     }
     textarea { min-height:260px; resize:vertical; line-height:1.55; }
+    .paste-blocks { display:grid; gap:12px; }
+    .paste-block { display:grid; gap:7px; }
+    .paste-block small { color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.04em; }
+    .paste-block textarea { min-height:190px; }
     textarea:focus, select:focus, input:focus { border-color:#d8a8b2; box-shadow:0 0 0 4px rgba(111,16,39,.08); background:white; }
     .inline { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     main:has(.custom-select.is-open),
@@ -482,7 +486,12 @@
           <input id="orderEntryDate" type="text" placeholder="22/07/2026" />
 
           <label for="rawInfo">邮寄资料</label>
-          <textarea id="rawInfo"></textarea>
+          <div class="paste-blocks" id="pasteBlocks">
+            <div class="paste-block">
+              <small>订单 1</small>
+              <textarea id="rawInfo" class="order-paste"></textarea>
+            </div>
+          </div>
 
           <div class="inline">
             <div>
@@ -626,6 +635,7 @@
   </dialog>
 
   <script>
+    const pasteBlocks = document.getElementById("pasteBlocks");
     const rawInfo = document.getElementById("rawInfo");
     const orderEntryDate = document.getElementById("orderEntryDate");
     const sheetButton = document.getElementById("sheetButton");
@@ -1101,19 +1111,77 @@
       const variantParts = [];
       const totalBoxes = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)].reduce((sum, match) => sum + Number(match[1]), 0);
       const totalBtl = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BTL|BOTTLE|瓶)/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-      if (totalBoxes) variantParts.push(`${totalBoxes} BOX`);
-      if (totalBtl) variantParts.push(`${totalBtl} BTL`);
+      const totalBoxEquivalent = totalBoxes + (totalBtl / 12);
+      const formatBoxCount = (value) => {
+        const number = Number(value || 0);
+        if (!Number.isFinite(number) || !number) return "";
+        if (Number.isInteger(number)) return String(number);
+        return String(Number(number.toFixed(2)));
+      };
+      const boxLabel = formatBoxCount(totalBoxEquivalent);
+      if (boxLabel) variantParts.push(`${boxLabel} BOX`);
       return { totals, variant: variantParts.join(" + ") };
     }
 
-    function splitOrderBlocks() {
-      return rawInfo.value
+    function pasteTextareas() {
+      return [...pasteBlocks.querySelectorAll(".order-paste")];
+    }
+
+    function splitSinglePasteValue(value = "") {
+      return String(value || "")
         .split(/^\s*[—–-]{4,}\s*$|^\s*[-─━]{4,}\s*$/gm)
         .map(block => block.trim())
         .filter(Boolean);
     }
 
-    function parseOrder(text = rawInfo.value.trim()) {
+    function splitOrderBlocks() {
+      return pasteTextareas().flatMap(input => splitSinglePasteValue(input.value));
+    }
+
+    function createPasteBlock(index, value = "") {
+      const block = document.createElement("div");
+      block.className = "paste-block";
+      block.innerHTML = `<small>订单 ${index}</small><textarea class="order-paste"></textarea>`;
+      const textarea = block.querySelector("textarea");
+      textarea.value = value;
+      if (index === 1) textarea.id = "rawInfo";
+      return block;
+    }
+
+    function renumberPasteBlocks() {
+      pasteTextareas().forEach((input, index) => {
+        const block = input.closest(".paste-block");
+        block.querySelector("small").textContent = `订单 ${index + 1}`;
+        if (index === 0) input.id = "rawInfo";
+        else input.removeAttribute("id");
+      });
+    }
+
+    function ensureTrailingPasteBar() {
+      const inputs = pasteTextareas();
+      if (!inputs.length) {
+        pasteBlocks.appendChild(createPasteBlock(1));
+        return;
+      }
+      const last = inputs[inputs.length - 1];
+      if (last.value.trim()) {
+        pasteBlocks.appendChild(createPasteBlock(inputs.length + 1));
+      }
+      const updated = pasteTextareas();
+      for (let index = updated.length - 1; index > 0; index -= 1) {
+        if (!updated[index].value.trim() && !updated[index - 1].value.trim()) {
+          updated[index].closest(".paste-block").remove();
+        }
+      }
+      renumberPasteBlocks();
+    }
+
+    function resetPasteBars() {
+      pasteBlocks.innerHTML = "";
+      pasteBlocks.appendChild(createPasteBlock(1));
+    }
+
+    function parseOrder(text = splitOrderBlocks()[0] || "") {
       const loose = inferLooseOrder(text);
       const phone = pick(text, ["电话", "手机号", "phone", "tel", "contact"]) || loose.phone || extractPhone(text);
       const amount = pick(text, ["金额", "总额", "价格", "amount", "total"]) || loose.amount || (text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "");
@@ -1333,7 +1401,7 @@
         hasConfirmedOrder = true;
         setConfirmedDate(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
         await loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
-        rawInfo.value = "";
+        resetPasteBars();
         render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
@@ -1556,10 +1624,14 @@
     });
     document.getElementById("noticeClose").addEventListener("click", () => noticeDialog.close());
     document.getElementById("clearBtn").addEventListener("click", () => {
-      rawInfo.value = "";
+      resetPasteBars();
       render();
     });
-    rawInfo.addEventListener("input", render);
+    pasteBlocks.addEventListener("input", event => {
+      if (!event.target.classList.contains("order-paste")) return;
+      ensureTrailingPasteBar();
+      render();
+    });
     orderEntryDate.addEventListener("input", render);
     page.addEventListener("change", render);
     confirmedDate.addEventListener("change", () => {
