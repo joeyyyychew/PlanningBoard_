@@ -1,5 +1,5 @@
 [build]
-command = "node build-public.mjs"
+command = "node netlify-build-fix.mjs && node build-public.mjs"
 publish = "dist"
 
 [build.environment]
