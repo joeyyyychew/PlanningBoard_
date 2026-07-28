@@ -272,18 +272,58 @@ function readOrderEntriesStore_(dateKey) {
   return raw ? JSON.parse(raw) : [];
 }
 
+function compactOrderRecord_(record) {
+  const order = record.order || {};
+  const compactOrder = {
+    'D · Sales Person': value_(order, 'D · Sales Person') || 'Joey',
+    'E · NO': value_(order, 'E · NO') || record.no || '',
+    'F · Date': value_(order, 'F · Date') || record.date || '',
+    'G · Platform Name': value_(order, 'G · Platform Name') || record.name || '',
+    'H · Channel / Chanel': value_(order, 'H · Channel / Chanel') || record.channel || '',
+    'M · Payment Method': value_(order, 'M · Payment Method') || record.payment || '',
+    'N · Variant': value_(order, 'N · Variant') || record.product || '',
+    'O · Remark': value_(order, 'O · Remark') || '',
+    'P · Name': value_(order, 'P · Name') || record.name || '',
+    'Q · Phone': value_(order, 'Q · Phone') || record.phone || '',
+    'R · Address': value_(order, 'R · Address') || record.address || '',
+    'S · Total/RM': value_(order, 'S · Total/RM') || record.total || '',
+    'AK · Receipt Link': value_(order, 'AK · Receipt Link') || record.receipt || ''
+  };
+  return {
+    id: String(record.id || ''),
+    source: 'dashboard',
+    sheet: String(record.sheet || ''),
+    row: record.row || '',
+    no: record.no || compactOrder['E · NO'],
+    date: record.date || compactOrder['F · Date'],
+    dateKey: record.dateKey || orderDateKey_(record.date || compactOrder['F · Date']),
+    name: String(record.name || compactOrder['P · Name'] || ''),
+    phone: String(record.phone || compactOrder['Q · Phone'] || ''),
+    product: String(record.product || compactOrder['N · Variant'] || compactOrder['O · Remark'] || ''),
+    address: String(record.address || compactOrder['R · Address'] || ''),
+    total: record.total || compactOrder['S · Total/RM'],
+    payment: String(record.payment || compactOrder['M · Payment Method'] || ''),
+    page: String(record.page || ''),
+    channel: String(record.channel || compactOrder['H · Channel / Chanel'] || ''),
+    receipt: String(record.receipt || compactOrder['AK · Receipt Link'] || ''),
+    order: compactOrder
+  };
+}
+
 function saveOrderEntriesStore_(dateKey, entries) {
-  PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(entries || []));
+  const compactEntries = (entries || []).map(compactOrderRecord_);
+  PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries));
 }
 
 function upsertOrderRecord_(record) {
   const dateKey = record.dateKey || orderDateKey_(record.date);
   record.source = 'dashboard';
+  const stableKey = orderRecordStableKey_(record);
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    const sameId = String(record.id || '') && String(item.id || '') === String(record.id || '');
-    const sameRow = String(record.sheet || '') && String(record.row || '') &&
-      String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
-    return !(sameId || sameRow);
+    const itemStableKey = orderRecordStableKey_(item);
+    const sameStable = stableKey && itemStableKey === stableKey;
+    const sameIdFallback = !stableKey && String(record.id || '') && String(item.id || '') === String(record.id || '');
+    return !(sameStable || sameIdFallback);
   });
   entries.unshift(record);
   saveOrderEntriesStore_(dateKey, entries.slice(0, 500));
@@ -299,16 +339,36 @@ function orderRecordSignature_(record) {
   return [dateKey, name, phone, total, product].join('|');
 }
 
+function orderRecordPhoneKey_(record) {
+  const order = record.order || {};
+  const dateKey = String(record.dateKey || orderDateKey_(record.date || value_(order, 'F · Date')) || '').trim();
+  const phone = String(record.phone || value_(order, 'Q · Phone') || '').replace(/\D/g, '');
+  return dateKey && phone ? dateKey + '|' + phone : '';
+}
+
+function orderRecordStableKey_(record) {
+  const order = record.order || {};
+  const phoneKey = orderRecordPhoneKey_(record);
+  const total = String(record.total || value_(order, 'S · Total/RM') || '').replace(/[^0-9.]/g, '');
+  const product = String(record.product || value_(order, 'N · Variant') || value_(order, 'O · Remark') || '').trim().toLowerCase();
+  if (phoneKey) return ['phone', phoneKey, total, product].join('|');
+  const signature = orderRecordSignature_(record);
+  if (signature !== '||||') return 'sig|' + signature;
+  const id = String(record.id || '').trim();
+  return id ? 'id|' + id : '';
+}
+
 function removeOrderRecord_(dateKey, record) {
   if (!dateKey) return;
-  const signature = orderRecordSignature_(record);
-  const hasExactKey = String(record.id || '') || (String(record.sheet || '') && String(record.row || ''));
+  const stableKey = orderRecordStableKey_(record);
+  const phoneKey = orderRecordPhoneKey_(record);
   const entries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    const sameId = String(record.id || '') && String(item.id || '') === String(record.id || '');
-    const sameRow = String(record.sheet || '') && String(record.row || '') &&
-      String(item.sheet || '') === String(record.sheet || '') && String(item.row || '') === String(record.row || '');
-    const sameSignature = !hasExactKey && signature !== '||||' && orderRecordSignature_(item) === signature;
-    return !(sameId || sameRow || sameSignature);
+    const itemStableKey = orderRecordStableKey_(item);
+    const itemPhoneKey = orderRecordPhoneKey_(item);
+    const sameStable = stableKey && itemStableKey === stableKey;
+    const samePhone = !stableKey && phoneKey && itemPhoneKey === phoneKey;
+    const sameIdFallback = !stableKey && !phoneKey && String(record.id || '') && String(item.id || '') === String(record.id || '');
+    return !(sameStable || samePhone || sameIdFallback);
   });
   saveOrderEntriesStore_(dateKey, entries);
 }
@@ -362,10 +422,7 @@ function dashboardOrderRowLikelyMatches_(rowValues, dateKey, storedEntries) {
   });
   if (matchedStoredOrder) return true;
   const salesPerson = String(rowValues[0] || '').trim().toLowerCase();
-  const channel = String(rowValues[4] || '').trim().toLowerCase();
-  const hasDashboardShape = salesPerson === 'joey' &&
-    (channel.indexOf('knee 990') >= 0 || channel.indexOf('sg 997') >= 0 || channel.indexOf('main front') >= 0);
-  return hasDashboardShape && name && total;
+  return salesPerson === 'joey' && name && total;
 }
 
 function orderRecordsFromSheetDate_(dateValue, storedEntries) {
@@ -399,9 +456,8 @@ function mergeOrderRecords_(storedEntries, sheetEntries) {
   const seen = {};
   const merged = [];
   function keyFor(item) {
-    const sheet = String(item.sheet || '').trim();
-    const row = String(item.row || '').trim();
-    if (sheet && row) return 'row:' + sheet + ':' + row;
+    const stableKey = orderRecordStableKey_(item);
+    if (stableKey) return stableKey;
     if (String(item.id || '').trim()) return 'id:' + String(item.id).trim();
     return 'sig:' + orderRecordSignature_(item);
   }
@@ -482,14 +538,128 @@ function orderRecordFromRow_(sheet, row, id) {
   };
 }
 
+function orderRecordFromRowValues_(sheet, row, values, receipt, id) {
+  const date = normalizeOrderDate_(values[2]);
+  return {
+    id: String(id || sheet.getName() + '-' + row),
+    source: 'dashboard',
+    sheet: sheet.getName(),
+    row: row,
+    no: values[1],
+    date: date,
+    dateKey: orderDateKey_(date),
+    name: String(values[12] || values[3] || ''),
+    phone: String(values[13] || ''),
+    product: String(values[10] || values[11] || ''),
+    address: String(values[14] || ''),
+    total: values[15],
+    payment: String(values[9] || ''),
+    page: '',
+    channel: String(values[4] || ''),
+    receipt: String(receipt || ''),
+    order: {
+      'D · Sales Person': values[0],
+      'E · NO': values[1],
+      'F · Date': date,
+      'G · Platform Name': values[3],
+      'H · Channel / Chanel': values[4],
+      'I · Classic BTL': values[5],
+      'J · Knee BTL': values[6],
+      'K · Ginseng BTL': values[7],
+      'L · Floral BTL': values[8],
+      'M · Payment Method': values[9],
+      'N · Variant': values[10],
+      'O · Remark': values[11],
+      'P · Name': values[12],
+      'Q · Phone': values[13],
+      'R · Address': values[14],
+      'S · Total/RM': values[15],
+      'AK · Receipt Link': receipt
+    }
+  };
+}
+
+function findOrderRowByDatePhone_(sheet, dateKey, record) {
+  const phoneKey = orderRecordPhoneKey_(record);
+  if (!phoneKey) return 0;
+  const targetPhone = phoneKey.split('|')[1];
+  const targetTotal = String(record.total || value_(record.order || {}, 'S · Total/RM') || '').replace(/[^0-9.]/g, '');
+  const targetProduct = String(record.product || value_(record.order || {}, 'N · Variant') || value_(record.order || {}, 'O · Remark') || '').trim().toLowerCase();
+  const last = Math.max(2, sheet.getLastRow());
+  if (last < 2) return 0;
+  const values = sheet.getRange(2, 4, last - 1, 16).getValues(); // D:S
+  const candidates = [];
+  values.forEach(function(rowValues, index) {
+    const rowDateKey = orderDateKey_(rowValues[2]);
+    if (rowDateKey !== dateKey) return;
+    const rowPhone = String(rowValues[13] || '').replace(/\D/g, '');
+    if (!rowPhone || rowPhone !== targetPhone) return;
+    const rowTotal = String(rowValues[15] || '').replace(/[^0-9.]/g, '');
+    const rowProduct = String(rowValues[10] || rowValues[11] || '').trim().toLowerCase();
+    let score = 1;
+    if (targetTotal && rowTotal === targetTotal) score += 2;
+    if (targetProduct && rowProduct === targetProduct) score += 1;
+    candidates.push({row:index + 2, score:score});
+  });
+  candidates.sort(function(a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.row - a.row;
+  });
+  return candidates[0] ? candidates[0].row : 0;
+}
+
+function resolveOrderRow_(sheet, dateKey, body) {
+  const row = Number(body.row || 0);
+  const lookup = {
+    dateKey: dateKey,
+    id: body.id,
+    name: body.oldName || body.name,
+    phone: body.oldPhone || body.phone || value_(body.order || {}, 'Q · Phone'),
+    total: body.oldTotal || body.total || value_(body.order || {}, 'S · Total/RM'),
+    product: body.oldProduct || body.product || value_(body.order || {}, 'N · Variant') || value_(body.order || {}, 'O · Remark'),
+    order: body.oldOrder || body.order || {}
+  };
+  if (row && Number.isFinite(row) && row >= 2) {
+    try {
+      const values = sheet.getRange(row, 4, 1, 16).getValues()[0];
+      const rowRecord = orderRecordFromRowValues_(sheet, row, values, sheet.getRange(row, 37).getValue(), body.id);
+      if (orderRecordPhoneKey_(rowRecord) && orderRecordPhoneKey_(rowRecord) === orderRecordPhoneKey_(lookup)) return row;
+    } catch (err) {}
+  }
+  return findOrderRowByDatePhone_(sheet, dateKey, lookup) || row;
+}
+
+function previousOrderLookup_(body, row) {
+  return {
+    id: body.id,
+    sheet: body.sheet,
+    row: row || body.row,
+    dateKey: body.oldDateKey || body.dateKey,
+    name: body.oldName || body.name,
+    phone: body.oldPhone || body.phone || value_(body.oldOrder || {}, 'Q · Phone') || value_(body.order || {}, 'Q · Phone'),
+    total: body.oldTotal || body.total || value_(body.oldOrder || {}, 'S · Total/RM') || value_(body.order || {}, 'S · Total/RM'),
+    product: body.oldProduct || body.product || value_(body.oldOrder || {}, 'N · Variant') || value_(body.oldOrder || {}, 'O · Remark') || value_(body.order || {}, 'N · Variant') || value_(body.order || {}, 'O · Remark'),
+    order: body.oldOrder || body.order || {}
+  };
+}
+
 function getOrderEntries_(dateValue) {
   const dateKey = orderDateKey_(dateValue);
   const storedEntries = readOrderEntriesStore_(dateKey).filter(function(item) {
-    return String(item.source || '') === 'dashboard' && orderRecordRowStillFilled_(item);
+    return String(item.source || '') === 'dashboard';
   });
-  const sheetEntries = orderRecordsFromSheetDate_(dateKey, storedEntries);
-  const entries = mergeOrderRecords_(storedEntries, sheetEntries);
-  return {ok:true, date:dateKey, entries:entries};
+  return {ok:true, date:dateKey, entries:storedEntries};
+}
+
+function restoreOrderEntriesFromSheet_(dateValue) {
+  const dateKey = orderDateKey_(dateValue);
+  const sheetEntries = orderRecordsFromSheetDate_(dateKey, []);
+  const records = sheetEntries.map(function(record) {
+    record.source = 'dashboard';
+    return record;
+  });
+  saveOrderEntriesStore_(dateKey, records);
+  return {ok:true, date:dateKey, restored:records.length, entries:readOrderEntriesStore_(dateKey)};
 }
 
 function lastFilledOrderRow_(sheet) {
@@ -661,8 +831,8 @@ function updateOrderEntryDate_(body) {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
     const oldSheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
     if (!oldSheet) throw new Error('old_order_sheet_not_found');
-    const oldRow = Number(body.row || 0);
-    if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('invalid_order_row');
+    const oldRow = resolveOrderRow_(oldSheet, oldDateKey, body);
+    if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('order_row_not_found_for_date_phone');
     const newSheet = spreadsheet.getSheetByName(ORDER_MONTH_SHEETS[monthIndexFromDate_(newDate)]);
     if (!newSheet) throw new Error('new_order_sheet_not_found');
 
@@ -684,7 +854,7 @@ function updateOrderEntryDate_(body) {
       styleSgdRemark_(newSheet.getRange(nextRow, 15));
       record = orderRecordFromRow_(newSheet, nextRow, body.id || (newSheet.getName() + '-' + nextRow));
     }
-    removeOrderRecord_(oldDateKey, {id: body.id, sheet: body.sheet, row: oldRow});
+    removeOrderRecord_(oldDateKey, previousOrderLookup_(body, oldRow));
     upsertOrderRecord_(record);
     SpreadsheetApp.flush();
     return {ok:true, entry:record};
@@ -704,8 +874,8 @@ function updateOrderEntry_(body) {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
     const oldSheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
     if (!oldSheet) throw new Error('old_order_sheet_not_found');
-    const oldRow = Number(body.row || 0);
-    if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('invalid_order_row');
+    const oldRow = resolveOrderRow_(oldSheet, oldDateKey, body);
+    if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('order_row_not_found_for_date_phone');
     const newSheet = orderSheetFor_(spreadsheet, order);
     const existingNo = oldSheet.getRange(oldRow, 5).getValue() || value_(order, 'E · NO') || nextOrderNo_(newSheet);
     let row = oldRow;
@@ -723,7 +893,7 @@ function updateOrderEntry_(body) {
       writeOrderRow_(newSheet, row, order, existingNo);
     }
 
-    removeOrderRecord_(oldDateKey, {id: body.id, sheet: body.sheet, row: oldRow});
+    removeOrderRecord_(oldDateKey, previousOrderLookup_(body, oldRow));
     const record = orderRecordFromRow_(targetSheet, row, body.id || (targetSheet.getName() + '-' + row));
     record.page = String(body.page || '');
     record.source = 'dashboard';
@@ -744,11 +914,11 @@ function deleteOrderEntry_(body) {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
     const sheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
     if (!sheet) throw new Error('order_sheet_not_found');
-    const row = Number(body.row || 0);
-    if (!Number.isFinite(row) || row < 2) throw new Error('invalid_order_row');
+    const row = resolveOrderRow_(sheet, oldDateKey, body);
+    if (!Number.isFinite(row) || row < 2) throw new Error('order_row_not_found_for_date_phone');
     sheet.getRange(row, 4, 1, 16).clearContent();
     sheet.getRange(row, 37).clearContent();
-    removeOrderRecord_(oldDateKey, {id: body.id, sheet: body.sheet || sheet.getName(), row: row});
+    removeOrderRecord_(oldDateKey, previousOrderLookup_(body, row));
     SpreadsheetApp.flush();
     return {ok:true, action:'delete', sheet:sheet.getName(), row:row};
   } finally {
@@ -1031,6 +1201,13 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'order_entries') {
     try {
       return json_(getOrderEntries_(date));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'restore_order_entries_from_sheet') {
+    try {
+      return json_(restoreOrderEntriesFromSheet_(date));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

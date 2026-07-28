@@ -568,13 +568,13 @@
       return iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : "";
     }
     function orderEntryUniqueKey(entry = {}) {
-      if (entry.sheet && entry.row) return `row:${entry.sheet}:${entry.row}`;
-      if (entry.id) return `id:${entry.id}`;
-      const name = String(entry.name || entry.order?.["P · Name"] || "").trim().toLowerCase();
       const dateKey = dateKeyForOrderEntry(entry);
       const total = String(entry.total || entry.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
       const phone = String(entry.phone || entry.order?.["Q · Phone"] || "").replace(/\D/g, "");
       const product = String(entry.product || entry.order?.["N · Variant"] || entry.order?.["O · Remark"] || "").trim().toLowerCase();
+      if (dateKey && phone) return `phone:${dateKey}:${phone}:${total}:${product}`;
+      if (entry.id) return `id:${entry.id}`;
+      const name = String(entry.name || entry.order?.["P · Name"] || "").trim().toLowerCase();
       return `sig:${dateKey}:${name}:${phone}:${total}:${product}`;
     }
     function mergeOrderEntriesForDate(date, entries = []) {
@@ -595,7 +595,7 @@
       if (!date) return;
       const next = [];
       const seen = new Set();
-      entries.filter(entry => !isDeletedOrderEntry(entry)).forEach(entry => {
+      entries.forEach(entry => {
         const key = orderEntryUniqueKey(entry);
         if (!key || seen.has(key)) return;
         seen.add(key);
@@ -641,7 +641,11 @@
       }
     }
     function orderDeleteKeys(order = {}) {
-      if (order.sheet && order.row) return [`row:${order.sheet}:${order.row}`];
+      const dateKey = dateKeyForOrderEntry(order);
+      const phone = String(order.phone || order.order?.["Q · Phone"] || "").replace(/\D/g, "");
+      const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+      const product = String(order.product || order.order?.["N · Variant"] || order.order?.["O · Remark"] || "").trim().toLowerCase();
+      if (dateKey && phone) return [`phone:${dateKey}:${phone}:${total}:${product}`];
       if (order.id) return [`id:${order.id}`];
       return [];
     }
@@ -651,7 +655,7 @@
     }
     function orderSummaryFor(date) {
       if (orderEntriesByDate[date]) {
-        return summarizeOrderEntries(orderEntriesByDate[date].filter(entry => !isDeletedOrderEntry(entry)));
+        return summarizeOrderEntries(orderEntriesByDate[date]);
       }
       return orderSummariesByDate[date] || summarizeOrderEntries([]);
     }

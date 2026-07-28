@@ -741,11 +741,19 @@
       }
     }
 
+    function orderStableDeleteKey(order = {}) {
+      const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
+      const phone = String(order.phone || order.order?.["Q · Phone"] || "").replace(/\D/g, "");
+      const total = String(order.total || order.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+      const product = String(order.product || order.order?.["N · Variant"] || order.order?.["O · Remark"] || "").trim().toLowerCase();
+      return dateKey && phone ? `phone:${dateKey}:${phone}:${total}:${product}` : "";
+    }
+
     function orderDeleteKeys(order = {}) {
-      const keys = [];
-      if (order.sheet && order.row) keys.push(`row:${order.sheet}:${order.row}`);
-      if (order.id) keys.push(`id:${order.id}`);
-      return keys;
+      const stableKey = orderStableDeleteKey(order);
+      if (stableKey) return [stableKey];
+      if (order.id) return [`id:${order.id}`];
+      return [];
     }
 
     function isDeletedOrder(order) {
@@ -754,7 +762,8 @@
     }
 
     function orderUniqueKey(order = {}) {
-      if (order.sheet && order.row) return `row:${order.sheet}:${order.row}`;
+      const stableKey = orderStableDeleteKey(order);
+      if (stableKey) return stableKey;
       if (order.id) return `id:${order.id}`;
       const name = String(order.name || order.order?.["P · Name"] || "").trim().toLowerCase();
       const dateKey = String(order.dateKey || dateToInputValue(order.date) || "").trim();
@@ -1418,11 +1427,12 @@
       };
     }
 
-    function mergeOrderRecords(records) {
+    function mergeOrderRecords(records, options = {}) {
+      const trustServer = Boolean(options.trustServer);
       const normalized = records
         .map(normalizeOrderRecord)
         .filter(order => order.source === "dashboard" || order.sheet || order.row || order.order?.["H · Channel / Chanel"])
-        .filter(order => !isDeletedOrder(order));
+        .filter(order => trustServer || !isDeletedOrder(order));
       const keys = new Set(normalized.map(orderUniqueKey));
       previewOrders = [
         ...normalized,
@@ -1440,7 +1450,7 @@
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.ok && Array.isArray(result.entries)) {
           orderRecordsLoaded.add(dateKey);
-          mergeOrderRecords(result.entries);
+          mergeOrderRecords(result.entries, {trustServer:true});
           if (confirmedDate.value === dateKey) renderConfirmedOrders();
         }
       } catch (error) {
@@ -1637,14 +1647,19 @@
         const response = await fetch(`${apiBase}/api/order-entry/update`, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            id: order.id,
-            sheet: order.sheet,
-            row: order.row,
-            oldDateKey: order.dateKey,
-            page: editOrderPage.value,
-            order: editedOrder
-          })
+	          body: JSON.stringify({
+	            id: order.id,
+	            sheet: order.sheet,
+	            row: order.row,
+	            oldDateKey: order.dateKey,
+	            oldName: order.name,
+	            oldPhone: order.phone,
+	            oldTotal: order.total,
+	            oldProduct: order.product,
+	            oldOrder: order.order || {},
+	            page: editOrderPage.value,
+	            order: editedOrder
+	          })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.error || "修改订单失败");
@@ -1690,10 +1705,15 @@
               id: order.id,
               sheet: order.sheet,
               row: order.row,
-              oldDateKey: order.dateKey,
-              dateKey: order.dateKey,
-              name: order.name,
-              phone: order.phone,
+	              oldDateKey: order.dateKey,
+	              dateKey: order.dateKey,
+	              oldName: order.name,
+	              oldPhone: order.phone,
+	              oldTotal: order.total,
+	              oldProduct: order.product,
+	              oldOrder: order.order || {},
+	              name: order.name,
+	              phone: order.phone,
               total: order.total,
               product: order.product,
               page: order.page,
