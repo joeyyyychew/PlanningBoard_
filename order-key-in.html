@@ -574,7 +574,7 @@
             <div class="confirmed-date">显示日期
               <div class="pill date-control analysis-date-control order-date-control">
                 <button id="orderPrevDay" aria-label="前一天" type="button">‹</button>
-                <button class="date-label" id="orderDateLabel" type="button" aria-haspopup="true" aria-expanded="false">21/07/2026</button>
+                <button class="date-label" id="orderDateLabel" type="button" aria-haspopup="true" aria-expanded="false">加载中…</button>
                 <input id="confirmedDate" type="hidden" />
                 <button id="orderNextDay" aria-label="后一天" type="button">›</button>
                 <div class="month-popover analysis-date-popover" id="orderDatePopover" hidden>
@@ -816,7 +816,7 @@
     const spreadsheetId = "1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ";
     if (accountPageMap[currentPreviewAccount]) page.value = accountPageMap[currentPreviewAccount];
     pasteBlocks.querySelectorAll(".order-page-select").forEach(select => { select.value = page.value; });
-    orderEntryDate.value = formatDateLabel(todayInputDate());
+    orderEntryDate.value = formatDateLabel(currentPreviewDate || todayInputDate());
     confirmedDate.value = normalizeTypedOrderDate(orderEntryDate.value);
 
     sheetButton.addEventListener("click", event => {

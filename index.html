@@ -374,8 +374,8 @@
           <span class="pill verified" id="syncBadge">最后更新：21:12</span>
           <div class="pill date-control analysis-date-control">
             <button id="prevDay" aria-label="前一天">‹</button>
-            <button class="date-label" id="dateLabel" type="button" aria-haspopup="true" aria-expanded="false">21/07/2026</button>
-            <input id="reportDate" type="hidden" value="2026-06-22" />
+            <button class="date-label" id="dateLabel" type="button" aria-haspopup="true" aria-expanded="false">加载中…</button>
+            <input id="reportDate" type="hidden" />
             <button id="nextDay" aria-label="后一天">›</button>
             <div class="month-popover analysis-date-popover" id="datePopover" hidden>
               <div class="year-row">
@@ -467,7 +467,7 @@
     }).formatToParts(new Date()).reduce((all, part) => ({...all, [part.type]: part.value}), {});
     const todayDate = `${klTodayParts.year}-${klTodayParts.month}-${klTodayParts.day}`;
     const requestedDate = urlParams.get("date");
-    dateInput.value = embeddedMode && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "")
+    dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "")
       ? requestedDate
       : todayDate;
     const dateLabel = document.getElementById("dateLabel");
