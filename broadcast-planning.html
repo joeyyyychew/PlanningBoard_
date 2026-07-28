@@ -2121,8 +2121,11 @@
     document.getElementById("showReminderBtn").addEventListener("click", () => openTodayReminder());
     document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
     document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
-    render();
-    loadBroadcastPlansFromSheet().finally(showTodayReminder);
+    loadBroadcastPlansFromSheet()
+      .then(loaded => {
+        if (!loaded) render();
+      })
+      .finally(showTodayReminder);
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>

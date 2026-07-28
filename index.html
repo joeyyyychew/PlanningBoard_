@@ -506,7 +506,8 @@
         localStorage.setItem(REPORT_CACHE_KEY, JSON.stringify(reportsByAccount));
       } catch {}
     }
-    restoreReportCache();
+    // Do not paint cached report data on first load. The dashboard should wait
+    // for the latest server/webhook data so refresh never flashes old numbers.
     function restoreOrderCache() {
       try {
         const cached = JSON.parse(localStorage.getItem(ORDER_CACHE_KEY) || "{}");
@@ -522,7 +523,8 @@
         localStorage.setItem(ORDER_CACHE_KEY, JSON.stringify(orderEntriesByDate));
       } catch {}
     }
-    restoreOrderCache();
+    // Keep the cache writer for backup, but do not restore it before the latest
+    // order records are fetched.
     function setAnalysisDropdown(open) {
       analysisToggle.classList.toggle("open", open);
       analysisToggle.setAttribute("aria-expanded", String(open));
@@ -589,6 +591,19 @@
       orderEntriesByDate[date] = merged;
       orderSummariesByDate[date] = orderSummaryFor(date);
     }
+    function replaceOrderEntriesForDate(date, entries = []) {
+      if (!date) return;
+      const next = [];
+      const seen = new Set();
+      entries.filter(entry => !isDeletedOrderEntry(entry)).forEach(entry => {
+        const key = orderEntryUniqueKey(entry);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        next.push(entry);
+      });
+      orderEntriesByDate[date] = next;
+      orderSummariesByDate[date] = orderSummaryFor(date);
+    }
     function mergeLocalOrderEntries() {
       try {
         const localOrders = JSON.parse(localStorage.getItem("orderSheetConfirmedOrdersV2") || "[]");
@@ -634,7 +649,6 @@
       const deleted = deletedOrderKeys();
       return orderDeleteKeys(order).some(key => deleted.has(key));
     }
-    mergeLocalOrderEntries();
     function orderSummaryFor(date) {
       if (orderEntriesByDate[date]) {
         return summarizeOrderEntries(orderEntriesByDate[date].filter(entry => !isDeletedOrderEntry(entry)));
@@ -652,11 +666,11 @@
           const response = await apiFetch(`/api/order-entries?date=${encodeURIComponent(date)}`);
           if (!response.ok) throw new Error("Order entries failed");
           const payload = await response.json();
-          mergeLocalOrderEntries();
-          mergeOrderEntriesForDate(date, payload.entries || []);
+          replaceOrderEntriesForDate(date, payload.entries || []);
           orderSummariesByDate[date] = orderSummaryFor(date);
           saveOrderCache();
         } catch {
+          if (!orderEntriesByDate[date]) mergeLocalOrderEntries();
           orderEntriesByDate[date] = orderEntriesByDate[date] || [];
           orderSummariesByDate[date] = orderSummariesByDate[date] || summarizeOrderEntries([]);
         } finally {
@@ -723,7 +737,6 @@
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: "dashboard-date-change", value }, window.location.origin);
       }
-      render(dateInput.value);
       if (currentView === "overview") connectAllAccounts();
       else refreshLive(dateInput.value);
     }
@@ -1160,7 +1173,6 @@
       currentView = "overview";
       setAnalysisDropdown(true);
       history.replaceState(null, "", `${location.pathname}${dateInput.value ? `?date=${dateInput.value}` : ""}`);
-      render(dateInput.value);
       await connectAllAccounts();
     });
     document.querySelectorAll("[data-account]").forEach(button => button.addEventListener("click", async () => {
@@ -1170,7 +1182,6 @@
       localStorage.setItem("manychatDashboardAccount", currentAccount);
       history.replaceState(null, "", `${location.pathname}?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(dateInput.value)}`);
       dailyReports = reportsByAccount[currentAccount] ||= {};
-      render(dateInput.value);
       await connectAccount();
     }));
     function openCustomerList(type) {
@@ -1238,8 +1249,6 @@
         mergeReports({[currentAccount]: payload.reports || {}});
         saveReportCache();
         dailyReports = reportsByAccount[currentAccount];
-        await loadOrderSummary(dateInput.value, false);
-        render(dateInput.value);
         const report = dailyReports[dateInput.value];
         document.getElementById("syncBadge").textContent = report?.lastUpdated
           ? `日报已载入 · ${displayTime(report.lastUpdated)}`
@@ -1268,8 +1277,6 @@
         }));
         reportsPayloads.filter(Boolean).forEach(mergeReports);
         saveReportCache();
-        await loadOrderSummary(dateInput.value, false);
-        render(dateInput.value);
         await Promise.all(Object.keys(accounts).map(accountId => loadAccountDate(accountId, dateInput.value).catch(() => null)));
         dailyReports = reportsByAccount[currentAccount];
         await loadOrderSummary(dateInput.value, false);
@@ -1347,7 +1354,6 @@
       button.textContent = opened ? "✓ 已打开 WhatsApp" : "请允许弹出窗口";
       setTimeout(() => { button.textContent = "↗ Send WhatsApp Report"; }, 2500);
     });
-    render(dateInput.value);
     renderAccountNames();
     if (currentView === "overview") connectAllAccounts();
     else connectAccount();

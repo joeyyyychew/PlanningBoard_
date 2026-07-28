@@ -725,8 +725,9 @@
       localStorage.setItem("orderSheetRecoveredFromV1", "yes");
       return merged;
     }
-    let previewOrders = recoverDashboardOrders();
-    let hasConfirmedOrder = previewOrders.length > 0;
+    const recoveredPreviewOrders = recoverDashboardOrders();
+    let previewOrders = [];
+    let hasConfirmedOrder = false;
     let orderRecordsLoaded = new Set();
     let loadingOrdersFor = "";
     let editingOrderId = "";
@@ -1443,7 +1444,11 @@
           if (confirmedDate.value === dateKey) renderConfirmedOrders();
         }
       } catch (error) {
-        // Keep local fallback visible if the Google Sheet webhook is temporarily unavailable.
+        // Keep local fallback visible only if the latest server records cannot be read.
+        if (!previewOrders.length && recoveredPreviewOrders.length) {
+          mergeOrderRecords(recoveredPreviewOrders);
+          if (confirmedDate.value === dateKey) renderConfirmedOrders();
+        }
       } finally {
         if (loadingOrdersFor === dateKey) loadingOrdersFor = "";
       }
@@ -1825,8 +1830,7 @@
       }
     });
     render();
-    loadConfirmedOrders(confirmedDate.value);
-    renderConfirmedOrders();
+    loadConfirmedOrders(confirmedDate.value).finally(renderConfirmedOrders);
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>
