@@ -1173,20 +1173,21 @@
       renderAccountNames();
       render(dateInput.value);
     });
-    document.querySelector("[data-view='overview']").addEventListener("click", async () => {
+    document.querySelector("[data-view='overview']").addEventListener("click", () => {
       currentView = "overview";
       setAnalysisDropdown(true);
       history.replaceState(null, "", `${location.pathname}${dateInput.value ? `?date=${dateInput.value}` : ""}`);
-      await connectAllAccounts();
+      dailyReports = reportsByAccount[currentAccount] ||= {};
+      render(dateInput.value);
     });
-    document.querySelectorAll("[data-account]").forEach(button => button.addEventListener("click", async () => {
+    document.querySelectorAll("[data-account]").forEach(button => button.addEventListener("click", () => {
       setAnalysisDropdown(true);
       currentView = "account";
       currentAccount = button.dataset.account;
       localStorage.setItem("manychatDashboardAccount", currentAccount);
       history.replaceState(null, "", `${location.pathname}?account=${encodeURIComponent(currentAccount)}&date=${encodeURIComponent(dateInput.value)}`);
       dailyReports = reportsByAccount[currentAccount] ||= {};
-      await connectAccount();
+      render(dateInput.value);
     }));
     function openCustomerList(type) {
       currentDialogType = type;
@@ -1359,11 +1360,7 @@
       setTimeout(() => { button.textContent = "↗ Send WhatsApp Report"; }, 2500);
     });
     renderAccountNames();
-    if (currentView === "overview") connectAllAccounts();
-    else connectAccount();
-    setInterval(() => {
-      if (currentView === "account") refreshLive(dateInput.value);
-    }, 60000);
+    connectAllAccounts();
   </script>
   <script src="date-picker-unified.js"></script>
 </body>
