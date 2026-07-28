@@ -730,6 +730,23 @@
     let hasConfirmedOrder = false;
     let orderRecordsLoaded = new Set();
     let loadingOrdersFor = "";
+    function orderLoadedKey(dateKey) {
+      return `orderKeyInLoaded:${dateKey}`;
+    }
+    function markOrderRecordsLoaded(dateKey) {
+      if (!dateKey) return;
+      sessionStorage.setItem(orderLoadedKey(dateKey), "yes");
+    }
+    function orderRecordsAlreadyLoaded(dateKey) {
+      return Boolean(dateKey && sessionStorage.getItem(orderLoadedKey(dateKey)) === "yes");
+    }
+    function isBrowserReload() {
+      const entry = performance.getEntriesByType?.("navigation")?.[0];
+      return entry?.type === "reload";
+    }
+    function hasLocalOrdersFor(dateKey) {
+      return previewOrders.some(order => order.dateKey === dateKey && !isDeletedOrder(order));
+    }
     let editingOrderId = "";
     let orderDatePickerYear = new Date().toLocaleString("en", {timeZone:"Asia/Kuala_Lumpur", year:"numeric"});
     let orderDatePickerMonth = new Date().toLocaleString("en", {timeZone:"Asia/Kuala_Lumpur", month:"numeric"});
@@ -1429,15 +1446,17 @@
 
     function mergeOrderRecords(records, options = {}) {
       const trustServer = Boolean(options.trustServer);
+      const replaceDateKey = options.replaceDateKey || "";
       const normalized = records
         .map(normalizeOrderRecord)
         .filter(order => order.source === "dashboard" || order.sheet || order.row || order.order?.["H · Channel / Chanel"])
         .filter(order => trustServer || !isDeletedOrder(order));
       const keys = new Set(normalized.map(orderUniqueKey));
-      previewOrders = [
-        ...normalized,
-        ...previewOrders.filter(order => !keys.has(orderUniqueKey(order)))
-      ];
+      const remaining = previewOrders.filter(order => {
+        if (replaceDateKey && order.dateKey === replaceDateKey) return false;
+        return !keys.has(orderUniqueKey(order));
+      });
+      previewOrders = [...normalized, ...remaining];
       localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
       hasConfirmedOrder = previewOrders.length > 0;
     }
@@ -1450,7 +1469,8 @@
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.ok && Array.isArray(result.entries)) {
           orderRecordsLoaded.add(dateKey);
-          mergeOrderRecords(result.entries, {trustServer:true});
+          mergeOrderRecords(result.entries, {trustServer:true, replaceDateKey: dateKey});
+          markOrderRecordsLoaded(dateKey);
           if (confirmedDate.value === dateKey) renderConfirmedOrders();
         }
       } catch (error) {
@@ -1850,7 +1870,14 @@
       }
     });
     render();
-    loadConfirmedOrders(confirmedDate.value).finally(renderConfirmedOrders);
+    if (isBrowserReload() || !orderRecordsAlreadyLoaded(confirmedDate.value) || !hasLocalOrdersFor(confirmedDate.value)) {
+      loadConfirmedOrders(confirmedDate.value).finally(() => {
+        render();
+        renderConfirmedOrders();
+      });
+    } else {
+      renderConfirmedOrders();
+    }
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>

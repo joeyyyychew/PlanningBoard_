@@ -64,7 +64,8 @@
       setDropdown(false);
       document.querySelector(`[data-target="${target}"]`)?.classList.add("active");
     }
-    frame.src = buildSrc(target, account);
+    const nextSrc = buildSrc(target, account);
+    if (frame.getAttribute("src") !== nextSrc) frame.src = nextSrc;
     if (push) updateUrl(target, account);
   }
 
@@ -110,12 +111,5 @@
       ? "broadcast-planning"
       : "";
   const initialTarget = params.get("view") || pathTarget || (accounts.has(params.get("account")) ? "analysis-account" : "analysis-overview");
-  if (initialTarget === "analysis-overview" || initialTarget === "analysis-account") {
-    const today = todayDate();
-    params.set("date", today);
-    const next = new URL(window.location.href);
-    next.searchParams.set("date", today);
-    history.replaceState(history.state || {}, "", next);
-  }
   setActive(initialTarget, params.get("account") || "", false);
 })();

@@ -1125,6 +1125,7 @@
       {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0}
     ];
     const STORAGE_KEY = "broadcastPlanningPreviewRows:v2";
+    const SHEET_CACHE_KEY = "broadcastPlanningSheetRowsCache:v1";
     const EDITS_KEY = "broadcastPlanningPreviewEdits:v1";
     const DELETED_KEY = "broadcastPlanningPreviewDeleted:v1";
     const REMINDER_KEY = "broadcastPlanningReminderSeen:v1";
@@ -1170,6 +1171,39 @@
         }
       });
     } catch (error) {}
+
+    function broadcastLoadedKey(month) {
+      return `broadcastPlanningLoaded:${month || "all"}`;
+    }
+    function markBroadcastLoaded(month) {
+      if (!month) return;
+      sessionStorage.setItem(broadcastLoadedKey(month), "yes");
+    }
+    function broadcastAlreadyLoaded(month) {
+      return Boolean(month && sessionStorage.getItem(broadcastLoadedKey(month)) === "yes");
+    }
+    function isBrowserReload() {
+      const entry = performance.getEntriesByType?.("navigation")?.[0];
+      return entry?.type === "reload";
+    }
+    function saveSheetRowsCache() {
+      localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify(sheetRows.filter(row => !row.preview)));
+    }
+    function restoreSheetRowsCache() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY) || "[]");
+        if (!Array.isArray(cached) || !cached.length) return false;
+        const previewRows = sheetRows.filter(row => row.preview === true);
+        const normalized = cached.map(normalizeBroadcastSheetRow).filter(row => row.date && row.title);
+        sheetRows.splice(0, sheetRows.length, ...normalized, ...previewRows);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+    function hasRowsForSelectedMonth() {
+      return sheetRows.some(row => monthLabel(row.date) === selectedMonth);
+    }
 
     let filter = "all";
     let mode = "list";
@@ -1279,6 +1313,8 @@
         localStorage.removeItem(EDITS_KEY);
         localStorage.removeItem(DELETED_KEY);
         savePreviewRows();
+        saveSheetRowsCache();
+        markBroadcastLoaded(selectedMonth);
         render();
         return true;
       } catch (error) {
@@ -2121,11 +2157,17 @@
     document.getElementById("showReminderBtn").addEventListener("click", () => openTodayReminder());
     document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
     document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
-    loadBroadcastPlansFromSheet()
-      .then(loaded => {
-        if (!loaded) render();
-      })
-      .finally(showTodayReminder);
+    const restoredBroadcastCache = restoreSheetRowsCache();
+    render();
+    if (isBrowserReload() || !broadcastAlreadyLoaded(selectedMonth) || !restoredBroadcastCache || !hasRowsForSelectedMonth()) {
+      loadBroadcastPlansFromSheet()
+        .then(loaded => {
+          if (!loaded) render();
+        })
+        .finally(showTodayReminder);
+    } else {
+      showTodayReminder();
+    }
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>

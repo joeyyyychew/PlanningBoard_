@@ -487,7 +487,6 @@
     const runDialogTitle = document.getElementById("runDialogTitle");
     const runDialogText = document.getElementById("runDialogText");
     let currentDialogType = null;
-    let runRefreshTimer = null;
     const ids = {pm:"pmValue", pending:"pendingValue", active:"activeValue", orders:"orderValue"};
     function mergeReports(source = {}) {
       Object.entries(source || {}).forEach(([accountId, reports]) => {
@@ -523,8 +522,28 @@
         localStorage.setItem(ORDER_CACHE_KEY, JSON.stringify(orderEntriesByDate));
       } catch {}
     }
-    // Keep the cache writer for backup, but do not restore it before the latest
-    // order records are fetched.
+    function analysisLoadedKey(date) {
+      return `manychatDashboardLoaded:${date}`;
+    }
+    function markAnalysisLoaded(date) {
+      try {
+        sessionStorage.setItem(analysisLoadedKey(date), "yes");
+      } catch {}
+    }
+    function analysisAlreadyLoaded(date) {
+      try {
+        return sessionStorage.getItem(analysisLoadedKey(date)) === "yes";
+      } catch {
+        return false;
+      }
+    }
+    function isBrowserReload() {
+      const entry = performance.getEntriesByType?.("navigation")?.[0];
+      return entry?.type === "reload";
+    }
+    function hasCachedAnalysis(date) {
+      return Boolean(orderEntriesByDate[date]) || Object.values(reportsByAccount).some(reports => reports?.[date]);
+    }
     function setAnalysisDropdown(open) {
       analysisToggle.classList.toggle("open", open);
       analysisToggle.setAttribute("aria-expanded", String(open));
@@ -920,9 +939,6 @@
     }
 
     function render(date) {
-      if (!orderEntriesByDate[date] && !loadingOrderSummaries.has(date)) {
-        loadOrderSummary(date, true);
-      }
       updateDateLabel();
       const report = currentView === "overview" ? combinedReport(date) : dailyReports[date];
       const account = accounts[currentAccount];
@@ -1287,21 +1303,10 @@
         await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
         document.getElementById("syncBadge").textContent = "Dashboard 已更新";
+        markAnalysisLoaded(dateInput.value);
       } catch {
         document.getElementById("syncBadge").textContent = "Dashboard 载入失败 · 请确认本机服务已开启";
       }
-    }
-    function scheduleDashboardRefresh() {
-      if (runRefreshTimer) clearInterval(runRefreshTimer);
-      let attempts = 0;
-      runRefreshTimer = setInterval(async () => {
-        attempts += 1;
-        await connectAllAccounts();
-        if (attempts >= 12 || currentView !== "overview") {
-          clearInterval(runRefreshTimer);
-          runRefreshTimer = null;
-        }
-      }, 10000);
     }
     function runTargets() {
       return currentView === "overview" ? Object.keys(accounts) : [currentAccount];
@@ -1335,6 +1340,7 @@
         dailyReports = reportsByAccount[currentAccount] ||= {};
         await loadOrderSummary(dateInput.value, false);
         render(dateInput.value);
+        markAnalysisLoaded(dateInput.value);
         button.disabled = false;
         button.textContent = "▶ RUN";
         document.getElementById("syncBadge").textContent = currentView === "overview"
@@ -1360,7 +1366,14 @@
       setTimeout(() => { button.textContent = "↗ Send WhatsApp Report"; }, 2500);
     });
     renderAccountNames();
-    connectAllAccounts();
+    restoreReportCache();
+    restoreOrderCache();
+    render(dateInput.value);
+    if (isBrowserReload() || !analysisAlreadyLoaded(dateInput.value) || !hasCachedAnalysis(dateInput.value)) {
+      connectAllAccounts();
+    } else {
+      document.getElementById("syncBadge").textContent = "Dashboard 已保持最新";
+    }
   </script>
   <script src="date-picker-unified.js"></script>
 </body>
