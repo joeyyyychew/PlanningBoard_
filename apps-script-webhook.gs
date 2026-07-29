@@ -272,6 +272,69 @@ function readOrderEntriesStore_(dateKey) {
   return raw ? JSON.parse(raw) : [];
 }
 
+function propertyStorageStats_() {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const stats = {keys:0, bytes:0, contact:0, day:0, order:0, other:0};
+  Object.keys(all).forEach(function(key) {
+    stats.keys += 1;
+    stats.bytes += String(key).length + String(all[key] || '').length;
+    if (key.indexOf('CONTACT_') === 0) stats.contact += 1;
+    else if (key.indexOf('DAY_') === 0) stats.day += 1;
+    else if (key.indexOf('ORDER_ENTRIES_') === 0) stats.order += 1;
+    else stats.other += 1;
+  });
+  return stats;
+}
+
+function pruneScriptStorage_() {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  let deleted = 0;
+  let compacted = 0;
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf('CONTACT_') === 0) {
+      props.deleteProperty(key);
+      deleted += 1;
+      return;
+    }
+    if (key.indexOf('ORDER_ENTRIES_') === 0) {
+      try {
+        const entries = JSON.parse(all[key] || '[]')
+          .map(compactOrderRecord_)
+          .slice(0, 200);
+        props.setProperty(key, JSON.stringify(entries));
+        compacted += 1;
+      } catch (err) {}
+      return;
+    }
+    if (key.indexOf('DAY_') === 0) {
+      try {
+        const day = JSON.parse(all[key] || '{}');
+        day.events = (day.events || []).slice(0, 80).map(function(event) {
+          return {
+            type: event.type,
+            text: event.text,
+            direction: event.direction,
+            contact: event.contact,
+            at: event.at
+          };
+        });
+        day.contacts = day.contacts || {};
+        Object.keys(day.contacts).forEach(function(type) {
+          day.contacts[type] = (day.contacts[type] || []).slice(0, 50);
+        });
+        props.setProperty(key, JSON.stringify(day));
+        compacted += 1;
+      } catch (err) {}
+    }
+  });
+  const after = propertyStorageStats_();
+  after.deleted = deleted;
+  after.compacted = compacted;
+  return after;
+}
+
 function compactOrderRecord_(record) {
   const order = record.order || {};
   const compactOrder = {
@@ -312,7 +375,13 @@ function compactOrderRecord_(record) {
 
 function saveOrderEntriesStore_(dateKey, entries) {
   const compactEntries = (entries || []).map(compactOrderRecord_);
-  PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries));
+  try {
+    PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries));
+  } catch (err) {
+    if (String(err && err.message || err).indexOf('property storage quota') < 0) throw err;
+    pruneScriptStorage_();
+    PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries.slice(0, 200)));
+  }
 }
 
 function upsertOrderRecord_(record) {
@@ -1208,6 +1277,20 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'restore_order_entries_from_sheet') {
     try {
       return json_(restoreOrderEntriesFromSheet_(date));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'storage_status') {
+    try {
+      return json_({ok:true, stats:propertyStorageStats_()});
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'storage_cleanup') {
+    try {
+      return json_({ok:true, stats:pruneScriptStorage_()});
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }
