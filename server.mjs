@@ -1185,6 +1185,41 @@ async function readBroadcastPlans(month = "") {
   return body;
 }
 
+async function readBroadcastSheetConfig(month = "") {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) {
+    throw new Error("Google Sheet webhook 尚未连接");
+  }
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "broadcast_sheet_config");
+  if (month) endpoint.searchParams.set("month", month);
+  const response = await fetch(endpoint, { redirect: "follow", cache: "no-store" });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error || `Google Sheet webhook ${response.status}`);
+  }
+  return body;
+}
+
+async function writeBroadcastSheetConfig(payload) {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) {
+    throw new Error("Google Sheet webhook 尚未连接");
+  }
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    redirect: "follow",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ event_type: "broadcast_sheet_config", ...payload })
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error || `Google Sheet webhook ${response.status}`);
+  }
+  return body;
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -1370,6 +1405,18 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { url: broadcastSheetUrl() });
     }
 
+    if (url.pathname === "/api/broadcast-sheet-config" && req.method === "GET") {
+      const month = url.searchParams.get("month") || "";
+      const result = await readBroadcastSheetConfig(month);
+      return json(res, 200, result);
+    }
+
+    if (url.pathname === "/api/broadcast-sheet-config" && req.method === "POST") {
+      const request = await readBody(req);
+      const result = await writeBroadcastSheetConfig(request);
+      return json(res, 200, result);
+    }
+
     if (url.pathname === "/api/broadcast-plans" && req.method === "GET") {
       const month = url.searchParams.get("month") || "";
       const result = await readBroadcastPlans(month);
@@ -1437,6 +1484,7 @@ const server = http.createServer(async (req, res) => {
       }
       const result = await writeBroadcastPlan({
         action: request.action || "update",
+        month: request.month || "",
         plan: request.plan
       });
       return json(res, 200, { ok: true, result, sheetUrl: broadcastSheetUrl() });

@@ -7,6 +7,8 @@ const MAX_COMPACT_EVENTS_PER_DAY = 25;
 const ORDER_SHEET_ID = '1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ';
 const BROADCAST_SHEET_ID = '1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU';
 const BROADCAST_SHEET_NAME = 'JULY Broadcast Planning';
+const BROADCAST_DASHBOARD_STORE_KEY = 'broadcast_dashboard_store_v1';
+const BROADCAST_DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470';
 const ORDER_MONTH_SHEETS = {
   0: 'Order Jan',
   1: 'Order Feb',
@@ -1192,29 +1194,190 @@ function nextBroadcastRowForDate_(sheet, planDate) {
   return {row: lastDataRow + 1, inserted: false};
 }
 
+function broadcastDefaultRows_() {
+  return [
+    {done:true,date:"2026-07-06",time:"",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:843,page:"KNEE 990",spend:421.5,sheetRow:2},
+    {done:true,date:"2026-07-06",time:"",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:313,page:"SG Page",spend:156.5,sheetRow:3},
+    {done:true,date:"2026-07-14",time:"",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:452,page:"KNEE 990",spend:226,sheetRow:4},
+    {done:true,date:"2026-07-14",time:"",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:368,page:"SG Page",spend:184,sheetRow:5},
+    {done:true,date:"2026-07-15",time:"",title:"LastCall RM30 Voucher",category:"NEW",audience:"7 月",pax:244,page:"KNEE 990",spend:122,sheetRow:6},
+    {done:true,date:"2026-07-17",time:"",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"7 月",pax:248,page:"KNEE 990",spend:124,sheetRow:7},
+    {done:true,date:"2026-07-18",time:"",title:"世界杯限定 Weekend Deal 2",category:"NEW",audience:"7 月",pax:167,page:"SG Page",spend:83.5,sheetRow:8},
+    {done:true,date:"2026-07-18",time:"",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"6 月",pax:715,page:"KNEE 990",spend:357.5,sheetRow:9},
+    {done:true,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:83,page:"KNEE 990",spend:41.5,sheetRow:10},
+    {done:true,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:46,page:"SG Page",spend:23,sheetRow:11},
+    {done:true,date:"2026-07-24",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:453,page:"SG Page",spend:226.5,sheetRow:12},
+    {done:true,date:"2026-07-27",time:"",title:"🎬 Live 27/7",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月 | 6 月",pax:82,page:"KNEE 990",spend:41,sheetRow:13},
+    {done:true,date:"2026-07-27",time:"",title:"🎬 Live 27/7",category:"NEW",audience:"6 月 | 7 月",pax:1621,page:"KNEE 990",spend:810.5,sheetRow:14},
+    {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:88,page:"Old Main Page",spend:44,sheetRow:15},
+    {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"7 月",pax:382,page:"SG Page",spend:191,sheetRow:16},
+    {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:61,page:"KNEE 990",spend:30.5,sheetRow:17},
+    {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:44,page:"SG Page",spend:22,sheetRow:18}
+  ].map(function(row) {
+    row._key = row._key || broadcastRowKey_(row);
+    row.preview = false;
+    return row;
+  });
+}
+
+function defaultBroadcastStore_() {
+  return {
+    version: 1,
+    sheetLinks: {'2026-07': parseBroadcastSheetUrl_(BROADCAST_DEFAULT_SHEET_URL)},
+    plans: {'2026-07': broadcastDefaultRows_()}
+  };
+}
+
+function readBroadcastStore_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(BROADCAST_DASHBOARD_STORE_KEY);
+  if (!raw) return defaultBroadcastStore_();
+  try {
+    const store = JSON.parse(raw);
+    store.version = store.version || 1;
+    store.sheetLinks = store.sheetLinks || {};
+    store.plans = store.plans || {};
+    if (!store.sheetLinks['2026-07']) store.sheetLinks['2026-07'] = parseBroadcastSheetUrl_(BROADCAST_DEFAULT_SHEET_URL);
+    if (!Array.isArray(store.plans['2026-07']) || !store.plans['2026-07'].length) store.plans['2026-07'] = broadcastDefaultRows_();
+    return store;
+  } catch (err) {
+    return defaultBroadcastStore_();
+  }
+}
+
+function saveBroadcastStore_(store) {
+  PropertiesService.getScriptProperties().setProperty(BROADCAST_DASHBOARD_STORE_KEY, JSON.stringify(store));
+}
+
+function parseBroadcastSheetUrl_(urlValue) {
+  const url = String(urlValue || '').trim();
+  const idMatch = url.match(/\/spreadsheets\/d\/([^\/?#]+)/);
+  const gidMatch = url.match(/[?#&]gid=(\d+)/) || url.match(/#gid=(\d+)/);
+  if (!idMatch) throw new Error('broadcast_sheet_url_invalid');
+  return {url:url, spreadsheetId:idMatch[1], gid:gidMatch ? gidMatch[1] : '', sheetName:''};
+}
+
+function broadcastPlanMonth_(plan, monthValue) {
+  const explicit = String(monthValue || '').trim();
+  if (/^\d{4}-\d{2}$/.test(explicit)) return explicit;
+  const dateKey = broadcastDateKey_(plan && plan.date);
+  if (dateKey) return dateKey.slice(0, 7);
+  return Utilities.formatDate(new Date(), TZ, 'yyyy-MM');
+}
+
+function broadcastRowKey_(row) {
+  return [
+    broadcastDateKey_(row && row.date),
+    String(row && row.time || ''),
+    String(row && row.title || ''),
+    String(row && row.category || ''),
+    String(row && row.page || ''),
+    String(row && row.audience || '')
+  ].join('||');
+}
+
+function normalizeBroadcastStorePlan_(plan, sheetRow) {
+  const pax = Number(plan.pax || 0);
+  const row = {
+    _key: String(plan._key || '').trim() || broadcastRowKey_(plan),
+    done: plan.done === true || plan.done === 'true',
+    date: broadcastDateKey_(plan.date),
+    time: String(plan.time || ''),
+    title: String(plan.title || ''),
+    category: String(plan.category || ''),
+    audience: String(plan.audience || ''),
+    pax: pax,
+    page: String(plan.page || ''),
+    spend: Number(plan.spend || (pax * 0.5) || 0),
+    copy: String(plan.copy || plan.broadcastCopy || ''),
+    sheetRow: Number(sheetRow || plan.sheetRow || plan.row || 0),
+    preview: false
+  };
+  row._key = row._key || broadcastRowKey_(row);
+  return row;
+}
+
+function getBroadcastSheetFromConfig_(config) {
+  if (!config || !config.spreadsheetId) throw new Error('broadcast_sheet_link_required');
+  const spreadsheet = SpreadsheetApp.openById(config.spreadsheetId);
+  const gid = String(config.gid || '').trim();
+  if (gid) {
+    const sheets = spreadsheet.getSheets();
+    for (let i = 0; i < sheets.length; i++) {
+      if (String(sheets[i].getSheetId()) === gid) return sheets[i];
+    }
+  }
+  if (config.sheetName) {
+    const named = spreadsheet.getSheetByName(config.sheetName);
+    if (named) return named;
+  }
+  const fallback = spreadsheet.getSheets()[0];
+  if (!fallback) throw new Error('broadcast_sheet_tab_not_found');
+  return fallback;
+}
+
+function updateBroadcastSheetConfig_(body) {
+  const month = broadcastPlanMonth_({}, body.month);
+  const config = parseBroadcastSheetUrl_(body.url || body.sheetUrl || '');
+  const store = readBroadcastStore_();
+  store.sheetLinks[month] = config;
+  if (!Array.isArray(store.plans[month])) store.plans[month] = [];
+  saveBroadcastStore_(store);
+  return {ok:true, month:month, sheetConfig:config};
+}
+
+function getBroadcastSheetConfig_(monthValue) {
+  const month = broadcastPlanMonth_({}, monthValue);
+  const store = readBroadcastStore_();
+  return {ok:true, month:month, sheetConfig:store.sheetLinks[month] || null};
+}
+
 function updateBroadcastPlan_(body) {
   const plan = body.plan || {};
   const action = String(body.action || 'update');
+  const month = broadcastPlanMonth_(plan, body.month);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const spreadsheet = SpreadsheetApp.openById(BROADCAST_SHEET_ID);
-    const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
-    if (!sheet) throw new Error('broadcast_sheet_tab_not_found_' + BROADCAST_SHEET_NAME);
+    const store = readBroadcastStore_();
+    store.plans[month] = Array.isArray(store.plans[month]) ? store.plans[month] : [];
+    const config = store.sheetLinks[month] || (month === '2026-07' ? parseBroadcastSheetUrl_(BROADCAST_DEFAULT_SHEET_URL) : null);
+    const sheet = getBroadcastSheetFromConfig_(config);
     let row = Number(plan.sheetRow || plan.row || 0);
     let inserted = false;
+    const oldKey = String(plan._key || '').trim() || broadcastRowKey_(plan);
+
+    if (action === 'delete') {
+      if (!Number.isFinite(row) || row < 2) {
+        const match = store.plans[month].find(function(item) {
+          return item._key === oldKey || broadcastRowKey_(item) === oldKey;
+        });
+        row = Number(match && match.sheetRow || 0);
+      }
+      if (Number.isFinite(row) && row >= 2) {
+        sheet.deleteRow(row);
+        store.plans[month].forEach(function(item) {
+          if (Number(item.sheetRow || 0) > row) item.sheetRow = Number(item.sheetRow) - 1;
+        });
+      }
+      store.plans[month] = store.plans[month].filter(function(item) {
+        return item._key !== oldKey && broadcastRowKey_(item) !== oldKey && Number(item.sheetRow || 0) !== row;
+      });
+      saveBroadcastStore_(store);
+      SpreadsheetApp.flush();
+      return {ok:true, action:'delete', sheet:sheet.getName(), row:row, rows:store.plans[month], sheetConfig:config};
+    }
+
     if (action === 'append' || !row) {
       const reservation = nextBroadcastRowForDate_(sheet, plan.date);
       row = reservation.row;
       inserted = reservation.inserted === true;
+      if (inserted) {
+        store.plans[month].forEach(function(item) {
+          if (Number(item.sheetRow || 0) >= row) item.sheetRow = Number(item.sheetRow) + 1;
+        });
+      }
     }
     if (!Number.isFinite(row) || row < 2) throw new Error('invalid_broadcast_row');
-
-    if (action === 'delete') {
-      sheet.getRange(row, 1, 1, 9).clearContent();
-      SpreadsheetApp.flush();
-      return {ok:true, action:'delete', sheet:sheet.getName(), row:row};
-    }
 
     const pax = Number(plan.pax || 0);
     const spend = Number(plan.spend || (pax * 0.5) || 0);
@@ -1229,57 +1392,36 @@ function updateBroadcastPlan_(body) {
       spend
     ];
     sheet.getRange(row, 1, 1, rowAH.length).setValues([rowAH]);
-    if (plan.copy || plan.broadcastCopy) {
-      sheet.getRange(row, 9).setValue(String(plan.copy || plan.broadcastCopy || ''));
-    }
+    sheet.getRange(row, 9).setValue(String(plan.copy || plan.broadcastCopy || ''));
+
+    const storedPlan = normalizeBroadcastStorePlan_(plan, row);
+    const existingIndex = store.plans[month].findIndex(function(item) {
+      return item._key === oldKey || broadcastRowKey_(item) === oldKey || Number(item.sheetRow || 0) === row;
+    });
+    if (existingIndex >= 0) store.plans[month][existingIndex] = storedPlan;
+    else store.plans[month].push(storedPlan);
+    store.plans[month].sort(function(a, b) {
+      return String(a.date || '').localeCompare(String(b.date || '')) ||
+        String(a.time || '').localeCompare(String(b.time || '')) ||
+        String(a.title || '').localeCompare(String(b.title || ''));
+    });
+    saveBroadcastStore_(store);
     SpreadsheetApp.flush();
-    return {
-      ok:true,
-      action: action,
-      sheet: sheet.getName(),
-      row: row,
-      inserted: inserted,
-      pax: pax,
-      spend: spend
-    };
+    return {ok:true, action:action, sheet:sheet.getName(), row:row, inserted:inserted, pax:pax, spend:spend, rows:store.plans[month], sheetConfig:config};
   } finally {
     lock.releaseLock();
   }
 }
 
 function getBroadcastPlans_(monthValue) {
-  const spreadsheet = SpreadsheetApp.openById(BROADCAST_SHEET_ID);
-  const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
-  if (!sheet) throw new Error('broadcast_sheet_tab_not_found_' + BROADCAST_SHEET_NAME);
-  const last = Math.max(2, sheet.getLastRow());
-  if (last < 2) return {ok:true, sheet:sheet.getName(), rows:[]};
-  const values = sheet.getRange(2, 1, last - 1, 9).getValues(); // A:I
-  const targetMonth = String(monthValue || '').trim();
-  const rows = [];
-  values.forEach(function(row, index) {
-    const hasData = row.some(function(cell) {
-      return String(cell || '').trim() !== '';
-    });
-    if (!hasData) return;
-    const dateKey = broadcastDateKey_(row[1]);
-    if (targetMonth && dateKey && dateKey.slice(0, 7) !== targetMonth) return;
-    const doneRaw = row[0];
-    rows.push({
-      sheetRow: index + 2,
-      done: doneRaw === true || String(doneRaw).toLowerCase() === 'true' || String(doneRaw).trim() === '✓',
-      date: dateKey,
-      time: '',
-      title: String(row[2] || ''),
-      category: String(row[3] || ''),
-      audience: String(row[4] || ''),
-      pax: broadcastNumber_(row[5]),
-      page: String(row[6] || ''),
-      spend: broadcastNumber_(row[7]),
-      copy: String(row[8] || ''),
-      preview: false
-    });
+  const month = broadcastPlanMonth_({}, monthValue);
+  const store = readBroadcastStore_();
+  const rows = (store.plans[month] || []).map(function(row) {
+    row.preview = false;
+    row._key = row._key || broadcastRowKey_(row);
+    return row;
   });
-  return {ok:true, sheet:sheet.getName(), rows:rows};
+  return {ok:true, source:'dashboard_store', month:month, sheetConfig:store.sheetLinks[month] || null, rows:rows};
 }
 
 function getBroadcastRawRows_(limitValue) {
@@ -1338,6 +1480,13 @@ function doPost(e) {
   if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_plan_update' || type === 'broadcast_plan_update') {
     try {
       return json_(updateBroadcastPlan_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_sheet_config' || type === 'broadcast_sheet_config') {
+    try {
+      return json_(updateBroadcastSheetConfig_(body));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }
@@ -1435,6 +1584,13 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'broadcast_plans') {
     try {
       return json_(getBroadcastPlans_(e.parameter.month || ''));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'broadcast_sheet_config') {
+    try {
+      return json_(getBroadcastSheetConfig_(e.parameter.month || ''));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

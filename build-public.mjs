@@ -453,6 +453,17 @@ async function readBroadcastPlans(env, month = "") {
   return json(result, response.status);
 }
 
+async function readBroadcastSheetConfig(env, month = "") {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "broadcast_sheet_config");
+  if (month) endpoint.searchParams.set("month", month);
+  const response = await fetch(endpoint, { redirect: "follow" });
+  const result = await response.json().catch(() => ({}));
+  return json(result, response.status);
+}
+
 async function forwardWebhookPost(env, eventType, payload) {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
   const endpoint = new URL(env.WEBHOOK_URL);
@@ -600,6 +611,14 @@ export default {
     }
     if (url.pathname === "/api/order-sheet-url") return json({ url: ORDER_SHEET_URL });
     if (url.pathname === "/api/broadcast-sheet-url") return json({ url: BROADCAST_SHEET_URL });
+    if (url.pathname === "/api/broadcast-sheet-config") {
+      if (request.method === "POST") {
+        const payload = await request.json().catch(() => ({}));
+        return forwardWebhookPost(env, "broadcast_sheet_config", payload);
+      }
+      const month = url.searchParams.get("month") || "";
+      return readBroadcastSheetConfig(env, month);
+    }
     if (url.pathname === "/api/order-entries") {
       const date = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
       return readOrderEntries(env, date);

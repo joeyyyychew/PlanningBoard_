@@ -544,6 +544,36 @@
       font-weight:900;
     }
     .panel-actions { display:flex; align-items:center; gap:9px; }
+    .sheet-link-form {
+      display:flex;
+      align-items:center;
+      gap:7px;
+      min-width:300px;
+      padding:5px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.58);
+    }
+    .sheet-link-form input {
+      width:220px;
+      border:0;
+      outline:0;
+      background:transparent;
+      color:var(--ink);
+      font-size:10px;
+      font-weight:700;
+      padding:6px 8px;
+    }
+    .sheet-link-form button {
+      border:0;
+      border-radius:999px;
+      padding:7px 10px;
+      background:rgba(111,16,39,.92);
+      color:#fff;
+      font-size:10px;
+      font-weight:900;
+      cursor:pointer;
+    }
     dialog { width:min(560px,calc(100vw - 40px)); max-height:min(82vh,720px); padding:0; border:0; border-radius:20px; color:var(--ink); box-shadow:0 28px 80px rgba(64,9,22,.28); overflow:hidden; }
     dialog::backdrop { background:rgba(42,6,16,.42); backdrop-filter:blur(3px); }
     .dialog-head { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--line); background:#fffafa; }
@@ -923,6 +953,10 @@
             <span id="sheetMeta">Synced 1 planning tab · Source tab: JULY Broadcast Planning</span>
           </div>
           <div class="panel-actions">
+            <div class="sheet-link-form" title="这个月份 Dashboard 要写入的 Google Sheet 页面">
+              <input id="monthSheetUrl" type="url" placeholder="Paste this month Google Sheet link" />
+              <button id="saveMonthSheetUrl" type="button">Save</button>
+            </div>
             <div class="month-control" aria-label="月份选择">
               <button id="prevMonth" type="button">‹</button>
               <span id="monthLabel" role="button" tabindex="0">2026-07</span>
@@ -1096,33 +1130,23 @@
 
   <script>
     const sheetRows = [
-      {done:true,date:"2026-07-06",time:"8:15 PM",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:843,page:"KNEE 990",spend:421.5},
-      {done:true,date:"2026-07-06",time:"8:30 PM",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:313,page:"SG Page",spend:156.5},
-      {done:true,date:"2026-07-14",time:"8:00 PM",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:583,page:"KNEE 990",spend:291.5},
-      {done:true,date:"2026-07-14",time:"8:00 PM",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:464,page:"SG Page",spend:232},
-      {done:true,date:"2026-07-15",time:"10:30 PM",title:"LastCall RM30 Voucher",category:"NEW",audience:"7 月",pax:204,page:"KNEE 990",spend:102},
-      {done:true,date:"2026-07-17",time:"7:45 PM",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"7 月",pax:299,page:"KNEE 990",spend:149.5},
-      {done:true,date:"2026-07-18",time:"7:00 PM",title:"世界杯限定 Weekend Deal 2",category:"NEW",audience:"7 月",pax:155,page:"SG Page",spend:77.5},
-      {done:true,date:"2026-07-18",time:"7:15 PM",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"6 月",pax:675,page:"KNEE 990",spend:337.5},
-      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
-      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
-      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"NEW",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-23",time:"",title:"Early Bird Start",category:"NEW",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
-      {done:null,date:"2026-07-24",time:"",title:"早鸟 ➕ SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"KNEE 990",spend:0},
-      {done:null,date:"2026-07-24",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"SG Page",spend:0},
-      {done:null,date:"2026-07-25",time:"",title:"早鸟 ➕ SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"KNEE 990",spend:0},
-      {done:null,date:"2026-07-25",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"7 月",pax:0,page:"SG Page",spend:0},
-      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"SG Page",spend:0},
-      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
-      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-30",time:"",title:"早鸟 Last Call 1",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0},
-      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"6 月 | 7 月",pax:0,page:"SG Page",spend:0},
-      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"Old Main Page",spend:0},
-      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"KNEE 990",spend:0},
-      {done:false,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:0,page:"SG Page",spend:0}
+      {done:true,date:"2026-07-06",time:"",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:843,page:"KNEE 990",spend:421.5},
+      {done:true,date:"2026-07-06",time:"",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:313,page:"SG Page",spend:156.5},
+      {done:true,date:"2026-07-14",time:"",title:"SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:452,page:"KNEE 990",spend:226},
+      {done:true,date:"2026-07-14",time:"",title:"SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:368,page:"SG Page",spend:184},
+      {done:true,date:"2026-07-15",time:"",title:"LastCall RM30 Voucher",category:"NEW",audience:"7 月",pax:244,page:"KNEE 990",spend:122},
+      {done:true,date:"2026-07-17",time:"",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"7 月",pax:248,page:"KNEE 990",spend:124},
+      {done:true,date:"2026-07-18",time:"",title:"世界杯限定 Weekend Deal 2",category:"NEW",audience:"7 月",pax:167,page:"SG Page",spend:83.5},
+      {done:true,date:"2026-07-18",time:"",title:"世界杯限定 Weekend Deal",category:"NEW",audience:"6 月",pax:715,page:"KNEE 990",spend:357.5},
+      {done:true,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:83,page:"KNEE 990",spend:41.5},
+      {done:true,date:"2026-07-23",time:"",title:"Early Bird Start",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月",pax:46,page:"SG Page",spend:23},
+      {done:true,date:"2026-07-24",time:"",title:"早鸟➕SG SHOPEE DAY",category:"NEW",audience:"6 月 | 7 月",pax:453,page:"SG Page",spend:226.5},
+      {done:true,date:"2026-07-27",time:"",title:"🎬 Live 27/7",category:"EXSISTING",audience:"3 月 | 4 月 | 5 月 | 6 月",pax:82,page:"KNEE 990",spend:41},
+      {done:true,date:"2026-07-27",time:"",title:"🎬 Live 27/7",category:"NEW",audience:"6 月 | 7 月",pax:1621,page:"KNEE 990",spend:810.5},
+      {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:88,page:"Old Main Page",spend:44},
+      {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"NEW",audience:"7 月",pax:382,page:"SG Page",spend:191},
+      {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:61,page:"KNEE 990",spend:30.5},
+      {done:true,date:"2026-07-31",time:"",title:"早鸟 Last Call 2",category:"EXSISTING",audience:"All Repeat",pax:44,page:"SG Page",spend:22}
     ];
     const STORAGE_KEY = "broadcastPlanningPreviewRows:v2";
     const SHEET_CACHE_KEY = "broadcastPlanningSheetRowsCache:v1";
@@ -1208,6 +1232,7 @@
     let filter = "all";
     let mode = "list";
     let selectedMonth = "2026-07";
+    const sheetConfigByMonth = {};
     const fmt = new Intl.DateTimeFormat("en-GB", { day:"numeric", month:"numeric" });
     const weekday = new Intl.DateTimeFormat("en", { weekday:"short" });
 
@@ -1245,7 +1270,9 @@
       selectedMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
       document.getElementById("planDate").value = `01/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+      updateSheetUrlField();
       render();
+      loadBroadcastPlansFromSheet();
     }
     let pickerYear = Number(selectedMonth.slice(0, 4));
     function renderMonthPicker() {
@@ -1269,7 +1296,9 @@
       document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
       document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
       document.getElementById("monthPopover").hidden = true;
+      updateSheetUrlField();
       render();
+      loadBroadcastPlansFromSheet();
     }
     function normalizePlanDate(value) {
       const raw = String(value || "").trim();
@@ -1300,18 +1329,32 @@
       normalized._key = row._key || rowKey(normalized);
       return normalized;
     }
+    function updateSheetUrlField() {
+      const field = document.getElementById("monthSheetUrl");
+      if (!field) return;
+      field.value = sheetConfigByMonth[selectedMonth]?.url || "";
+      field.placeholder = `${formatMonthText(selectedMonth)} Google Sheet link`;
+    }
+    function replaceStoredRowsForMonth(month, rows) {
+      const previewRows = sheetRows.filter(row => row.preview === true);
+      for (let index = sheetRows.length - 1; index >= 0; index -= 1) {
+        const row = sheetRows[index];
+        if (row.preview !== true && monthLabel(row.date) === month) sheetRows.splice(index, 1);
+      }
+      sheetRows.push(...rows, ...previewRows.filter(row => monthLabel(row.date) === month && !rows.some(item => (item._key || rowKey(item)) === (row._key || rowKey(row)))));
+      sheetRows.sort(comparePlanRows);
+    }
     async function loadBroadcastPlansFromSheet() {
       try {
-        const response = await fetch("/api/broadcast-plans", { cache: "no-store" });
+        const response = await fetch(`/api/broadcast-plans?month=${encodeURIComponent(selectedMonth)}`, { cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload.ok || !Array.isArray(payload.rows)) return false;
-        const pendingPreviewRows = sheetRows.filter(row => row.preview === true);
         const sheetSourceRows = payload.rows
           .map(normalizeBroadcastSheetRow)
           .filter(row => row.date && row.title);
-        sheetRows.splice(0, sheetRows.length, ...sheetSourceRows, ...pendingPreviewRows);
-        localStorage.removeItem(EDITS_KEY);
-        localStorage.removeItem(DELETED_KEY);
+        if (payload.sheetConfig?.url) sheetConfigByMonth[selectedMonth] = payload.sheetConfig;
+        updateSheetUrlField();
+        replaceStoredRowsForMonth(selectedMonth, sheetSourceRows);
         savePreviewRows();
         saveSheetRowsCache();
         markBroadcastLoaded(selectedMonth);
@@ -1367,7 +1410,7 @@
       document.querySelectorAll(".metric small").forEach(small => {
         if (small.textContent === "JULY" || /^\d{4}-\d{2}$/.test(small.textContent)) small.textContent = selectedMonth;
       });
-      document.getElementById("sheetMeta").textContent = `Selected month ${selectedMonth} · ${rows.length} rows · Source tab: Broadcast Planning`;
+      document.getElementById("sheetMeta").textContent = `Selected month ${selectedMonth} · ${rows.length} rows · Dashboard saved data`;
     }
     function renderFrequency(targetId, entries) {
       const max = Math.max(1, ...entries.map(item => item.planned));
@@ -1436,7 +1479,7 @@
             <button class="edit-toggle" data-index="${row.index}" type="button">Edit</button>
           </div>`;
       }).join("") : `<div class="empty">没有符合筛选的 Broadcast Plan。</div>`;
-      document.getElementById("sourceNote").textContent = "Data from Google Sheet · Broadcast Planning";
+      document.getElementById("sourceNote").textContent = "Dashboard saved data · Syncs to selected Google Sheet";
     }
     function renderCalendar() {
       const cal = document.getElementById("calendar");
@@ -1473,7 +1516,7 @@
             }).join("") : `<div class="no-event">No Broadcast</div>`}
           </div>`;
       }).join("");
-      document.getElementById("sourceNote").textContent = `Calendar · ${monthLabel(base)} 完整月历`;
+      document.getElementById("sourceNote").textContent = `Calendar · ${monthLabel(base)} 完整月历 · Dashboard saved data`;
     }
     let activeDetailIndex = null;
     function openBroadcastDetail(index) {
@@ -1689,6 +1732,7 @@
     }
     function planPayload(row) {
       return {
+        _key: row._key || rowKey(row),
         sheetRow: Number(row.sheetRow || 0),
         done: row.done === true,
         date: row.date || "",
@@ -1706,13 +1750,13 @@
       const response = await fetch("/api/broadcast-plan", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({action, plan: planPayload(row)})
+        body: JSON.stringify({action, month:selectedMonth, plan: planPayload(row)})
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok) {
         throw new Error(body.error || body.result?.error || "Google Sheet sync failed");
       }
-      const result = body.result || {};
+      const result = body.result || body || {};
       if (result.row) {
         if (result.inserted === true) {
           sheetRows.forEach(existing => {
@@ -2054,6 +2098,27 @@
       document.getElementById("listView").classList.remove("active");
       render();
     });
+    document.getElementById("saveMonthSheetUrl").addEventListener("click", async () => {
+      const url = document.getElementById("monthSheetUrl").value.trim();
+      if (!url) {
+        alert("请先 paste 这个月份的 Google Sheet 页面链接。");
+        return;
+      }
+      try {
+        const response = await fetch("/api/broadcast-sheet-config", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({month:selectedMonth, url})
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok) throw new Error(payload.error || "Sheet link save failed");
+        sheetConfigByMonth[selectedMonth] = payload.sheetConfig || {url};
+        updateSheetUrlField();
+        alert(`${formatMonthText(selectedMonth)} 的 Google Sheet link 已保存。`);
+      } catch (error) {
+        alert(`Google Sheet link 没有保存成功：${error.message || error}`);
+      }
+    });
     document.querySelectorAll("[data-close-dialog]").forEach(button => {
       button.addEventListener("click", () => document.getElementById(button.dataset.closeDialog)?.close());
     });
@@ -2157,17 +2222,13 @@
     document.getElementById("showReminderBtn").addEventListener("click", () => openTodayReminder());
     document.getElementById("monthLabel").textContent = formatMonthText(selectedMonth);
     document.getElementById("planDate").value = `01/${selectedMonth.slice(5, 7)}/${selectedMonth.slice(0, 4)}`;
-    const restoredBroadcastCache = restoreSheetRowsCache();
+    updateSheetUrlField();
     render();
-    if (isBrowserReload() || !broadcastAlreadyLoaded(selectedMonth) || !restoredBroadcastCache || !hasRowsForSelectedMonth()) {
-      loadBroadcastPlansFromSheet()
-        .then(loaded => {
-          if (!loaded) render();
-        })
-        .finally(showTodayReminder);
-    } else {
-      showTodayReminder();
-    }
+    loadBroadcastPlansFromSheet()
+      .then(loaded => {
+        if (!loaded) render();
+      })
+      .finally(showTodayReminder);
   </script>
   <script src="date-picker-unified.js"></script>
   <script src="custom-select.js"></script>
