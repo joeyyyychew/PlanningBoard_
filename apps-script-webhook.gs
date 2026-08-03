@@ -850,6 +850,64 @@ function reserveOrderRow_(sheet, orderDate) {
   return {row: nextRow, shifted: false};
 }
 
+function rowHasDataValidation_(validations) {
+  return (validations && validations[0] || []).some(function(rule) { return !!rule; });
+}
+
+function findOrderValidationSourceRow_(sheet, targetRow, lastColumn) {
+  const maxRow = Math.max(2, sheet.getLastRow());
+  for (let row = targetRow - 1; row >= 2; row--) {
+    if (rowHasDataValidation_(sheet.getRange(row, 1, 1, lastColumn).getDataValidations())) return row;
+  }
+  for (let row = targetRow + 1; row <= maxRow; row++) {
+    if (rowHasDataValidation_(sheet.getRange(row, 1, 1, lastColumn).getDataValidations())) return row;
+  }
+  return 0;
+}
+
+function ensureDropdownListValue_(sheet, row, column, value) {
+  const text = String(value || '').trim();
+  if (!text) return;
+  const range = sheet.getRange(row, column);
+  const rule = range.getDataValidation();
+  if (!rule) return;
+  const type = rule.getCriteriaType();
+  const criteria = rule.getCriteriaValues();
+  let list = [];
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+    list = (criteria[0] || []).map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+  } else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE && criteria[0] && typeof criteria[0].getValues === 'function') {
+    list = criteria[0].getValues().flat().map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+  } else {
+    return;
+  }
+  const exists = list.some(function(item) { return item.toLowerCase() === text.toLowerCase(); });
+  if (exists) return;
+  const showDropdown = criteria.length > 1 ? criteria[1] !== false : true;
+  const allowInvalid = typeof rule.getAllowInvalid === 'function' ? rule.getAllowInvalid() : true;
+  const helpText = typeof rule.getHelpText === 'function' ? rule.getHelpText() : '';
+  const builder = SpreadsheetApp.newDataValidation()
+    .requireValueInList(list.concat([text]), showDropdown)
+    .setAllowInvalid(allowInvalid);
+  if (helpText) builder.setHelpText(helpText);
+  range.setDataValidation(builder.build());
+}
+
+function ensureOrderRowDropdowns_(sheet, row, order) {
+  const lastColumn = Math.max(37, sheet.getLastColumn());
+  const target = sheet.getRange(row, 1, 1, lastColumn);
+  const current = target.getDataValidations();
+  const sourceRow = findOrderValidationSourceRow_(sheet, row, lastColumn);
+  if (sourceRow) {
+    const source = sheet.getRange(sourceRow, 1, 1, lastColumn).getDataValidations();
+    for (let index = 0; index < lastColumn; index++) {
+      if (!current[0][index] && source[0][index]) current[0][index] = source[0][index];
+    }
+    target.setDataValidations(current);
+  }
+  ensureDropdownListValue_(sheet, row, 8, value_(order, 'H · Channel / Chanel'));
+}
+
 function rowDSFromOrder_(order, orderNo) {
   return [
     value_(order, 'D · Sales Person') || 'Joey',
@@ -891,6 +949,7 @@ function reseatStoredOrderRows_(sheetName, startRow, delta) {
 
 function writeOrderRow_(sheet, row, order, orderNo) {
   const rowDS = rowDSFromOrder_(order, orderNo);
+  ensureOrderRowDropdowns_(sheet, row, order);
   sheet.getRange(row, 4, 1, rowDS.length).setValues([rowDS]);
   sheet.getRange(row, 37).setValue(value_(order, 'AK · Receipt Link'));
   styleSgdRemark_(sheet.getRange(row, 15));
@@ -950,6 +1009,22 @@ function appendOrderEntry_(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function appendOrderEntries_(body) {
+  const list = Array.isArray(body.entries) ? body.entries : (Array.isArray(body.orders) ? body.orders : []);
+  if (!list.length) return appendOrderEntry_(body);
+  const entries = [];
+  list.forEach(function(item) {
+    const payload = {
+      page: item.page || body.page || '',
+      raw: item.raw || '',
+      order: item.order || item
+    };
+    const result = appendOrderEntry_(payload);
+    entries.push(result.entry || result);
+  });
+  return {ok:true, entries:entries, entry:entries[0] || null};
 }
 
 function updateOrderEntryDate_(body) {
@@ -1234,7 +1309,7 @@ function doPost(e) {
   const type = normalizedType_(body, rawType);
   if (type === 'order_entry') {
     try {
-      return json_(appendOrderEntry_(body));
+      return json_(appendOrderEntries_(body));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

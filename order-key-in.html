@@ -519,6 +519,7 @@
                     <option>Scalestory - 天然胶原蛋白</option>
                     <option>鳞记 - 天然胶原蛋白</option>
                     <option>鳞记 SG</option>
+                    <option>Main 968 MC</option>
                   </select>
                 </div>
                 <div>
@@ -533,6 +534,7 @@
             <option>Scalestory - 天然胶原蛋白</option>
             <option>鳞记 - 天然胶原蛋白</option>
             <option>鳞记 SG</option>
+            <option>Main 968 MC</option>
           </select>
           <input id="channelPreview" type="hidden" value="Knee 990 MC" readonly />
 
@@ -621,6 +623,7 @@
             <option>Scalestory - 天然胶原蛋白</option>
             <option>鳞记 - 天然胶原蛋白</option>
             <option>鳞记 SG</option>
+            <option>Main 968 MC</option>
           </select>
         </div>
         <div>
@@ -814,7 +817,8 @@
     const pageChannelMap = {
       "Scalestory - 天然胶原蛋白": "Knee 990 MC",
       "鳞记 - 天然胶原蛋白": "Main Front",
-      "鳞记 SG": "SG 997 WA"
+      "鳞记 SG": "SG 997 WA",
+      "Main 968 MC": "Main 968 MC"
     };
     const accountPageMap = {
       fb108701968299986: "Scalestory - 天然胶原蛋白",
@@ -1168,15 +1172,13 @@
       segments.forEach(addQuantity);
       const variantParts = [];
       const totalBoxes = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-      const totalBtl = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BTL|BOTTLE|瓶)/g)].reduce((sum, match) => sum + Number(match[1]), 0);
-      const totalBoxEquivalent = totalBoxes + (totalBtl / 12);
       const formatBoxCount = (value) => {
         const number = Number(value || 0);
         if (!Number.isFinite(number) || !number) return "";
         if (Number.isInteger(number)) return String(number);
         return String(Number(number.toFixed(2)));
       };
-      const boxLabel = formatBoxCount(totalBoxEquivalent);
+      const boxLabel = formatBoxCount(totalBoxes);
       if (boxLabel) variantParts.push(`${boxLabel} BOX`);
       return { totals, variant: variantParts.join(" + ") };
     }
@@ -1500,22 +1502,26 @@
       button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
       const saved = [];
       try {
-        for (let index = 0; index < ordersToWrite.length; index += 1) {
-          const data = {
-            ...ordersToWrite[index],
-            "Page / Account": ordersToWrite[index]["Page / Account"],
-            "H · Channel / Chanel": ordersToWrite[index]["H · Channel / Chanel"]
-          };
-          button.textContent = ordersToWrite.length > 1 ? `保存 ${index + 1}/${ordersToWrite.length}…` : "保存中…";
-          const response = await fetch(`${apiBase}/api/order-entry`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ page: data["Page / Account"], raw: entries[index].text, order: data })
-          });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result.ok) throw new Error(result.error || `第 ${index + 1} 单写入 Google Sheet 失败`);
-          saved.push(buildOrderRecord(data, result.entry?.record || result.entry || {}));
+        const response = await fetch(`${apiBase}/api/order-entry`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            entries: ordersToWrite.map((data, index) => ({
+              page: data["Page / Account"],
+              raw: entries[index].text,
+              order: data
+            }))
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || "批量写入 Google Sheet 失败");
+        const resultEntries = Array.isArray(result.entries) ? result.entries : [result.entry].filter(Boolean);
+        if (resultEntries.length !== ordersToWrite.length) {
+          throw new Error(`Google Sheet 只确认了 ${resultEntries.length}/${ordersToWrite.length} 单，请重新检查 Apps Script 部署版本。`);
         }
+        resultEntries.forEach((entry, index) => {
+          saved.push(buildOrderRecord(ordersToWrite[index], entry?.record || entry || {}));
+        });
         saved.forEach(unmarkOrderDeleted);
         previewOrders = [...saved.reverse(), ...previewOrders];
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
