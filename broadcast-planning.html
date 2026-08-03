@@ -1365,10 +1365,18 @@
       }
     }
     function monthlyRows() {
-      return sheetRows
+      const unique = new Map();
+      sheetRows
         .map((row, index) => ({...row, index}))
         .filter(row => monthLabel(row.date) === selectedMonth)
-        .sort(comparePlanRows);
+        .forEach(row => {
+          const key = row._key || rowKey(row);
+          const existing = unique.get(key);
+          if (!existing || (!existing.sheetRow && row.sheetRow) || (existing.preview && !row.preview)) {
+            unique.set(key, row);
+          }
+        });
+      return Array.from(unique.values()).sort(comparePlanRows);
     }
     function comparePlanRows(a, b) {
       const dateCompare = String(a.date || "").localeCompare(String(b.date || ""));

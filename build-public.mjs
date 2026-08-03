@@ -10,6 +10,7 @@ const files = [
   "index.html",
   "order-key-in.html",
   "broadcast-planning.html",
+  "broadcast-tracking.html",
   "manychat-setup.html",
   "theme-luxe.css",
   "sidebar-unified.css",
@@ -116,6 +117,8 @@ function publicAuthPath(pathname) {
     pathname === "/api/auth/login" ||
     pathname === "/api/auth/logout" ||
     pathname === "/api/manychat-event" ||
+    pathname === "/api/manychat/broadcast-lead" ||
+    pathname === "/api/manychat/broadcast-order" ||
     pathname === "/api/events" ||
     pathname === "/favicon.ico";
 }
@@ -167,11 +170,12 @@ function serveAsset(pathname) {
   if (cleanPathname === "/favicon.ico") {
     return new Response("", { status: 204, headers: { "Cache-Control": "public, max-age=86400" } });
   }
-  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html"].includes(cleanPathname)) {
+  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html"].includes(cleanPathname)) {
     url.pathname = "/";
     url.searchParams.delete("embedded");
     if (cleanPathname === "/order-key-in.html") url.searchParams.set("view", "order-key-in");
     else if (cleanPathname === "/broadcast-planning.html") url.searchParams.set("view", "broadcast-planning");
+    else if (cleanPathname === "/broadcast-tracking.html") url.searchParams.set("view", "broadcast-tracking");
     else url.searchParams.set("view", url.searchParams.get("account") ? "analysis-account" : "analysis-overview");
     return new Response(null, {
       status: 302,
@@ -187,6 +191,8 @@ function serveAsset(pathname) {
     "/order-key-in.html": embedded ? "/order-key-in.html" : "/dashboard.html",
     "/broadcast-planning": embedded ? "/broadcast-planning.html" : "/dashboard.html",
     "/broadcast-planning.html": embedded ? "/broadcast-planning.html" : "/dashboard.html",
+    "/broadcast-tracking": embedded ? "/broadcast-tracking.html" : "/dashboard.html",
+    "/broadcast-tracking.html": embedded ? "/broadcast-tracking.html" : "/dashboard.html",
     "/manychat-setup": "/manychat-setup.html"
   };
   const clean = routes[cleanPathname] || cleanPathname;
@@ -464,6 +470,19 @@ async function readBroadcastSheetConfig(env, month = "") {
   return json(result, response.status);
 }
 
+async function readBroadcastTracking(env, params = {}) {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "broadcast_tracking");
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim()) endpoint.searchParams.set(key, value);
+  });
+  const response = await fetch(endpoint, { redirect: "follow" });
+  const result = await response.json().catch(() => ({}));
+  return json(result, response.status);
+}
+
 async function forwardWebhookPost(env, eventType, payload) {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
   const endpoint = new URL(env.WEBHOOK_URL);
@@ -627,6 +646,15 @@ export default {
       const month = url.searchParams.get("month") || "";
       return readBroadcastPlans(env, month);
     }
+    if (url.pathname === "/api/broadcast-tracking") {
+      return readBroadcastTracking(env, {
+        page: url.searchParams.get("page") || "",
+        manychat_page_id: url.searchParams.get("manychat_page_id") || "",
+        search: url.searchParams.get("search") || "",
+        date_from: url.searchParams.get("date_from") || "",
+        date_to: url.searchParams.get("date_to") || ""
+      });
+    }
     if (url.pathname === "/api/download-report") {
       const date = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
       return new Response(combinedReport(date), {
@@ -689,6 +717,18 @@ export default {
     if (url.pathname === "/api/order-entry/delete" && request.method === "POST") {
       const payload = await request.json().catch(() => ({}));
       return forwardWebhookPost(env, "order_delete", payload);
+    }
+    if (url.pathname === "/api/broadcast-campaign" && request.method === "POST") {
+      const payload = await request.json().catch(() => ({}));
+      return forwardWebhookPost(env, "broadcast_campaign", payload);
+    }
+    if ((url.pathname === "/api/manychat/broadcast-lead" || url.pathname === "/api/manychat/broadcast-order") && request.method === "POST") {
+      const suppliedKey = request.headers.get("x-ingest-key") || url.searchParams.get("key") || "";
+      if (env.EVENT_INGEST_KEY && suppliedKey !== env.EVENT_INGEST_KEY) {
+        return json({ ok: false, error: "Unauthorized" }, 401);
+      }
+      const payload = await request.json().catch(() => ({}));
+      return forwardWebhookPost(env, url.pathname.endsWith("broadcast-lead") ? "broadcast_lead" : "broadcast_order", payload);
     }
     if (url.pathname === "/api/order-entry" || url.pathname === "/api/broadcast-plan") {
       const payload = await request.json().catch(() => ({}));

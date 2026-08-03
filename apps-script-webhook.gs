@@ -9,6 +9,7 @@ const BROADCAST_SHEET_ID = '1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU';
 const BROADCAST_SHEET_NAME = 'JULY Broadcast Planning';
 const BROADCAST_DASHBOARD_STORE_KEY = 'broadcast_dashboard_store_v1';
 const BROADCAST_DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470';
+const BROADCAST_CAMPAIGN_TRACKING_STORE_KEY = 'broadcast_campaign_tracking_store_v1';
 const ORDER_MONTH_SHEETS = {
   0: 'Order Jan',
   1: 'Order Feb',
@@ -1424,6 +1425,223 @@ function getBroadcastPlans_(monthValue) {
   return {ok:true, source:'dashboard_store', month:month, sheetConfig:store.sheetLinks[month] || null, rows:rows};
 }
 
+function defaultBroadcastTrackingPages_() {
+  const now = new Date().toISOString();
+  return [
+    {id:'page_fb108701968299986', page_name:'ScaleStory 990', manychat_page_id:'fb108701968299986', dashboard_url:'https://app.manychat.com/fb108701968299986/dashboard', is_active:true, created_at:now, updated_at:now},
+    {id:'page_fb111840620574302', page_name:'ScaleStory 968', manychat_page_id:'fb111840620574302', dashboard_url:'https://app.manychat.com/fb111840620574302/dashboard', is_active:true, created_at:now, updated_at:now},
+    {id:'page_fb701760706347255', page_name:'ScaleStory 997 SG', manychat_page_id:'fb701760706347255', dashboard_url:'https://app.manychat.com/fb701760706347255/dashboard', is_active:true, created_at:now, updated_at:now}
+  ];
+}
+
+function defaultBroadcastTrackingStore_() {
+  return {
+    version: 1,
+    manychat_pages: defaultBroadcastTrackingPages_(),
+    broadcast_campaigns: [],
+    broadcast_leads: [],
+    broadcast_orders: []
+  };
+}
+
+function readBroadcastTrackingStore_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(BROADCAST_CAMPAIGN_TRACKING_STORE_KEY);
+  let store;
+  try {
+    store = raw ? JSON.parse(raw) : defaultBroadcastTrackingStore_();
+  } catch (err) {
+    store = defaultBroadcastTrackingStore_();
+  }
+  store.version = store.version || 1;
+  store.manychat_pages = Array.isArray(store.manychat_pages) ? store.manychat_pages : [];
+  store.broadcast_campaigns = Array.isArray(store.broadcast_campaigns) ? store.broadcast_campaigns : [];
+  store.broadcast_leads = Array.isArray(store.broadcast_leads) ? store.broadcast_leads : [];
+  store.broadcast_orders = Array.isArray(store.broadcast_orders) ? store.broadcast_orders : [];
+  const pagesById = {};
+  store.manychat_pages.forEach(function(page) { pagesById[page.manychat_page_id] = page; });
+  defaultBroadcastTrackingPages_().forEach(function(page) {
+    if (!pagesById[page.manychat_page_id]) store.manychat_pages.push(page);
+  });
+  return store;
+}
+
+function saveBroadcastTrackingStore_(store) {
+  PropertiesService.getScriptProperties().setProperty(BROADCAST_CAMPAIGN_TRACKING_STORE_KEY, JSON.stringify(store));
+}
+
+function trackingId_(prefix) {
+  return prefix + '_' + Utilities.getUuid();
+}
+
+function trackingNumber_(value) {
+  const number = Number(String(value || 0).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function trackingDateKey_(value) {
+  if (!value) return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const date = new Date(value);
+  if (!isNaN(date.getTime())) return Utilities.formatDate(date, TZ, 'yyyy-MM-dd');
+  const text = String(value || '').trim();
+  const iso = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  return text;
+}
+
+function trackingPage_(store, manychatPageId) {
+  const id = String(manychatPageId || '').trim();
+  const page = store.manychat_pages.find(function(item) {
+    return item.manychat_page_id === id && item.is_active !== false;
+  });
+  if (!page) throw new Error('manychat_page_not_found_' + id);
+  return page;
+}
+
+function findTrackingCampaign_(store, pageId, campaignName) {
+  const name = String(campaignName || '').trim();
+  return store.broadcast_campaigns.find(function(item) {
+    return item.manychat_page_id === pageId && String(item.campaign_name || '').trim() === name;
+  }) || null;
+}
+
+function upsertBroadcastCampaign_(body) {
+  const now = new Date().toISOString();
+  const store = readBroadcastTrackingStore_();
+  const page = trackingPage_(store, body.manychat_page_id);
+  const campaignName = String(body.campaign_name || '').trim();
+  if (!campaignName) throw new Error('campaign_name_required');
+  let campaign = findTrackingCampaign_(store, page.manychat_page_id, campaignName);
+  const alreadyExists = Boolean(campaign);
+  if (!campaign) {
+    campaign = {
+      id: trackingId_('campaign'),
+      manychat_page_id: page.manychat_page_id,
+      campaign_name: campaignName,
+      broadcast_date: trackingDateKey_(body.broadcast_date || body.date),
+      total_spending: trackingNumber_(body.total_spending),
+      created_at: now,
+      updated_at: now
+    };
+    store.broadcast_campaigns.push(campaign);
+  } else {
+    campaign.broadcast_date = trackingDateKey_(body.broadcast_date || campaign.broadcast_date);
+    if (Object.prototype.hasOwnProperty.call(body, 'total_spending')) campaign.total_spending = trackingNumber_(body.total_spending);
+    campaign.updated_at = now;
+  }
+  saveBroadcastTrackingStore_(store);
+  return {ok:true, already_exists:alreadyExists, page:page, campaign:campaign};
+}
+
+function recordBroadcastLead_(body) {
+  const now = new Date().toISOString();
+  const store = readBroadcastTrackingStore_();
+  const page = trackingPage_(store, body.manychat_page_id);
+  const campaign = findTrackingCampaign_(store, page.manychat_page_id, body.campaign_name);
+  if (!campaign) throw new Error('campaign_not_found');
+  const contactId = String(body.manychat_contact_id || '').trim();
+  if (!contactId) throw new Error('manychat_contact_id_required');
+  const existing = store.broadcast_leads.find(function(item) {
+    return item.campaign_id === campaign.id && item.manychat_contact_id === contactId;
+  });
+  if (existing) return {ok:true, already_exists:true, page:page, campaign:campaign, lead:existing};
+  const lead = {
+    id: trackingId_('lead'),
+    campaign_id: campaign.id,
+    manychat_page_id: page.manychat_page_id,
+    manychat_contact_id: contactId,
+    customer_name: String(body.customer_name || ''),
+    lead_date: body.lead_date || now,
+    created_at: now
+  };
+  store.broadcast_leads.push(lead);
+  saveBroadcastTrackingStore_(store);
+  return {ok:true, already_exists:false, page:page, campaign:campaign, lead:lead};
+}
+
+function recordBroadcastOrder_(body) {
+  const now = new Date().toISOString();
+  const store = readBroadcastTrackingStore_();
+  const page = trackingPage_(store, body.manychat_page_id);
+  const campaign = findTrackingCampaign_(store, page.manychat_page_id, body.campaign_name);
+  if (!campaign) throw new Error('campaign_not_found');
+  const orderId = String(body.order_id || '').trim();
+  if (!orderId) throw new Error('order_id_required');
+  const existing = store.broadcast_orders.find(function(item) {
+    return item.manychat_page_id === page.manychat_page_id && item.order_id === orderId;
+  });
+  if (existing) return {ok:true, already_exists:true, page:page, campaign:campaign, order:existing};
+  const order = {
+    id: trackingId_('order'),
+    campaign_id: campaign.id,
+    manychat_page_id: page.manychat_page_id,
+    order_id: orderId,
+    manychat_contact_id: String(body.manychat_contact_id || ''),
+    customer_name: String(body.customer_name || ''),
+    order_amount: trackingNumber_(body.order_amount),
+    order_date: body.order_date || now,
+    created_at: now,
+    updated_at: now
+  };
+  store.broadcast_orders.push(order);
+  saveBroadcastTrackingStore_(store);
+  return {ok:true, already_exists:false, page:page, campaign:campaign, order:order};
+}
+
+function getBroadcastTracking_(params) {
+  const store = readBroadcastTrackingStore_();
+  const pageFilter = String(params.page || params.manychat_page_id || 'all').trim();
+  const search = String(params.search || '').trim().toLowerCase();
+  const dateFrom = String(params.date_from || '').trim();
+  const dateTo = String(params.date_to || '').trim();
+  const pagesById = {};
+  store.manychat_pages.forEach(function(page) { pagesById[page.manychat_page_id] = page; });
+  let campaigns = store.broadcast_campaigns.slice();
+  if (pageFilter && pageFilter !== 'all') campaigns = campaigns.filter(function(item) { return item.manychat_page_id === pageFilter; });
+  if (dateFrom) campaigns = campaigns.filter(function(item) { return String(item.broadcast_date || '') >= dateFrom; });
+  if (dateTo) campaigns = campaigns.filter(function(item) { return String(item.broadcast_date || '') <= dateTo; });
+  if (search) campaigns = campaigns.filter(function(item) {
+    const page = pagesById[item.manychat_page_id] || {};
+    return (String(item.campaign_name || '') + ' ' + String(page.page_name || '') + ' ' + String(item.manychat_page_id || '')).toLowerCase().indexOf(search) >= 0;
+  });
+  const rows = campaigns.map(function(campaign) {
+    const leads = store.broadcast_leads.filter(function(item) { return item.campaign_id === campaign.id; });
+    const orders = store.broadcast_orders.filter(function(item) { return item.campaign_id === campaign.id; });
+    const totalSales = orders.reduce(function(sum, order) { return sum + trackingNumber_(order.order_amount); }, 0);
+    const totalSpending = trackingNumber_(campaign.total_spending);
+    return {
+      id: campaign.id,
+      manychat_page_id: campaign.manychat_page_id,
+      page_name: (pagesById[campaign.manychat_page_id] || {}).page_name || campaign.manychat_page_id,
+      dashboard_url: (pagesById[campaign.manychat_page_id] || {}).dashboard_url || '',
+      broadcast_date: campaign.broadcast_date,
+      campaign_name: campaign.campaign_name,
+      leads: leads.length,
+      total_spending: totalSpending,
+      total_sales: totalSales,
+      roas: totalSpending > 0 ? totalSales / totalSpending : null,
+      orders: orders
+    };
+  }).sort(function(a, b) {
+    return String(b.broadcast_date || '').localeCompare(String(a.broadcast_date || '')) ||
+      String(a.page_name || '').localeCompare(String(b.page_name || '')) ||
+      String(a.campaign_name || '').localeCompare(String(b.campaign_name || ''));
+  });
+  const totalSpending = rows.reduce(function(sum, row) { return sum + trackingNumber_(row.total_spending); }, 0);
+  const totalSales = rows.reduce(function(sum, row) { return sum + trackingNumber_(row.total_sales); }, 0);
+  return {
+    ok:true,
+    pages:store.manychat_pages,
+    campaigns:rows,
+    summary:{
+      total_campaigns:rows.length,
+      total_leads:rows.reduce(function(sum, row) { return sum + Number(row.leads || 0); }, 0),
+      total_spending:totalSpending,
+      total_sales:totalSales,
+      overall_roas:totalSpending > 0 ? totalSales / totalSpending : null
+    }
+  };
+}
+
 function getBroadcastRawRows_(limitValue) {
   const spreadsheet = SpreadsheetApp.openById(BROADCAST_SHEET_ID);
   const sheet = spreadsheet.getSheetByName(BROADCAST_SHEET_NAME);
@@ -1487,6 +1705,27 @@ function doPost(e) {
   if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_sheet_config' || type === 'broadcast_sheet_config') {
     try {
       return json_(updateBroadcastSheetConfig_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_campaign' || type === 'broadcast_campaign') {
+    try {
+      return json_(upsertBroadcastCampaign_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_lead' || type === 'broadcast_lead') {
+    try {
+      return json_(recordBroadcastLead_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_order' || type === 'broadcast_order') {
+    try {
+      return json_(recordBroadcastOrder_(body));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }
@@ -1591,6 +1830,13 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'broadcast_sheet_config') {
     try {
       return json_(getBroadcastSheetConfig_(e.parameter.month || ''));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'broadcast_tracking') {
+    try {
+      return json_(getBroadcastTracking_(e.parameter || {}));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

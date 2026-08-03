@@ -24,6 +24,9 @@
     if (target === "broadcast-planning") {
       return `/broadcast-planning?account=${encodeURIComponent(account || params.get("account") || "fb108701968299986")}&date=${encodeURIComponent(date)}&embedded=1`;
     }
+    if (target === "broadcast-tracking") {
+      return `/broadcast-tracking?account=${encodeURIComponent(account || params.get("account") || "fb108701968299986")}&date=${encodeURIComponent(date)}&embedded=1`;
+    }
     if (target === "analysis-account") {
       return `/index?account=${encodeURIComponent(account)}&date=${encodeURIComponent(date)}&embedded=1`;
     }
@@ -109,7 +112,9 @@
     ? "order-key-in"
     : location.pathname.includes("broadcast-planning")
       ? "broadcast-planning"
-      : "";
+      : location.pathname.includes("broadcast-tracking")
+        ? "broadcast-tracking"
+        : "";
   const initialTarget = params.get("view") || pathTarget || (accounts.has(params.get("account")) ? "analysis-account" : "analysis-overview");
   setActive(initialTarget, params.get("account") || "", false);
 })();
