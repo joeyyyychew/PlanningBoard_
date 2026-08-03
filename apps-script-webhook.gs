@@ -1,7 +1,9 @@
 const TZ = 'Asia/Kuala_Lumpur';
 const DEFAULT_ACCOUNT = 'fb108701968299986';
 const MAX_CONTACTS_PER_EVENT = 50;
-const MAX_EVENTS_PER_DAY = 300;
+const MAX_EVENTS_PER_DAY = 120;
+const MAX_COMPACT_CONTACTS_PER_TYPE = 30;
+const MAX_COMPACT_EVENTS_PER_DAY = 25;
 const ORDER_SHEET_ID = '1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ';
 const BROADCAST_SHEET_ID = '1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU';
 const BROADCAST_SHEET_NAME = 'JULY Broadcast Planning';
@@ -96,7 +98,15 @@ function readDay_(account, date) {
 }
 
 function saveDay_(day) {
-  PropertiesService.getScriptProperties().setProperty(dayKey_(day.account, day.date), JSON.stringify(day));
+  const props = PropertiesService.getScriptProperties();
+  const key = dayKey_(day.account, day.date);
+  try {
+    props.setProperty(key, JSON.stringify(compactDayRecord_(day)));
+  } catch (err) {
+    if (String(err && err.message || err).indexOf('property storage quota') < 0) throw err;
+    pruneScriptStorage_();
+    props.setProperty(key, JSON.stringify(compactDayRecord_(day, true)));
+  }
 }
 
 function contactFrom_(body, now) {
@@ -196,6 +206,71 @@ function addEvent_(day, type, contact, body, now) {
     occurred_at: String(body.occurred_at || body.event_time || body.created_at || now.toISOString())
   });
   day.events = day.events.slice(0, MAX_EVENTS_PER_DAY);
+}
+
+function compactContactRecord_(contact) {
+  contact = contact || {};
+  return {
+    id: String(contact.id || contact.contact_id || contact.subscriber_id || ''),
+    name: String(contact.name || contact.contact_name || contact.full_name || ''),
+    phone: String(contact.phone || contact.whatsapp_id || contact.wa_id || ''),
+    channel: String(contact.channel || ''),
+    returning: contact.returning === true,
+    inbox: String(contact.inbox || contact.inbox_url || contact.live_chat_url || ''),
+    text: String(contact.text || contact.message || contact.last_text_input || ''),
+    tags: (contact.tags || []).slice(0, 8),
+    at: String(contact.at || '')
+  };
+}
+
+function compactEventRecord_(event) {
+  event = event || {};
+  return {
+    type: String(event.type || event.event_type || ''),
+    contact_id: String(event.contact_id || event.id || ''),
+    name: String(event.name || ''),
+    phone: String(event.phone || ''),
+    inbox: String(event.inbox || ''),
+    text: String(event.text || ''),
+    tags: (event.tags || []).slice(0, 8),
+    blocker: String(event.blocker || ''),
+    source: String(event.source || ''),
+    occurred_at: String(event.occurred_at || event.at || '')
+  };
+}
+
+function compactDayRecord_(day, aggressive) {
+  day = day || {};
+  const limitContacts = aggressive ? 20 : MAX_COMPACT_CONTACTS_PER_TYPE;
+  const limitEvents = aggressive ? 10 : MAX_COMPACT_EVENTS_PER_DAY;
+  const compact = {
+    account: String(day.account || ''),
+    date: String(day.date || ''),
+    counts: day.counts || {},
+    contacts: {},
+    events: (day.events || []).slice(0, limitEvents).map(compactEventRecord_),
+    updated_at: String(day.updated_at || '')
+  };
+  const contacts = day.contacts || {};
+  Object.keys(contacts).forEach(function(type) {
+    compact.contacts[type] = (contacts[type] || []).slice(0, limitContacts).map(compactContactRecord_);
+  });
+  return compact;
+}
+
+function setContactState_(key, state) {
+  if (!key) return;
+  try {
+    PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(state || {}));
+  } catch (err) {
+    if (String(err && err.message || err).indexOf('property storage quota') < 0) throw err;
+    pruneScriptStorage_();
+    try {
+      PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(state || {}));
+    } catch (ignored) {
+      // Contact state is only an optimization. Stored DAY records are still the source of truth.
+    }
+  }
 }
 
 function addPmTags_(day, contact) {
@@ -311,20 +386,7 @@ function pruneScriptStorage_() {
     if (key.indexOf('DAY_') === 0) {
       try {
         const day = JSON.parse(all[key] || '{}');
-        day.events = (day.events || []).slice(0, 80).map(function(event) {
-          return {
-            type: event.type,
-            text: event.text,
-            direction: event.direction,
-            contact: event.contact,
-            at: event.at
-          };
-        });
-        day.contacts = day.contacts || {};
-        Object.keys(day.contacts).forEach(function(type) {
-          day.contacts[type] = (day.contacts[type] || []).slice(0, 50);
-        });
-        props.setProperty(key, JSON.stringify(day));
+        props.setProperty(key, JSON.stringify(compactDayRecord_(day, true)));
         compacted += 1;
       } catch (err) {}
     }
@@ -1224,7 +1286,7 @@ function doPost(e) {
     if (type === 'pending') {
       if (addContact_(day, 'pending', contact)) {
         day.counts.pending = (day.contacts.pending || []).length;
-        if (contactStateKey) props.setProperty(contactStateKey, JSON.stringify({status:'pending', pending_date:date}));
+        setContactState_(contactStateKey, {status:'pending', pending_date:date});
       }
     } else if (type === 'after_payment') {
       if (addContact_(day, 'after_payment', contact)) {
@@ -1238,7 +1300,7 @@ function doPost(e) {
           if (previous.pending_date !== date) saveDay_(pendingDay);
         }
         removePendingFromStoredDays_(account, contact, date);
-        if (contactStateKey) props.setProperty(contactStateKey, JSON.stringify({status:'completed', completed_date:date}));
+        setContactState_(contactStateKey, {status:'completed', completed_date:date});
       }
     } else if (type === 'pm_subscribed') {
       addContact_(day, 'pm', contact);
