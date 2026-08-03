@@ -17,3 +17,6 @@ tmp_*/
 *.crt
 *.p12
 *.pfx
+
+# Local Netlify folder
+.netlify
