@@ -1504,11 +1504,29 @@ function findTrackingCampaign_(store, pageId, campaignName) {
   }) || null;
 }
 
+function broadcastCampaignNameFromBody_(body) {
+  return String(
+    body.campaign_name ||
+    body.last_broadcast_campaign ||
+    ''
+  ).trim();
+}
+
+function broadcastLeadResponseFromBody_(body) {
+  return String(
+    body.response_text ||
+    body.customer_response ||
+    body.last_broadcast_respon ||
+    body.last_broadcast_response ||
+    ''
+  ).trim();
+}
+
 function upsertBroadcastCampaign_(body) {
   const now = new Date().toISOString();
   const store = readBroadcastTrackingStore_();
   const page = trackingPage_(store, body.manychat_page_id);
-  const campaignName = String(body.campaign_name || '').trim();
+  const campaignName = broadcastCampaignNameFromBody_(body);
   if (!campaignName) throw new Error('campaign_name_required');
   let campaign = findTrackingCampaign_(store, page.manychat_page_id, campaignName);
   const alreadyExists = Boolean(campaign);
@@ -1536,8 +1554,8 @@ function recordBroadcastLead_(body) {
   const now = new Date().toISOString();
   const store = readBroadcastTrackingStore_();
   const page = trackingPage_(store, body.manychat_page_id);
-  const campaign = findTrackingCampaign_(store, page.manychat_page_id, body.campaign_name);
-  if (!campaign) throw new Error('campaign_not_found');
+  const campaign = findTrackingCampaign_(store, page.manychat_page_id, broadcastCampaignNameFromBody_(body));
+  if (!campaign) throw new Error('campaign_not_found_send_broadcast_campaign_first');
   const contactId = String(body.manychat_contact_id || '').trim();
   if (!contactId) throw new Error('manychat_contact_id_required');
   const existing = store.broadcast_leads.find(function(item) {
@@ -1550,6 +1568,7 @@ function recordBroadcastLead_(body) {
     manychat_page_id: page.manychat_page_id,
     manychat_contact_id: contactId,
     customer_name: String(body.customer_name || ''),
+    response_text: broadcastLeadResponseFromBody_(body),
     lead_date: body.lead_date || now,
     created_at: now
   };
@@ -1562,8 +1581,8 @@ function recordBroadcastOrder_(body) {
   const now = new Date().toISOString();
   const store = readBroadcastTrackingStore_();
   const page = trackingPage_(store, body.manychat_page_id);
-  const campaign = findTrackingCampaign_(store, page.manychat_page_id, body.campaign_name);
-  if (!campaign) throw new Error('campaign_not_found');
+  const campaign = findTrackingCampaign_(store, page.manychat_page_id, broadcastCampaignNameFromBody_(body));
+  if (!campaign) throw new Error('campaign_not_found_send_broadcast_campaign_first');
   const orderId = String(body.order_id || '').trim();
   if (!orderId) throw new Error('order_id_required');
   const existing = store.broadcast_orders.find(function(item) {

@@ -122,6 +122,55 @@
         <b>after_payment</b>：After Payment / AO Flow 触发时送出。<br>
         <b>tag_added</b>：RM4.90drinks、Free Testing、Don't Disturb 等重要 tag 触发时送出。</p>
       </div>
+      <div class="card" style="margin-top:18px">
+        <h2>Broadcast Campaign Tracking</h2>
+        <p>每一场 Broadcast 的 Campaign 不需要在 Dashboard 手动新增。ManyChat 在每一项 WhatsApp Broadcast 发出/进入 Broadcast Flow 时，先送 Campaign 事件。Lead / Order 只会归到已存在的 Campaign；如果 Campaign 还没创建，会返回错误提醒先送 Campaign。</p>
+        <p class="note">你需要在每一场 Broadcast Flow 开头 Set User Field：<b>last_broadcast_campaign</b>。值可以像：<code>2026-08-04_Merdeka_LastCall</code>。顾客回应内容另外放在 <b>last_broadcast_respon</b>。</p>
+        <span class="pill">ScaleStory 990 · fb108701968299986</span>
+        <span class="pill">ScaleStory 968 · fb111840620574302</span>
+        <span class="pill">ScaleStory 997 SG · fb701760706347255</span>
+        <div class="grid">
+          <div>
+            <h2>Campaign External Request</h2>
+            <pre>POST https://YOUR-DASHBOARD-DOMAIN/api/manychat/broadcast-campaign?key=EVENT_KEY</pre>
+            <pre id="broadcastCampaignTemplate">{
+  "manychat_page_id": "fb111840620574302",
+  "campaign_name": "{{last_broadcast_campaign}}",
+  "broadcast_date": "{{now}}",
+  "total_spending": 0
+}</pre>
+            <button class="copy" data-copy="broadcastCampaignTemplate">Copy campaign template</button>
+          </div>
+          <div>
+            <h2>Lead External Request</h2>
+            <pre>POST https://YOUR-DASHBOARD-DOMAIN/api/manychat/broadcast-lead?key=EVENT_KEY</pre>
+            <pre id="broadcastLeadTemplate">{
+  "manychat_page_id": "fb111840620574302",
+  "campaign_name": "{{last_broadcast_campaign}}",
+  "manychat_contact_id": "{{contact.id}}",
+  "customer_name": "{{first_name}} {{last_name}}",
+  "lead_date": "{{now}}",
+  "response_text": "{{last_broadcast_respon}}"
+}</pre>
+            <button class="copy" data-copy="broadcastLeadTemplate">Copy lead template</button>
+          </div>
+          <div>
+            <h2>Order External Request</h2>
+            <pre>POST https://YOUR-DASHBOARD-DOMAIN/api/manychat/broadcast-order?key=EVENT_KEY</pre>
+            <pre id="broadcastOrderTemplate">{
+  "manychat_page_id": "fb111840620574302",
+  "campaign_name": "{{last_broadcast_campaign}}",
+  "order_id": "{{contact.id}}-{{last_broadcast_campaign}}",
+  "manychat_contact_id": "{{contact.id}}",
+  "customer_name": "{{first_name}} {{last_name}}",
+  "order_amount": 779,
+  "order_date": "{{now}}"
+}</pre>
+            <button class="copy" data-copy="broadcastOrderTemplate">Copy order template</button>
+          </div>
+        </div>
+        <p class="note">所有金额默认是 MYR。不要传 currency、不要传 SGD、不要做汇率转换。Total Spending 如果当下还不知道，可以先传 0；ROAS 会显示 “—”，不会出现 NaN 或 Infinity。</p>
+      </div>
     </section>
   </div>
   <script>

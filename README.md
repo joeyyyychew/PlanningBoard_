@@ -76,3 +76,51 @@ Suggested blocker categories:
 - `no_clear_blocker`
 
 ManyChat body examples are shown in `manychat-setup.html`.
+
+## Broadcast Campaign Tracking
+
+Broadcast Tracking is push-based. Dashboard does not need a manual “Add Campaign” step: every WhatsApp Broadcast should first send a `broadcast_campaign` event from ManyChat. Lead and Order events are then recorded under that existing Campaign. If Lead/Order arrives before Campaign, the webhook returns a clear `campaign_not_found_send_broadcast_campaign_first` error.
+
+ManyChat pages used for Broadcast Tracking:
+
+- `fb108701968299986` — ScaleStory 990
+- `fb111840620574302` — ScaleStory 968
+- `fb701760706347255` — ScaleStory 997 SG
+
+ManyChat should set this User Field at the start of each broadcast flow:
+
+```text
+last_broadcast_campaign
+```
+
+ManyChat should store the customer broadcast response in this User Field when recording a Lead:
+
+```text
+last_broadcast_respon
+```
+
+Campaign endpoint:
+
+```text
+POST /api/manychat/broadcast-campaign?key=EVENT_INGEST_KEY
+```
+
+Lead endpoint:
+
+```text
+POST /api/manychat/broadcast-lead?key=EVENT_INGEST_KEY
+```
+
+Order endpoint:
+
+```text
+POST /api/manychat/broadcast-order?key=EVENT_INGEST_KEY
+```
+
+Amounts are always MYR. Store numeric values only; the dashboard displays them as `RM 1,250.00`.
+
+ScaleStory 968 API token environment variable:
+
+```env
+MANYCHAT_API_KEY_FB111840620574302=
+```

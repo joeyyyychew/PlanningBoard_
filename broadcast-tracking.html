@@ -78,7 +78,6 @@
     }
     .primary-button { background:linear-gradient(135deg,var(--wine),var(--red)); color:#fff; box-shadow:0 12px 28px rgba(65,20,14,.18); }
     .ghost-button { background:rgba(255,250,247,.74); border:1px solid var(--line); color:var(--wine); }
-    .form-grid { display:grid; grid-template-columns:1.2fr 1fr 1.6fr 1fr auto; gap:12px; align-items:end; margin-bottom:18px; }
     .table-wrap { overflow:auto; border-radius:22px; border:1px solid var(--line); background:rgba(255,250,247,.45); }
     table { width:100%; border-collapse:separate; border-spacing:0 10px; padding:10px; }
     th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.08em; text-align:left; padding:0 12px 4px; }
@@ -113,7 +112,6 @@
       body { min-width:0; }
       .page { padding:22px; }
       .metrics { grid-template-columns:repeat(2,1fr); }
-      .form-grid { grid-template-columns:1fr; }
       .toolbar { align-items:stretch; flex-direction:column; }
       .bar-row { grid-template-columns:1fr; }
       .detail-grid { grid-template-columns:1fr 1fr; }
@@ -125,7 +123,7 @@
     <header>
       <div>
         <h1>Broadcast Campaign Tracking</h1>
-        <p class="sub">记录每场 ManyChat Broadcast 的 Leads、Total Spending、Total Sales 和 ROAS。所有金额统一使用 MYR，并显示为 RM。</p>
+        <p class="sub">从 ManyChat External Request 自动记录每场 Broadcast 的 Leads、Total Spending、Total Sales 和 ROAS。所有金额统一使用 MYR，并显示为 RM。</p>
       </div>
       <button class="ghost-button" id="refreshBtn" type="button">Refresh</button>
     </header>
@@ -159,26 +157,6 @@
           </div>
         </div>
       </div>
-
-      <form class="form-grid" id="campaignForm">
-        <div class="field">
-          <label>ManyChat Page</label>
-          <select id="campaignPage" required></select>
-        </div>
-        <div class="field">
-          <label>Broadcast Date</label>
-          <input id="campaignDate" type="date" required />
-        </div>
-        <div class="field">
-          <label>Campaign Name</label>
-          <input id="campaignName" placeholder="2026-08-04_Merdeka_LastCall" required />
-        </div>
-        <div class="field">
-          <label>Total Spending</label>
-          <input id="campaignSpend" type="number" min="0" step="0.01" placeholder="0.00" required />
-        </div>
-        <button class="primary-button" type="submit">+ Add Campaign</button>
-      </form>
 
       <div class="table-wrap">
         <table>
@@ -245,7 +223,6 @@
       const allOption = `<option value="all">All Pages</option>`;
       const options = pages.map(page => `<option value="${page.manychat_page_id}">${escapeHtml(page.page_name)}</option>`).join("");
       document.getElementById("pageFilter").innerHTML = allOption + options;
-      document.getElementById("campaignPage").innerHTML = options;
     }
 
     function renderSummary(summary = {}) {
@@ -312,37 +289,11 @@
       if (!response.ok || !data.ok) throw new Error(data.error || "Broadcast Tracking load failed");
       pages = data.pages || [];
       const previousFilter = document.getElementById("pageFilter").value || "all";
-      const previousCampaignPage = document.getElementById("campaignPage").value || PAGE_IDS[0];
       fillPageSelects();
       document.getElementById("pageFilter").value = previousFilter;
-      if (pages.some(page => page.manychat_page_id === previousCampaignPage)) document.getElementById("campaignPage").value = previousCampaignPage;
       campaigns = data.campaigns || [];
       renderSummary(data.summary || {});
       render();
-    }
-
-    async function addCampaign(event) {
-      event.preventDefault();
-      const payload = {
-        manychat_page_id: document.getElementById("campaignPage").value,
-        broadcast_date: document.getElementById("campaignDate").value,
-        campaign_name: document.getElementById("campaignName").value.trim(),
-        total_spending: Number(document.getElementById("campaignSpend").value || 0)
-      };
-      const response = await fetch("/api/broadcast-campaign", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload)
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
-        alert(data.error || "Campaign 没有保存成功");
-        return;
-      }
-      document.getElementById("campaignName").value = "";
-      document.getElementById("campaignSpend").value = "";
-      await loadData();
-      alert(data.already_exists ? "Campaign 已存在，已更新资料。" : "Campaign 已加入。");
     }
 
     function openDetail(id) {
@@ -376,7 +327,6 @@
       document.getElementById("detailDialog").showModal();
     }
 
-    document.getElementById("campaignForm").addEventListener("submit", addCampaign);
     document.getElementById("refreshBtn").addEventListener("click", () => loadData().catch(error => alert(error.message || error)));
     ["pageFilter","dateFrom","dateTo","search"].forEach(id => {
       document.getElementById(id).addEventListener(id === "search" ? "input" : "change", () => loadData().catch(console.error));
@@ -387,7 +337,6 @@
     });
     document.getElementById("closeDetail").addEventListener("click", () => document.getElementById("detailDialog").close());
 
-    document.getElementById("campaignDate").value = today();
     document.getElementById("dateFrom").value = "";
     document.getElementById("dateTo").value = "";
     loadData().catch(error => {

@@ -67,6 +67,12 @@ const ACCOUNTS = {
     key: env.MANYCHAT_API_KEY,
     tags: { pending: ["PENDING"], afterPayment: [] }
   },
+  fb111840620574302: {
+    name: "ScaleStory 968",
+    inbox: "https://app.manychat.com/fb111840620574302/chat",
+    key: env.MANYCHAT_API_KEY_FB111840620574302,
+    tags: { pending: ["PENDING", "Pending"], afterPayment: [] }
+  },
   fb1177107122151553: {
     name: "鳞记 - 天然胶原蛋白",
     inbox: "https://app.manychat.com/fb1177107122151553/chat",
@@ -124,6 +130,7 @@ function publicAuthPath(pathname) {
     pathname === "/api/auth/login" ||
     pathname === "/api/auth/logout" ||
     pathname === "/api/manychat-event" ||
+    pathname === "/api/manychat/broadcast-campaign" ||
     pathname === "/api/manychat/broadcast-lead" ||
     pathname === "/api/manychat/broadcast-order" ||
     pathname === "/api/events" ||
@@ -1546,13 +1553,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, result, sheetUrl: broadcastSheetUrl() });
     }
 
-    if ((url.pathname === "/api/manychat/broadcast-lead" || url.pathname === "/api/manychat/broadcast-order") && req.method === "POST") {
+    if ((url.pathname === "/api/manychat/broadcast-campaign" || url.pathname === "/api/manychat/broadcast-lead" || url.pathname === "/api/manychat/broadcast-order") && req.method === "POST") {
       const suppliedKey = url.searchParams.get("key") || req.headers["x-ingest-key"] || "";
       if (EVENT_INGEST_SECRET && suppliedKey !== EVENT_INGEST_SECRET) {
         return json(res, 401, { ok: false, error: "Unauthorized" });
       }
       const request = await readBody(req);
-      const eventType = url.pathname.endsWith("broadcast-lead") ? "broadcast_lead" : "broadcast_order";
+      const eventType = url.pathname.endsWith("broadcast-campaign")
+        ? "broadcast_campaign"
+        : url.pathname.endsWith("broadcast-lead")
+          ? "broadcast_lead"
+          : "broadcast_order";
       const result = await writeBroadcastTrackingEvent(eventType, request);
       return json(res, 200, result);
     }

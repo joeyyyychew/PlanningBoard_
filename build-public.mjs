@@ -69,6 +69,7 @@ const worker = String.raw`const ASSETS = ${JSON.stringify(assets)};
 const REPORTS = ${JSON.stringify(reports)};
 const ACCOUNTS = {
   fb108701968299986: { name: "Scalestory - 天然胶原蛋白", inbox: "https://app.manychat.com/fb108701968299986/chat", tags: { pending: ["PENDING"], afterPayment: [] } },
+  fb111840620574302: { name: "ScaleStory 968", inbox: "https://app.manychat.com/fb111840620574302/chat", tags: { pending: ["PENDING", "Pending"], afterPayment: [] } },
   fb1177107122151553: { name: "鳞记 - 天然胶原蛋白", inbox: "https://app.manychat.com/fb1177107122151553/chat", tags: { pending: ["PENDING", "Pending"], afterPayment: [] } },
   fb701760706347255: { name: "鳞记 SG", inbox: "https://app.manychat.com/fb701760706347255/chat", tags: { pending: ["Pending Payment 【SG】"], afterPayment: [] } }
 };
@@ -117,6 +118,7 @@ function publicAuthPath(pathname) {
     pathname === "/api/auth/login" ||
     pathname === "/api/auth/logout" ||
     pathname === "/api/manychat-event" ||
+    pathname === "/api/manychat/broadcast-campaign" ||
     pathname === "/api/manychat/broadcast-lead" ||
     pathname === "/api/manychat/broadcast-order" ||
     pathname === "/api/events" ||
@@ -158,6 +160,7 @@ function accountFrom(url) {
 }
 
 function manychatKeyFor(env = {}, accountId = "") {
+  if (accountId === "fb111840620574302") return env.MANYCHAT_API_KEY_FB111840620574302 || "";
   if (accountId === "fb1177107122151553") return env.MANYCHAT_API_KEY_FB1177107122151553 || "";
   if (accountId === "fb701760706347255") return env.MANYCHAT_API_KEY_FB701760706347255 || "";
   return env.MANYCHAT_API_KEY || "";
@@ -722,13 +725,18 @@ export default {
       const payload = await request.json().catch(() => ({}));
       return forwardWebhookPost(env, "broadcast_campaign", payload);
     }
-    if ((url.pathname === "/api/manychat/broadcast-lead" || url.pathname === "/api/manychat/broadcast-order") && request.method === "POST") {
+    if ((url.pathname === "/api/manychat/broadcast-campaign" || url.pathname === "/api/manychat/broadcast-lead" || url.pathname === "/api/manychat/broadcast-order") && request.method === "POST") {
       const suppliedKey = request.headers.get("x-ingest-key") || url.searchParams.get("key") || "";
       if (env.EVENT_INGEST_KEY && suppliedKey !== env.EVENT_INGEST_KEY) {
         return json({ ok: false, error: "Unauthorized" }, 401);
       }
       const payload = await request.json().catch(() => ({}));
-      return forwardWebhookPost(env, url.pathname.endsWith("broadcast-lead") ? "broadcast_lead" : "broadcast_order", payload);
+      const eventType = url.pathname.endsWith("broadcast-campaign")
+        ? "broadcast_campaign"
+        : url.pathname.endsWith("broadcast-lead")
+          ? "broadcast_lead"
+          : "broadcast_order";
+      return forwardWebhookPost(env, eventType, payload);
     }
     if (url.pathname === "/api/order-entry" || url.pathname === "/api/broadcast-plan") {
       const payload = await request.json().catch(() => ({}));
