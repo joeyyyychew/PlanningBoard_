@@ -709,7 +709,7 @@
     const apiBase = location.protocol === "file:" ? "http://127.0.0.1:4173" : "";
     const orderUrlParams = new URLSearchParams(location.search);
     const currentPreviewAccount = orderUrlParams.get("account") || localStorage.getItem("manychatDashboardAccount") || "";
-    const currentPreviewDate = orderUrlParams.get("date") || "";
+    const currentPreviewDate = todayInputDate();
     const analysisUrl = (account = currentPreviewAccount) => `/index${account ? `?account=${encodeURIComponent(account)}${currentPreviewDate ? `&date=${encodeURIComponent(currentPreviewDate)}` : ""}` : ""}`;
     const broadcastUrl = () => `/broadcast-planning${currentPreviewAccount ? `?account=${encodeURIComponent(currentPreviewAccount)}${currentPreviewDate ? `&date=${encodeURIComponent(currentPreviewDate)}` : ""}` : ""}`;
     function recoverDashboardOrders() {

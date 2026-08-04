@@ -13,6 +13,7 @@
   }
 
   function currentDate(target = activeTarget) {
+    if (target === "order-key-in") return todayDate();
     return params.get("date") || todayDate();
   }
 
