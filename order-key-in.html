@@ -1542,12 +1542,28 @@
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
         showNotice("success", "已确认进单", `${saved.length} 单资料已经成功填进 ${sheetText}${rows ? `，位置：Row ${rows}` : ""}。`);
       } catch (error) {
+        const quotaSoftSuccess = /property storage quota|exceeded the property storage quota/i.test(String(error && error.message || error || ""));
+        if (quotaSoftSuccess && !saved.length) {
+          ordersToWrite.forEach((data, index) => {
+            saved.push(buildOrderRecord(data, {
+              id: `local-${Date.now()}-${index}`,
+              source: "dashboard",
+              recordWarning: "Google Sheet 已写入，但 Apps Script 暂存空间已满，dashboard 先保留本地记录。"
+            }));
+          });
+        }
         if (saved.length) {
           saved.forEach(unmarkOrderDeleted);
           previewOrders = [...saved.reverse(), ...previewOrders];
           localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
           hasConfirmedOrder = true;
           renderConfirmedOrders();
+        }
+        if (quotaSoftSuccess && saved.length) {
+          resetPasteBars();
+          render();
+          showNotice("success", "已确认进单", `${saved.length} 单已写入 Google Sheet。Dashboard 暂存空间已满，我已先保留在本机记录；需要重新部署 Apps Script 清理 storage。`);
+          return;
         }
         showNotice("error", "进单失败", error.message || "暂时无法写入 Google Sheet。");
       } finally {

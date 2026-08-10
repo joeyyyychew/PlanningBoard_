@@ -4,6 +4,9 @@ const MAX_CONTACTS_PER_EVENT = 50;
 const MAX_EVENTS_PER_DAY = 120;
 const MAX_COMPACT_CONTACTS_PER_TYPE = 30;
 const MAX_COMPACT_EVENTS_PER_DAY = 25;
+const MAX_ORDER_ENTRIES_PER_DAY = 120;
+const MAX_ORDER_ENTRIES_AFTER_QUOTA = 80;
+const MAX_DAY_CACHE_AGE_DAYS = 35;
 const ORDER_SHEET_ID = '1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ';
 const BROADCAST_SHEET_ID = '1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU';
 const BROADCAST_SHEET_NAME = 'JULY Broadcast Planning';
@@ -365,6 +368,14 @@ function propertyStorageStats_() {
   return stats;
 }
 
+function dateKeyAgeDays_(dateKey) {
+  const match = String(dateKey || '').match(/(\d{4}-\d{2}-\d{2})/);
+  if (!match) return 0;
+  const then = new Date(match[1] + 'T00:00:00+08:00').getTime();
+  const now = new Date(Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd') + 'T00:00:00+08:00').getTime();
+  return Math.floor((now - then) / 86400000);
+}
+
 function pruneScriptStorage_() {
   const props = PropertiesService.getScriptProperties();
   const all = props.getProperties();
@@ -380,7 +391,7 @@ function pruneScriptStorage_() {
       try {
         const entries = JSON.parse(all[key] || '[]')
           .map(compactOrderRecord_)
-          .slice(0, 200);
+          .slice(0, MAX_ORDER_ENTRIES_AFTER_QUOTA);
         props.setProperty(key, JSON.stringify(entries));
         compacted += 1;
       } catch (err) {}
@@ -388,6 +399,12 @@ function pruneScriptStorage_() {
     }
     if (key.indexOf('DAY_') === 0) {
       try {
+        const dateMatch = key.match(/(\d{4}-\d{2}-\d{2})$/);
+        if (dateMatch && dateKeyAgeDays_(dateMatch[1]) > MAX_DAY_CACHE_AGE_DAYS) {
+          props.deleteProperty(key);
+          deleted += 1;
+          return;
+        }
         const day = JSON.parse(all[key] || '{}');
         props.setProperty(key, JSON.stringify(compactDayRecord_(day, true)));
         compacted += 1;
@@ -439,13 +456,13 @@ function compactOrderRecord_(record) {
 }
 
 function saveOrderEntriesStore_(dateKey, entries) {
-  const compactEntries = (entries || []).map(compactOrderRecord_);
+  const compactEntries = (entries || []).map(compactOrderRecord_).slice(0, MAX_ORDER_ENTRIES_PER_DAY);
   try {
     PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries));
   } catch (err) {
     if (String(err && err.message || err).indexOf('property storage quota') < 0) throw err;
     pruneScriptStorage_();
-    PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries.slice(0, 200)));
+    PropertiesService.getScriptProperties().setProperty(orderEntriesKey_(dateKey), JSON.stringify(compactEntries.slice(0, MAX_ORDER_ENTRIES_AFTER_QUOTA)));
   }
 }
 
@@ -460,7 +477,7 @@ function upsertOrderRecord_(record) {
     return !(sameStable || sameIdFallback);
   });
   entries.unshift(record);
-  saveOrderEntriesStore_(dateKey, entries.slice(0, 500));
+  saveOrderEntriesStore_(dateKey, entries.slice(0, MAX_ORDER_ENTRIES_PER_DAY));
 }
 
 function orderRecordSignature_(record) {
