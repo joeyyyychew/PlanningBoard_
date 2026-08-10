@@ -1067,10 +1067,10 @@ async function writeOrderEntries(entries) {
     body: JSON.stringify({ event_type: "order_entry", entries: cleanEntries })
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body.ok) {
+  const written = Array.isArray(body.entries) ? body.entries : [body.entry].filter(Boolean);
+  if ((!response.ok || !body.ok) && !written.length) {
     throw new Error(body.error || `Google Sheet webhook ${response.status}`);
   }
-  const written = Array.isArray(body.entries) ? body.entries : [body.entry].filter(Boolean);
   if (!written.length || written.some(entry => !entry || !entry.row)) {
     throw new Error("Apps Script 还没更新到批量 Order Key-In 版本，请先把 apps-script-webhook.gs 重新部署");
   }

@@ -470,7 +470,7 @@
           <div class="channel-list" id="analysisChannels" hidden>
             <button type="button" data-preview-account="fb108701968299986"><b>Scalestory</b><small>天然胶原蛋白</small></button>
             <button type="button" data-preview-account="fb1177107122151553"><b>鳞记</b><small>Main Front</small></button>
-            <button type="button" data-preview-account="fb701760706347255"><b>鳞记 SG</b><small>SG 997 WA</small></button>
+            <button type="button" data-preview-account="fb701760706347255"><b>鳞记 SG</b><small>SG 715 MC</small></button>
           </div>
         </div>
       </div>
@@ -817,7 +817,7 @@
     const pageChannelMap = {
       "Scalestory - 天然胶原蛋白": "Knee 990 MC",
       "鳞记 - 天然胶原蛋白": "Main Front",
-      "鳞记 SG": "SG 997 WA",
+      "鳞记 SG": "SG 715 MC",
       "Main 968 MC": "Main 968 MC"
     };
     const accountPageMap = {
@@ -1514,10 +1514,18 @@
           })
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.ok) throw new Error(result.error || "批量写入 Google Sheet 失败");
         const resultEntries = Array.isArray(result.entries) ? result.entries : [result.entry].filter(Boolean);
-        if (resultEntries.length !== ordersToWrite.length) {
+        if (!response.ok && !resultEntries.length) {
+          throw new Error(result.error || "批量写入 Google Sheet 失败");
+        }
+        if (!result.ok && !resultEntries.length) {
+          throw new Error(result.error || "批量写入 Google Sheet 失败");
+        }
+        if (resultEntries.length && resultEntries.length !== ordersToWrite.length) {
           throw new Error(`Google Sheet 只确认了 ${resultEntries.length}/${ordersToWrite.length} 单，请重新检查 Apps Script 部署版本。`);
+        }
+        if (!resultEntries.length) {
+          throw new Error(result.error || "批量写入 Google Sheet 失败");
         }
         resultEntries.forEach((entry, index) => {
           saved.push(buildOrderRecord(ordersToWrite[index], entry?.record || entry || {}));

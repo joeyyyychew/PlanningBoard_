@@ -908,7 +908,11 @@ function ensureOrderRowDropdowns_(sheet, row, order) {
     }
     target.setDataValidations(current);
   }
+  ensureDropdownListValue_(sheet, row, 4, value_(order, 'D · Sales Person') || 'Joey');
+  ensureDropdownListValue_(sheet, row, 7, value_(order, 'G · Platform Name'));
   ensureDropdownListValue_(sheet, row, 8, value_(order, 'H · Channel / Chanel'));
+  ensureDropdownListValue_(sheet, row, 13, value_(order, 'M · Payment Method'));
+  ensureDropdownListValue_(sheet, row, 14, value_(order, 'N · Variant'));
 }
 
 function rowDSFromOrder_(order, orderNo) {
@@ -1004,7 +1008,11 @@ function appendOrderEntry_(body) {
       source: 'dashboard',
       order: order
     };
-    upsertOrderRecord_(record);
+    try {
+      upsertOrderRecord_(record);
+    } catch (recordError) {
+      record.recordWarning = String(recordError && recordError.message || recordError || 'order_record_save_failed');
+    }
     return {
       ok: true,
       entry: record
@@ -1018,16 +1026,25 @@ function appendOrderEntries_(body) {
   const list = Array.isArray(body.entries) ? body.entries : (Array.isArray(body.orders) ? body.orders : []);
   if (!list.length) return appendOrderEntry_(body);
   const entries = [];
+  const errors = [];
   list.forEach(function(item) {
     const payload = {
       page: item.page || body.page || '',
       raw: item.raw || '',
       order: item.order || item
     };
-    const result = appendOrderEntry_(payload);
-    entries.push(result.entry || result);
+    try {
+      const result = appendOrderEntry_(payload);
+      entries.push(result.entry || result);
+    } catch (error) {
+      errors.push({
+        name: value_(payload.order || {}, 'P · Name'),
+        phone: value_(payload.order || {}, 'Q · Phone'),
+        error: String(error && error.message || error || 'order_entry_failed')
+      });
+    }
   });
-  return {ok:true, entries:entries, entry:entries[0] || null};
+  return {ok: errors.length === 0 || entries.length > 0, entries:entries, entry:entries[0] || null, errors: errors};
 }
 
 function updateOrderEntryDate_(body) {
