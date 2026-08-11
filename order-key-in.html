@@ -1405,7 +1405,7 @@
           `).join("")}
           <div class="simple-row payment-row">
             <small>Payment Method</small>
-            <select class="payment-method-select" data-order-index="${index}">
+            <select class="payment-method-select" data-native="true" data-order-index="${index}">
               ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
             </select>
           </div>
