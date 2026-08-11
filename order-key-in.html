@@ -262,6 +262,9 @@
     .simple-row { display:grid; grid-template-columns:108px 1fr; gap:12px; align-items:start; padding:12px 13px; border:1px solid #f0dfdc; border-radius:15px; background:rgba(255,255,255,.62); }
     .simple-row small { color:var(--muted); font-size:10px; font-weight:900; }
     .simple-row strong { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+    .payment-row { align-items:center; }
+    .payment-row .payment-method-select { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
+    .payment-row .custom-select-button { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
     .sheet-details { margin-top:14px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.5); overflow:hidden; }
     .sheet-details summary { cursor:pointer; padding:12px 14px; color:var(--wine); font-size:12px; font-weight:900; list-style:none; }
     .sheet-details summary::-webkit-details-marker { display:none; }
@@ -733,6 +736,8 @@
     let hasConfirmedOrder = false;
     let orderRecordsLoaded = new Set();
     let loadingOrdersFor = "";
+    const paymentMethodOptions = ["", "BANK IN", "TNG", "ATOME", "STRIPE", "FPX", "COD"];
+    const paymentOverrides = new Map();
     function orderLoadedKey(dateKey) {
       return `orderKeyInLoaded:${dateKey}`;
     }
@@ -908,10 +913,25 @@
     function normalizePayment(value) {
       const upper = String(value || "").trim().toUpperCase();
       if (!upper) return "";
+      if (/\b(TOUCH\s*['’`-]?\s*N\s*GO|TOUCH\s*AND\s*GO|TNG|E-?WALLET|EWALLET)\b/i.test(upper)) return "TNG";
+      if (upper.includes("ATOME")) return "ATOME";
+      if (/\b(STRIPE|CHECKOUT\.STRIPE|CARD|CREDIT\s*CARD|DEBIT\s*CARD)\b/i.test(upper)) return "STRIPE";
       if (upper.includes("BNAK")) return "BANK IN";
-      if (upper.includes("BANK")) return "BANK IN";
+      if (/\b(BANK\s*IN|BANKIN|BANK|MAYBANK|M2U|CIMB|PUBLIC\s*BANK|PBE|RHB|HONG\s*LEONG|HLB|AMBANK|ALLIANCE|UOB|OCBC|HSBC|DUITNOW|INSTANT\s*TRANSFER|TRANSFER)\b/i.test(upper)) return "BANK IN";
+      if (upper.includes("FPX")) return "FPX";
       if (upper.includes("COD")) return "COD";
       return upper;
+    }
+
+    function inferPaymentMethod(text = "", receipt = "") {
+      const source = `${text || ""}\n${receipt || ""}`;
+      const normalized = normalizePayment(source);
+      if (["TNG", "ATOME", "STRIPE", "BANK IN", "FPX", "COD"].includes(normalized)) return normalized;
+      if (/checkout\.stripe\.com|stripe\.com|stripe/i.test(source)) return "STRIPE";
+      if (/atome|paylater/i.test(source)) return "ATOME";
+      if (/touchngo|touchngo\.com|tngdigital|tng/i.test(source)) return "TNG";
+      if (/maybank|m2u|cimb|publicbank|pbe|rhb|hongleong|hlb|ambank|duitnow|fpx|bank/i.test(source)) return "BANK IN";
+      return receipt ? "BANK IN" : "";
     }
 
     function normalizeDate(value) {
@@ -1115,7 +1135,7 @@
       const text = String(line || "").trim();
       if (!text || text.length > 60) return false;
       if (phoneRegex().test(text) || /(?:RM|SGD|S\$)\s*\d/i.test(text) || /^https?:\/\//i.test(text)) return false;
-      if (/\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|FPX)\b/i.test(text)) return false;
+      if (/\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|TOUCH\s*AND\s*GO|ATOME|STRIPE|FPX)\b/i.test(text)) return false;
       if (isProductLine(text) || isAddressLine(text)) return false;
       return /[a-z\u4e00-\u9fff]/i.test(text);
     }
@@ -1125,7 +1145,7 @@
       const urls = lines.filter(line => /^https?:\/\//i.test(line));
       const phoneLine = lines.find(line => phoneRegex().test(line)) || "";
       const amountLine = lines.find(line => /(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i.test(line)) || "";
-      const paymentLine = lines.find(line => /\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|FPX)\b/i.test(line)) || "";
+      const paymentLine = lines.find(line => /\b(BANK\s*IN|BANKIN|BANK|COD|TNG|TOUCH\s*N\s*GO|TOUCH\s*AND\s*GO|ATOME|STRIPE|FPX|MAYBANK|M2U|CIMB|DUITNOW)\b/i.test(line)) || "";
       const productLine = lines.find(isProductLine) || "";
       const used = new Set([phoneLine, amountLine, paymentLine, productLine, ...urls].filter(Boolean));
       const candidates = lines.filter(line => !used.has(line));
@@ -1281,6 +1301,7 @@
     }
 
     function resetPasteBars() {
+      paymentOverrides.clear();
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
       window.customSelectRefresh?.();
@@ -1293,7 +1314,7 @@
       const product = pick(text, ["产品", "商品", "item", "product"]) || loose.product;
       const quantities = productQuantities(product);
       const receipt = extractReceipt(text) || loose.receipt;
-      const payment = normalizePayment(pick(text, ["付款", "付款方式", "payment", "payment method"]) || loose.payment) || (receipt ? "BANK IN" : "");
+      const payment = inferPaymentMethod(`${pick(text, ["付款", "付款方式", "payment", "payment method"])}\n${loose.payment}\n${text}`, receipt);
       const name = pick(text, ["姓名", "名字", "name"]) || loose.name;
       const platformName = pick(text, ["Platform Name", "平台名", "fb name", "manychat name"]) || name;
       const remarkBits = [
@@ -1340,11 +1361,23 @@
         ["电话", data["Q · Phone"] || "待确认"],
         ["地址", data["R · Address"] || "待确认"],
         ["产品", productLineFromData(data)],
-        ["金额 / 付款", `${data["S · Total/RM"] || "待确认"}${data["M · Payment Method"] ? ` · ${data["M · Payment Method"]}` : ""}`],
+        ["金额", data["S · Total/RM"] || "待确认"],
         ["Page / Channel", `${selectedPage} → ${data["H · Channel / Chanel"]}`],
         ["备注", data["O · Remark"] || "—"],
         ["Receipt", data["AK · Receipt Link"] || "—"]
       ];
+    }
+
+    function buildParsedOrdersFromPaste() {
+      return orderPasteEntries().map((entry, index) => {
+        const data = {
+          ...parseOrder(entry.text, entry.page),
+          "Page / Account": entry.page,
+          "H · Channel / Chanel": channelForPage(entry.page)
+        };
+        if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
+        return data;
+      });
     }
 
     function render() {
@@ -1360,11 +1393,7 @@
         renderConfirmedOrders();
         return;
       }
-      const orders = entries.map(entry => ({
-        ...parseOrder(entry.text, entry.page),
-        "Page / Account": entry.page,
-        "H · Channel / Chanel": channelForPage(entry.page)
-      }));
+      const orders = buildParsedOrdersFromPaste();
       simplePreview.innerHTML = orders.map((data, index) => `
         <div class="order-preview-card">
           <h3>订单 ${index + 1}</h3>
@@ -1374,8 +1403,15 @@
               <strong>${value}</strong>
             </div>
           `).join("")}
+          <div class="simple-row payment-row">
+            <small>Payment Method</small>
+            <select class="payment-method-select" data-order-index="${index}">
+              ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
+            </select>
+          </div>
         </div>
       `).join("");
+      window.customSelectRefresh?.(simplePreview);
       sheetRows.innerHTML = orders.map((data, index) => `
         <h3>订单 ${index + 1}</h3>
         <table>${Object.entries(data).map(([key, value]) => `<tr><td>${key}</td><td>${value || "—"}</td></tr>`).join("")}</table>
@@ -1492,11 +1528,7 @@
         showNotice("error", "没有资料", "请先 paste 至少一组顾客下单资料。");
         return;
       }
-      const ordersToWrite = entries.map(entry => ({
-        ...parseOrder(entry.text, entry.page),
-        "Page / Account": entry.page,
-        "H · Channel / Chanel": channelForPage(entry.page)
-      }));
+      const ordersToWrite = buildParsedOrdersFromPaste();
       const button = document.getElementById("confirmPreviewBtn");
       button.disabled = true;
       button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
@@ -1808,6 +1840,11 @@
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
       ensureTrailingPasteBar();
+      render();
+    });
+    simplePreview.addEventListener("change", event => {
+      if (!event.target.classList.contains("payment-method-select")) return;
+      paymentOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
       render();
     });
     pasteBlocks.addEventListener("change", event => {
