@@ -1491,35 +1491,34 @@
       button.disabled = true;
       button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
       const saved = [];
+      const failed = [];
       try {
-        const response = await fetch(`${apiBase}/api/order-entry`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({
-            entries: ordersToWrite.map((data, index) => ({
+        for (let index = 0; index < ordersToWrite.length; index += 1) {
+          const data = ordersToWrite[index];
+          button.textContent = ordersToWrite.length > 1 ? `保存 ${index + 1}/${ordersToWrite.length}…` : "保存中…";
+          const response = await fetch(`${apiBase}/api/order-entry`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
               page: data["Page / Account"],
               raw: entries[index].text,
               order: data
-            }))
-          })
-        });
-        const result = await response.json().catch(() => ({}));
-        const resultEntries = Array.isArray(result.entries) ? result.entries : [result.entry].filter(Boolean);
-        if (!response.ok && !resultEntries.length) {
-          throw new Error(result.error || "批量写入 Google Sheet 失败");
+            })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok || !result.entry) {
+            failed.push({
+              index,
+              name: data["P · Name"] || `订单 ${index + 1}`,
+              error: result.error || "写入 Google Sheet 失败"
+            });
+            continue;
+          }
+          saved.push(buildOrderRecord(data, result.entry?.record || result.entry || {}));
         }
-        if (!result.ok && !resultEntries.length) {
-          throw new Error(result.error || "批量写入 Google Sheet 失败");
+        if (failed.length && !saved.length) {
+          throw new Error(failed.map(item => `${item.name}: ${item.error}`).join("；") || "写入 Google Sheet 失败");
         }
-        if (resultEntries.length && resultEntries.length !== ordersToWrite.length) {
-          throw new Error(`Google Sheet 只确认了 ${resultEntries.length}/${ordersToWrite.length} 单，请重新检查 Apps Script 部署版本。`);
-        }
-        if (!resultEntries.length) {
-          throw new Error(result.error || "批量写入 Google Sheet 失败");
-        }
-        resultEntries.forEach((entry, index) => {
-          saved.push(buildOrderRecord(ordersToWrite[index], entry?.record || entry || {}));
-        });
         saved.forEach(unmarkOrderDeleted);
         previewOrders = [...saved.reverse(), ...previewOrders];
         localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
@@ -1530,7 +1529,11 @@
         render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
-        showNotice("success", "已确认进单", `${saved.length} 单资料已经成功填进 ${sheetText}${rows ? `，位置：Row ${rows}` : ""}。`);
+        if (failed.length) {
+          showNotice("error", "部分进单失败", `${saved.length} 单已成功写入${rows ? ` Row ${rows}` : ""}；${failed.length} 单失败：${failed.map(item => `${item.name}（${item.error}）`).join("、")}`);
+        } else {
+          showNotice("success", "已确认进单", `${saved.length} 单资料已经成功填进 ${sheetText}${rows ? `，位置：Row ${rows}` : ""}。`);
+        }
       } catch (error) {
         const quotaSoftSuccess = /property storage quota|exceeded the property storage quota/i.test(String(error && error.message || error || ""));
         if (quotaSoftSuccess && !saved.length) {

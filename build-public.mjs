@@ -500,6 +500,40 @@ async function forwardWebhookPost(env, eventType, payload) {
   return json(result, response.status);
 }
 
+async function forwardOrderEntry(env, payload) {
+  const batchEntries = Array.isArray(payload.entries) ? payload.entries : (Array.isArray(payload.orders) ? payload.orders : null);
+  if (!batchEntries) return forwardWebhookPost(env, "order_entry", payload);
+
+  const cleanEntries = batchEntries.filter(item => item && item.order && typeof item.order === "object");
+  if (!cleanEntries.length) return json({ ok: false, error: "Order data required" }, 400);
+
+  const entries = [];
+  const errors = [];
+  for (let index = 0; index < cleanEntries.length; index += 1) {
+    const item = cleanEntries[index];
+    const response = await forwardWebhookPost(env, "order_entry", {
+      page: item.page || payload.page || "",
+      raw: item.raw || "",
+      order: item.order
+    });
+    const result = await response.clone().json().catch(() => ({}));
+    if (!response.ok || !result.ok || !result.entry) {
+      errors.push({
+        index,
+        name: item.order?.["P · Name"] || item.order?.["G · Platform Name"] || \`订单 \${index + 1}\`,
+        error: result.error || \`Google Sheet webhook \${response.status}\`
+      });
+      continue;
+    }
+    entries.push(result.entry);
+  }
+
+  if (!entries.length) {
+    return json({ ok: false, error: errors.map(item => \`\${item.name}: \${item.error}\`).join("；") || "Google Sheet 写入失败", errors }, 502);
+  }
+  return json({ ok: !errors.length, partial: Boolean(errors.length), entries, entry: entries[0] || null, errors });
+}
+
 async function forwardManyChatEvent(request, env, url, account) {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted event database 尚未连接。" }, 503);
   const suppliedKey = url.searchParams.get("key") || request.headers.get("x-ingest-key") || "";
@@ -740,8 +774,8 @@ export default {
     }
     if (url.pathname === "/api/order-entry" || url.pathname === "/api/broadcast-plan") {
       const payload = await request.json().catch(() => ({}));
-      const eventType = url.pathname === "/api/order-entry" ? "order_entry" : "broadcast_plan_update";
-      return forwardWebhookPost(env, eventType, payload);
+      if (url.pathname === "/api/order-entry") return forwardOrderEntry(env, payload);
+      return forwardWebhookPost(env, "broadcast_plan_update", payload);
     }
     if (url.pathname === "/api/manychat-event" && request.method === "POST") {
       return forwardManyChatEvent(request, env, url, account);

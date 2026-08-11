@@ -1053,28 +1053,33 @@ async function writeOrderEntry(payload) {
 }
 
 async function writeOrderEntries(entries) {
-  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) {
-    throw new Error("Google Sheet webhook 尚未连接");
-  }
   const cleanEntries = (entries || []).filter(item => item && item.order && typeof item.order === "object");
   if (!cleanEntries.length) throw new Error("Order data required");
-  const endpoint = new URL(env.WEBHOOK_URL);
-  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    redirect: "follow",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ event_type: "order_entry", entries: cleanEntries })
-  });
-  const body = await response.json().catch(() => ({}));
-  const written = Array.isArray(body.entries) ? body.entries : [body.entry].filter(Boolean);
-  if ((!response.ok || !body.ok) && !written.length) {
-    throw new Error(body.error || `Google Sheet webhook ${response.status}`);
+
+  const written = [];
+  const errors = [];
+  for (let index = 0; index < cleanEntries.length; index += 1) {
+    const item = cleanEntries[index];
+    try {
+      const entry = await writeOrderEntry({
+        page: item.page || "",
+        raw: item.raw || "",
+        order: item.order
+      });
+      written.push(entry);
+    } catch (error) {
+      errors.push({
+        index,
+        name: item.order?.["P · Name"] || item.order?.["G · Platform Name"] || `订单 ${index + 1}`,
+        error: error?.message || String(error || "Google Sheet 写入失败")
+      });
+    }
   }
-  if (!written.length || written.some(entry => !entry || !entry.row)) {
-    throw new Error("Apps Script 还没更新到批量 Order Key-In 版本，请先把 apps-script-webhook.gs 重新部署");
+
+  if (!written.length) {
+    throw new Error(errors.map(item => `${item.name}: ${item.error}`).join("；") || "Google Sheet 写入失败");
   }
-  return written;
+  return { entries: written, errors };
 }
 
 async function readOrderEntries(date) {
@@ -1490,8 +1495,15 @@ const server = http.createServer(async (req, res) => {
       const request = await readBody(req);
       const batchEntries = Array.isArray(request.entries) ? request.entries : (Array.isArray(request.orders) ? request.orders : null);
       if (batchEntries) {
-        const entries = await writeOrderEntries(batchEntries);
-        return json(res, 200, { ok: true, entries, entry: entries[0] || null, sheetUrl: currentOrderSheetUrl() });
+        const result = await writeOrderEntries(batchEntries);
+        return json(res, 200, {
+          ok: !result.errors.length,
+          partial: Boolean(result.errors.length),
+          entries: result.entries,
+          entry: result.entries[0] || null,
+          errors: result.errors,
+          sheetUrl: currentOrderSheetUrl()
+        });
       }
       if (!request.order || typeof request.order !== "object") {
         return json(res, 400, { ok: false, error: "Order data required" });
