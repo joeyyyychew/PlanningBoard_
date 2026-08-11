@@ -1228,6 +1228,34 @@
         .filter(Boolean);
     }
 
+    function redistributeBulkPasteFrom(input) {
+      const text = input?.value || "";
+      const pieces = splitSinglePasteValue(text);
+      if (!input || pieces.length <= 1) return false;
+      const block = input.closest(".paste-block");
+      const startIndex = [...pasteBlocks.querySelectorAll(".paste-block")].indexOf(block);
+      if (startIndex < 0) return false;
+      paymentOverrides.clear();
+      const existingBlocks = [...pasteBlocks.querySelectorAll(".paste-block")];
+      const selectedPage = pasteSelectFor(input)?.value || page.value;
+      pieces.forEach((piece, offset) => {
+        const targetIndex = startIndex + offset;
+        let targetBlock = existingBlocks[targetIndex] || pasteBlocks.querySelectorAll(".paste-block")[targetIndex];
+        if (!targetBlock) {
+          targetBlock = createPasteBlock(targetIndex + 1);
+          pasteBlocks.appendChild(targetBlock);
+        }
+        const targetInput = targetBlock.querySelector(".order-paste");
+        const targetSelect = targetBlock.querySelector(".order-page-select");
+        targetInput.value = piece;
+        if (targetSelect && !targetSelect.value) targetSelect.value = selectedPage;
+        if (targetSelect && targetIndex === startIndex) targetSelect.value = selectedPage;
+        updatePasteChannelPreview(targetBlock);
+      });
+      renumberPasteBlocks();
+      return true;
+    }
+
     function splitOrderBlocks() {
       return pasteTextareas().flatMap(input => splitSinglePasteValue(input.value));
     }
@@ -1839,6 +1867,11 @@
     });
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
+      if (redistributeBulkPasteFrom(event.target)) {
+        ensureTrailingPasteBar();
+        render();
+        return;
+      }
       ensureTrailingPasteBar();
       render();
     });
