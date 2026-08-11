@@ -1228,32 +1228,32 @@
         .filter(Boolean);
     }
 
-    function redistributeBulkPasteFrom(input) {
-      const text = input?.value || "";
-      const pieces = splitSinglePasteValue(text);
-      if (!input || pieces.length <= 1) return false;
+    function applyBulkPiecesToPasteBlocks(input, pieces) {
+      if (!input || !Array.isArray(pieces) || pieces.length <= 1) return false;
       const block = input.closest(".paste-block");
       const startIndex = [...pasteBlocks.querySelectorAll(".paste-block")].indexOf(block);
       if (startIndex < 0) return false;
       paymentOverrides.clear();
-      const existingBlocks = [...pasteBlocks.querySelectorAll(".paste-block")];
       const selectedPage = pasteSelectFor(input)?.value || page.value;
+      while (pasteBlocks.querySelectorAll(".paste-block").length < startIndex + pieces.length) {
+        pasteBlocks.appendChild(createPasteBlock(pasteBlocks.querySelectorAll(".paste-block").length + 1));
+      }
       pieces.forEach((piece, offset) => {
-        const targetIndex = startIndex + offset;
-        let targetBlock = existingBlocks[targetIndex] || pasteBlocks.querySelectorAll(".paste-block")[targetIndex];
-        if (!targetBlock) {
-          targetBlock = createPasteBlock(targetIndex + 1);
-          pasteBlocks.appendChild(targetBlock);
-        }
+        const targetBlock = pasteBlocks.querySelectorAll(".paste-block")[startIndex + offset];
         const targetInput = targetBlock.querySelector(".order-paste");
         const targetSelect = targetBlock.querySelector(".order-page-select");
         targetInput.value = piece;
-        if (targetSelect && !targetSelect.value) targetSelect.value = selectedPage;
-        if (targetSelect && targetIndex === startIndex) targetSelect.value = selectedPage;
+        if (targetSelect && offset === 0) targetSelect.value = selectedPage;
         updatePasteChannelPreview(targetBlock);
       });
       renumberPasteBlocks();
       return true;
+    }
+
+    function redistributeBulkPasteFrom(input) {
+      const text = input?.value || "";
+      const pieces = splitSinglePasteValue(text);
+      return applyBulkPiecesToPasteBlocks(input, pieces);
     }
 
     function splitOrderBlocks() {
@@ -1863,6 +1863,16 @@
     document.getElementById("noticeClose").addEventListener("click", () => noticeDialog.close());
     document.getElementById("clearBtn").addEventListener("click", () => {
       resetPasteBars();
+      render();
+    });
+    pasteBlocks.addEventListener("paste", event => {
+      if (!event.target.classList.contains("order-paste")) return;
+      const pastedText = event.clipboardData?.getData("text") || "";
+      const pieces = splitSinglePasteValue(pastedText);
+      if (pieces.length <= 1) return;
+      event.preventDefault();
+      applyBulkPiecesToPasteBlocks(event.target, pieces);
+      ensureTrailingPasteBar();
       render();
     });
     pasteBlocks.addEventListener("input", event => {
