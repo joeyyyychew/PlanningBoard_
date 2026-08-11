@@ -188,7 +188,6 @@
     .paste-block-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .paste-block small { color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.04em; }
     .paste-block textarea { min-height:190px; }
-    .paste-channel-row { margin-top:3px; }
     textarea:focus, select:focus, input:focus { border-color:#d8a8b2; box-shadow:0 0 0 4px rgba(111,16,39,.08); background:white; }
     .inline { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     main:has(.custom-select.is-open),
@@ -263,6 +262,9 @@
     .simple-row small { color:var(--muted); font-size:10px; font-weight:900; }
     .simple-row strong { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
     .payment-row { align-items:center; }
+    .order-preview-select-row { align-items:center; }
+    .order-preview-channel { color:var(--muted); font-size:11px; font-weight:900; }
+    .order-preview-page-select,
     .payment-row .payment-method-select { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
     .payment-row .custom-select-button { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
     .sheet-details { margin-top:14px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.5); overflow:hidden; }
@@ -512,24 +514,9 @@
           <div class="paste-blocks" id="pasteBlocks">
             <div class="paste-block">
               <div class="paste-block-head">
-                <small>订单 1</small>
+                <small>批量订单资料</small>
               </div>
               <textarea id="rawInfo" class="order-paste"></textarea>
-              <div class="inline paste-channel-row">
-                <div>
-                  <label>Page / Account</label>
-                  <select class="order-page-select">
-                    <option>Scalestory - 天然胶原蛋白</option>
-                    <option>鳞记 - 天然胶原蛋白</option>
-                    <option>鳞记 SG</option>
-                    <option>Main 968 MC</option>
-                  </select>
-                </div>
-                <div>
-                  <label>自动对应 Channel</label>
-                  <input class="order-channel-preview" type="text" value="Knee 990 MC" readonly />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -738,6 +725,7 @@
     let loadingOrdersFor = "";
     const paymentMethodOptions = ["", "BANK IN", "TNG", "ATOME", "STRIPE", "FPX", "COD"];
     const paymentOverrides = new Map();
+    const pageOverrides = new Map();
     function orderLoadedKey(dateKey) {
       return `orderKeyInLoaded:${dateKey}`;
     }
@@ -1207,20 +1195,6 @@
       return [...pasteBlocks.querySelectorAll(".order-paste")];
     }
 
-    function pasteSelectFor(input) {
-      return input.closest(".paste-block")?.querySelector(".order-page-select");
-    }
-
-    function updatePasteChannelPreview(block) {
-      const select = block?.querySelector(".order-page-select");
-      const preview = block?.querySelector(".order-channel-preview");
-      if (select && preview) preview.value = channelForPage(select.value);
-    }
-
-    function updateAllPasteChannelPreviews() {
-      pasteBlocks.querySelectorAll(".paste-block").forEach(updatePasteChannelPreview);
-    }
-
     function splitSinglePasteValue(value = "") {
       return String(value || "")
         .split(/^\s*[—–-]{4,}\s*$|^\s*[-─━]{4,}\s*$/gm)
@@ -1228,43 +1202,12 @@
         .filter(Boolean);
     }
 
-    function applyBulkPiecesToPasteBlocks(input, pieces) {
-      if (!input || !Array.isArray(pieces) || pieces.length <= 1) return false;
-      const block = input.closest(".paste-block");
-      const startIndex = [...pasteBlocks.querySelectorAll(".paste-block")].indexOf(block);
-      if (startIndex < 0) return false;
-      paymentOverrides.clear();
-      const selectedPage = pasteSelectFor(input)?.value || page.value;
-      while (pasteBlocks.querySelectorAll(".paste-block").length < startIndex + pieces.length) {
-        pasteBlocks.appendChild(createPasteBlock(pasteBlocks.querySelectorAll(".paste-block").length + 1));
-      }
-      pieces.forEach((piece, offset) => {
-        const targetBlock = pasteBlocks.querySelectorAll(".paste-block")[startIndex + offset];
-        const targetInput = targetBlock.querySelector(".order-paste");
-        const targetSelect = targetBlock.querySelector(".order-page-select");
-        targetInput.value = piece;
-        if (targetSelect && offset === 0) targetSelect.value = selectedPage;
-        updatePasteChannelPreview(targetBlock);
-      });
-      renumberPasteBlocks();
-      return true;
-    }
-
-    function redistributeBulkPasteFrom(input) {
-      const text = input?.value || "";
-      const pieces = splitSinglePasteValue(text);
-      return applyBulkPiecesToPasteBlocks(input, pieces);
-    }
-
     function splitOrderBlocks() {
       return pasteTextareas().flatMap(input => splitSinglePasteValue(input.value));
     }
 
     function orderPasteEntries() {
-      return pasteTextareas().flatMap(input => {
-        const selectedPage = pasteSelectFor(input)?.value || page.value;
-        return splitSinglePasteValue(input.value).map(text => ({ text, page: selectedPage }));
-      });
+      return splitOrderBlocks().map((text, index) => ({ text, page: pageOverrides.get(index) || page.value }));
     }
 
     function createPasteBlock(index, value = "") {
@@ -1272,27 +1215,12 @@
       block.className = "paste-block";
       block.innerHTML = `
         <div class="paste-block-head">
-          <small>订单 ${index}</small>
+          <small>批量订单资料</small>
         </div>
         <textarea class="order-paste"></textarea>
-        <div class="inline paste-channel-row">
-          <div>
-            <label>Page / Account</label>
-            <select class="order-page-select">
-              ${Object.keys(pageChannelMap).map(name => `<option>${escapeHtml(name)}</option>`).join("")}
-            </select>
-          </div>
-          <div>
-            <label>自动对应 Channel</label>
-            <input class="order-channel-preview" type="text" readonly />
-          </div>
-        </div>
       `;
       const textarea = block.querySelector("textarea");
-      const select = block.querySelector(".order-page-select");
       textarea.value = value;
-      select.value = page.value;
-      updatePasteChannelPreview(block);
       if (index === 1) textarea.id = "rawInfo";
       return block;
     }
@@ -1300,8 +1228,7 @@
     function renumberPasteBlocks() {
       pasteTextareas().forEach((input, index) => {
         const block = input.closest(".paste-block");
-        block.querySelector("small").textContent = `订单 ${index + 1}`;
-        updatePasteChannelPreview(block);
+        block.querySelector("small").textContent = `批量订单资料`;
         if (index === 0) input.id = "rawInfo";
         else input.removeAttribute("id");
       });
@@ -1314,22 +1241,13 @@
         pasteBlocks.appendChild(createPasteBlock(1));
         return;
       }
-      const last = inputs[inputs.length - 1];
-      if (last.value.trim()) {
-        pasteBlocks.appendChild(createPasteBlock(inputs.length + 1));
-        window.customSelectRefresh?.();
-      }
-      const updated = pasteTextareas();
-      for (let index = updated.length - 1; index > 0; index -= 1) {
-        if (!updated[index].value.trim() && !updated[index - 1].value.trim()) {
-          updated[index].closest(".paste-block").remove();
-        }
-      }
+      inputs.slice(1).forEach(input => input.closest(".paste-block")?.remove());
       renumberPasteBlocks();
     }
 
     function resetPasteBars() {
       paymentOverrides.clear();
+      pageOverrides.clear();
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
       window.customSelectRefresh?.();
@@ -1390,7 +1308,6 @@
         ["地址", data["R · Address"] || "待确认"],
         ["产品", productLineFromData(data)],
         ["金额", data["S · Total/RM"] || "待确认"],
-        ["Page / Channel", `${selectedPage} → ${data["H · Channel / Chanel"]}`],
         ["备注", data["O · Remark"] || "—"],
         ["Receipt", data["AK · Receipt Link"] || "—"]
       ];
@@ -1403,6 +1320,10 @@
           "Page / Account": entry.page,
           "H · Channel / Chanel": channelForPage(entry.page)
         };
+        if (pageOverrides.has(index)) {
+          data["Page / Account"] = pageOverrides.get(index);
+          data["H · Channel / Chanel"] = channelForPage(data["Page / Account"]);
+        }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         return data;
       });
@@ -1410,7 +1331,6 @@
 
     function render() {
       channelPreview.value = channelForPage();
-      updateAllPasteChannelPreviews();
       const entryDate = normalizeTypedOrderDate(orderEntryDate.value);
       updateOrderDateLabel();
       updateSheetButton(confirmedDate.value || entryDate);
@@ -1431,6 +1351,16 @@
               <strong>${value}</strong>
             </div>
           `).join("")}
+          <div class="simple-row order-preview-select-row">
+            <small>Page / Account</small>
+            <select class="order-preview-page-select" data-native="true" data-order-index="${index}">
+              ${Object.keys(pageChannelMap).map(option => `<option value="${escapeHtml(option)}" ${option === (data["Page / Account"] || page.value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="simple-row">
+            <small>Channel</small>
+            <strong>${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</strong>
+          </div>
           <div class="simple-row payment-row">
             <small>Payment Method</small>
             <select class="payment-method-select" data-native="true" data-order-index="${index}">
@@ -1870,39 +1800,28 @@
       const pastedText = event.clipboardData?.getData("text") || "";
       const pieces = splitSinglePasteValue(pastedText);
       if (pieces.length <= 1) return;
-      event.preventDefault();
-      applyBulkPiecesToPasteBlocks(event.target, pieces);
-      ensureTrailingPasteBar();
-      render();
+      pageOverrides.clear();
+      paymentOverrides.clear();
     });
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
-      if (redistributeBulkPasteFrom(event.target)) {
-        ensureTrailingPasteBar();
-        render();
-        return;
-      }
       ensureTrailingPasteBar();
       render();
     });
     simplePreview.addEventListener("change", event => {
-      if (!event.target.classList.contains("payment-method-select")) return;
-      paymentOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
-      render();
-    });
-    pasteBlocks.addEventListener("change", event => {
-      if (!event.target.classList.contains("order-page-select")) return;
-      updatePasteChannelPreview(event.target.closest(".paste-block"));
-      render();
+      if (event.target.classList.contains("payment-method-select")) {
+        paymentOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
+        render();
+        return;
+      }
+      if (event.target.classList.contains("order-preview-page-select")) {
+        pageOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
+        render();
+      }
     });
     orderEntryDate.addEventListener("input", render);
     page.addEventListener("change", () => {
-      pasteTextareas().forEach(input => {
-        if (!input.value.trim()) {
-          const select = pasteSelectFor(input);
-          if (select) select.value = page.value;
-        }
-      });
+      pageOverrides.clear();
       window.customSelectRefresh?.();
       render();
     });
