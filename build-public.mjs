@@ -520,8 +520,8 @@ async function forwardOrderEntry(env, payload) {
     if (!response.ok || !result.ok || !result.entry) {
       errors.push({
         index,
-        name: item.order?.["P · Name"] || item.order?.["G · Platform Name"] || \`订单 \${index + 1}\`,
-        error: result.error || \`Google Sheet webhook \${response.status}\`
+        name: item.order?.["P · Name"] || item.order?.["G · Platform Name"] || ("订单 " + (index + 1)),
+        error: result.error || ("Google Sheet webhook " + response.status)
       });
       continue;
     }
@@ -529,7 +529,7 @@ async function forwardOrderEntry(env, payload) {
   }
 
   if (!entries.length) {
-    return json({ ok: false, error: errors.map(item => \`\${item.name}: \${item.error}\`).join("；") || "Google Sheet 写入失败", errors }, 502);
+    return json({ ok: false, error: errors.map(item => item.name + ": " + item.error).join("；") || "Google Sheet 写入失败", errors }, 502);
   }
   return json({ ok: !errors.length, partial: Boolean(errors.length), entries, entry: entries[0] || null, errors });
 }
