@@ -904,11 +904,10 @@ function ensureDropdownListValue_(sheet, row, column, value) {
   const exists = list.some(function(item) { return item.toLowerCase() === text.toLowerCase(); });
   if (exists) return;
   const showDropdown = criteria.length > 1 ? criteria[1] !== false : true;
-  const allowInvalid = typeof rule.getAllowInvalid === 'function' ? rule.getAllowInvalid() : true;
   const helpText = typeof rule.getHelpText === 'function' ? rule.getHelpText() : '';
   const builder = SpreadsheetApp.newDataValidation()
     .requireValueInList(list.concat([text]), showDropdown)
-    .setAllowInvalid(allowInvalid);
+    .setAllowInvalid(true);
   if (helpText) builder.setHelpText(helpText);
   range.setDataValidation(builder.build());
 }

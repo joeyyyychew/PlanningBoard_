@@ -1044,12 +1044,64 @@ async function writeOrderEntry(payload) {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || !body.ok) {
-    throw new Error(body.error || `Google Sheet webhook ${response.status}`);
+    const confirmed = await confirmWrittenOrderEntry(payload.order).catch(() => null);
+    if (confirmed?.row) return confirmed;
+    const details = Array.isArray(body.errors) && body.errors.length
+      ? body.errors.map(item => `${item.name || item.phone || "订单"}: ${item.error || "写入失败"}`).join("；")
+      : "";
+    throw new Error(details || body.error || `Google Sheet webhook ${response.status}`);
   }
   if (!body.entry || !body.entry.row) {
+    const confirmed = await confirmWrittenOrderEntry(payload.order).catch(() => null);
+    if (confirmed?.row) return confirmed;
     throw new Error("Apps Script 还没更新到 Order Key-In 版本，请先把 apps-script-webhook.gs 重新部署");
   }
   return body.entry;
+}
+
+function orderDateKeyFromOrder(order = {}) {
+  const raw = String(order["F · Date"] || "").trim();
+  const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if (slash) {
+    const year = slash[3].length === 2 ? `20${slash[3]}` : slash[3];
+    return `${year}-${slash[2].padStart(2, "0")}-${slash[1].padStart(2, "0")}`;
+  }
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+}
+
+function normalizeOrderComparable(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function digitsOnly(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function orderMatchesEntry(order = {}, entry = {}) {
+  const phone = digitsOnly(order["Q · Phone"]);
+  const entryPhone = digitsOnly(entry.phone || entry.order?.["Q · Phone"]);
+  const total = String(order["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+  const entryTotal = String(entry.total || entry.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+  const name = normalizeOrderComparable(order["P · Name"] || order["G · Platform Name"]);
+  const entryName = normalizeOrderComparable(entry.name || entry.order?.["P · Name"] || entry.order?.["G · Platform Name"]);
+  const product = normalizeOrderComparable(order["N · Variant"] || order["O · Remark"]);
+  const entryProduct = normalizeOrderComparable(entry.product || entry.order?.["N · Variant"] || entry.order?.["O · Remark"]);
+  const phoneMatch = phone && entryPhone && phone === entryPhone;
+  const nameMatch = name && entryName && name === entryName;
+  const totalMatch = total && entryTotal && total === entryTotal;
+  const productMatch = !product || !entryProduct || product === entryProduct;
+  return (phoneMatch || nameMatch) && (!total || !entryTotal || totalMatch) && productMatch;
+}
+
+async function confirmWrittenOrderEntry(order = {}) {
+  const dateKey = orderDateKeyFromOrder(order);
+  const result = await readOrderEntries(dateKey);
+  const entries = Array.isArray(result.entries) ? result.entries : [];
+  return entries.find(entry => orderMatchesEntry(order, entry)) || null;
 }
 
 async function writeOrderEntries(entries) {

@@ -448,6 +448,52 @@ async function readOrderEntries(env, date) {
   });
 }
 
+function orderDateKeyFromOrder(order = {}) {
+  const raw = String(order["F · Date"] || "").trim();
+  const slash = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if (slash) {
+    const year = slash[3].length === 2 ? "20" + slash[3] : slash[3];
+    return year + "-" + slash[2].padStart(2, "0") + "-" + slash[1].padStart(2, "0");
+  }
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return iso[1] + "-" + iso[2] + "-" + iso[3];
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+}
+
+function normalizeOrderComparable(value = "") {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function digitsOnly(value = "") {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function orderMatchesEntry(order = {}, entry = {}) {
+  const phone = digitsOnly(order["Q · Phone"]);
+  const entryPhone = digitsOnly(entry.phone || entry.order?.["Q · Phone"]);
+  const total = String(order["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+  const entryTotal = String(entry.total || entry.order?.["S · Total/RM"] || "").replace(/[^0-9.]/g, "");
+  const name = normalizeOrderComparable(order["P · Name"] || order["G · Platform Name"]);
+  const entryName = normalizeOrderComparable(entry.name || entry.order?.["P · Name"] || entry.order?.["G · Platform Name"]);
+  const product = normalizeOrderComparable(order["N · Variant"] || order["O · Remark"]);
+  const entryProduct = normalizeOrderComparable(entry.product || entry.order?.["N · Variant"] || entry.order?.["O · Remark"]);
+  const phoneMatch = phone && entryPhone && phone === entryPhone;
+  const nameMatch = name && entryName && name === entryName;
+  const totalMatch = total && entryTotal && total === entryTotal;
+  const productMatch = !product || !entryProduct || product === entryProduct;
+  return (phoneMatch || nameMatch) && (!total || !entryTotal || totalMatch) && productMatch;
+}
+
+async function confirmWrittenOrderEntry(env, order = {}) {
+  const dateKey = orderDateKeyFromOrder(order);
+  const response = await readOrderEntries(env, dateKey);
+  const result = await response.json().catch(() => ({}));
+  const entries = Array.isArray(result.entries) ? result.entries : [];
+  return entries.find(entry => orderMatchesEntry(order, entry)) || null;
+}
+
 async function readBroadcastPlans(env, month = "") {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
   const endpoint = new URL(env.WEBHOOK_URL);
@@ -502,7 +548,14 @@ async function forwardWebhookPost(env, eventType, payload) {
 
 async function forwardOrderEntry(env, payload) {
   const batchEntries = Array.isArray(payload.entries) ? payload.entries : (Array.isArray(payload.orders) ? payload.orders : null);
-  if (!batchEntries) return forwardWebhookPost(env, "order_entry", payload);
+  if (!batchEntries) {
+    const response = await forwardWebhookPost(env, "order_entry", payload);
+    const result = await response.clone().json().catch(() => ({}));
+    if (response.ok && result.ok && result.entry) return response;
+    const confirmed = await confirmWrittenOrderEntry(env, payload.order || {}).catch(() => null);
+    if (confirmed?.row) return json({ ok: true, entry: confirmed, recoveredFromWriteConfirmation: true });
+    return response;
+  }
 
   const cleanEntries = batchEntries.filter(item => item && item.order && typeof item.order === "object");
   if (!cleanEntries.length) return json({ ok: false, error: "Order data required" }, 400);
@@ -518,10 +571,18 @@ async function forwardOrderEntry(env, payload) {
     });
     const result = await response.clone().json().catch(() => ({}));
     if (!response.ok || !result.ok || !result.entry) {
+      const confirmed = await confirmWrittenOrderEntry(env, item.order).catch(() => null);
+      if (confirmed?.row) {
+        entries.push(confirmed);
+        continue;
+      }
+      const details = Array.isArray(result.errors) && result.errors.length
+        ? result.errors.map(item => (item.name || item.phone || "订单") + ": " + (item.error || "写入失败")).join("；")
+        : "";
       errors.push({
         index,
         name: item.order?.["P · Name"] || item.order?.["G · Platform Name"] || ("订单 " + (index + 1)),
-        error: result.error || ("Google Sheet webhook " + response.status)
+        error: details || result.error || ("Google Sheet webhook " + response.status)
       });
       continue;
     }

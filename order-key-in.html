@@ -1507,10 +1507,13 @@
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.ok || !result.entry) {
+            const detail = Array.isArray(result.errors) && result.errors.length
+              ? result.errors.map(item => `${item.name || item.phone || `订单 ${index + 1}`}: ${item.error || "写入失败"}`).join("；")
+              : "";
             failed.push({
               index,
               name: data["P · Name"] || `订单 ${index + 1}`,
-              error: result.error || "写入 Google Sheet 失败"
+              error: detail || result.error || "写入 Google Sheet 失败"
             });
             continue;
           }
