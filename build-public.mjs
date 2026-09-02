@@ -73,7 +73,7 @@ const ACCOUNTS = {
   fb1177107122151553: { name: "鳞记 - 天然胶原蛋白", inbox: "https://app.manychat.com/fb1177107122151553/chat", tags: { pending: ["PENDING", "Pending"], afterPayment: [] } },
   fb701760706347255: { name: "鳞记 SG", inbox: "https://app.manychat.com/fb701760706347255/chat", tags: { pending: ["Pending Payment 【SG】"], afterPayment: [] } }
 };
-const ORDER_SHEET_URL = "https://docs.google.com/spreadsheets/d/1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ/edit";
+const ORDER_SHEET_URL = "https://docs.google.com/spreadsheets/d/1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ/edit?gid=1989301272#gid=1989301272";
 const BROADCAST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470";
 
 function json(body, status = 200) {

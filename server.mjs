@@ -20,7 +20,8 @@ const ORDER_SHEET_GIDS = {
   3: "1289557819",
   4: "1957679479",
   5: "1827266133",
-  6: "1222127904"
+  6: "1222127904",
+  8: "1989301272"
 };
 function currentOrderSheetUrl() {
   const month = Number(new Intl.DateTimeFormat("en", { timeZone: "Asia/Kuala_Lumpur", month: "numeric" }).format(new Date())) - 1;
