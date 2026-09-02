@@ -27,6 +27,16 @@ const ORDER_MONTH_SHEETS = {
   10: 'Order Nov',
   11: 'Order Dec'
 };
+const ORDER_MONTH_SHEET_GIDS = {
+  0: '1376338968',
+  1: '1263496879',
+  2: '1143781812',
+  3: '1289557819',
+  4: '1957679479',
+  5: '1827266133',
+  6: '1222127904',
+  8: '1989301272'
+};
 
 function json_(value) {
   return ContentService.createTextOutput(JSON.stringify(value))
@@ -311,10 +321,37 @@ function monthIndexFromDate_(dateValue) {
 
 function orderSheetFor_(spreadsheet, order) {
   const monthIndex = monthIndexFromDate_(value_(order, 'F · Date'));
+  const byMonth = orderSheetForMonth_(spreadsheet, monthIndex);
+  if (byMonth) return byMonth;
+  const preferred = ORDER_MONTH_SHEETS[monthIndex];
+  throw new Error('order_sheet_tab_not_found_' + preferred);
+}
+
+function orderSheetForMonth_(spreadsheet, monthIndex) {
+  const gid = String(ORDER_MONTH_SHEET_GIDS[monthIndex] || '').trim();
+  if (gid) {
+    const sheets = spreadsheet.getSheets();
+    for (let index = 0; index < sheets.length; index++) {
+      if (String(sheets[index].getSheetId()) === gid) return sheets[index];
+    }
+  }
   const preferred = ORDER_MONTH_SHEETS[monthIndex];
   const sheet = preferred ? spreadsheet.getSheetByName(preferred) : null;
   if (sheet) return sheet;
-  throw new Error('order_sheet_tab_not_found_' + preferred);
+  return null;
+}
+
+function orderSheetForDate_(spreadsheet, dateValue) {
+  return orderSheetForMonth_(spreadsheet, monthIndexFromDate_(dateValue));
+}
+
+function orderSheetByNameOrDate_(spreadsheet, sheetName, dateValue) {
+  const named = String(sheetName || '').trim();
+  if (named) {
+    const sheet = spreadsheet.getSheetByName(named);
+    if (sheet) return sheet;
+  }
+  return orderSheetForDate_(spreadsheet, dateValue);
 }
 
 function normalizeOrderDate_(value) {
@@ -579,8 +616,7 @@ function dashboardOrderRowLikelyMatches_(rowValues, dateKey, storedEntries) {
 function orderRecordsFromSheetDate_(dateValue, storedEntries) {
   const dateKey = orderDateKey_(dateValue);
   const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
-  const sheetName = ORDER_MONTH_SHEETS[monthIndexFromDate_(dateKey)];
-  const sheet = spreadsheet.getSheetByName(sheetName);
+  const sheet = orderSheetForDate_(spreadsheet, dateKey);
   if (!sheet) return [];
   const last = Math.max(2, sheet.getLastRow());
   if (last < 2) return [];
@@ -1071,11 +1107,11 @@ function updateOrderEntryDate_(body) {
   lock.waitLock(10000);
   try {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
-    const oldSheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
+    const oldSheet = orderSheetByNameOrDate_(spreadsheet, body.sheet, oldDateKey);
     if (!oldSheet) throw new Error('old_order_sheet_not_found');
     const oldRow = resolveOrderRow_(oldSheet, oldDateKey, body);
     if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('order_row_not_found_for_date_phone');
-    const newSheet = spreadsheet.getSheetByName(ORDER_MONTH_SHEETS[monthIndexFromDate_(newDate)]);
+    const newSheet = orderSheetForDate_(spreadsheet, newDate);
     if (!newSheet) throw new Error('new_order_sheet_not_found');
 
     let record;
@@ -1114,7 +1150,7 @@ function updateOrderEntry_(body) {
   lock.waitLock(10000);
   try {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
-    const oldSheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
+    const oldSheet = orderSheetByNameOrDate_(spreadsheet, body.sheet, oldDateKey);
     if (!oldSheet) throw new Error('old_order_sheet_not_found');
     const oldRow = resolveOrderRow_(oldSheet, oldDateKey, body);
     if (!Number.isFinite(oldRow) || oldRow < 2) throw new Error('order_row_not_found_for_date_phone');
@@ -1154,7 +1190,7 @@ function deleteOrderEntry_(body) {
   lock.waitLock(10000);
   try {
     const spreadsheet = SpreadsheetApp.openById(ORDER_SHEET_ID);
-    const sheet = spreadsheet.getSheetByName(String(body.sheet || ORDER_MONTH_SHEETS[monthIndexFromDate_(oldDateKey)]));
+    const sheet = orderSheetByNameOrDate_(spreadsheet, body.sheet, oldDateKey);
     if (!sheet) throw new Error('order_sheet_not_found');
     const row = resolveOrderRow_(sheet, oldDateKey, body);
     if (!Number.isFinite(row) || row < 2) throw new Error('order_row_not_found_for_date_phone');
