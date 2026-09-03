@@ -912,6 +912,10 @@ function rowHasDataValidation_(validations) {
 
 function findOrderValidationSourceRow_(sheet, targetRow, lastColumn) {
   const maxRow = Math.max(2, sheet.getLastRow());
+  for (let row = 2; row <= maxRow; row++) {
+    if (row === targetRow) continue;
+    if (rowHasDataValidation_(sheet.getRange(row, 1, 1, lastColumn).getDataValidations())) return row;
+  }
   for (let row = targetRow - 1; row >= 2; row--) {
     if (rowHasDataValidation_(sheet.getRange(row, 1, 1, lastColumn).getDataValidations())) return row;
   }
@@ -951,17 +955,11 @@ function copyOrderRowTemplate_(sheet, row, columnCount) {
   if (!sourceRow) return false;
   const source = sheet.getRange(sourceRow, 1, 1, lastColumn);
   try {
-    source.copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
-    source.copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+    source.copyTo(target);
+    target.clearContent();
     return true;
   } catch (copyError) {
-    try {
-      source.copyTo(target);
-      target.clearContent();
-      return true;
-    } catch (fallbackError) {
-      return false;
-    }
+    return false;
   }
 }
 
@@ -970,7 +968,7 @@ function ensureOrderRowDropdowns_(sheet, row, order, options) {
   const target = sheet.getRange(row, 1, 1, lastColumn);
   const sourceRow = findOrderValidationSourceRow_(sheet, row, lastColumn);
   if (sourceRow) {
-    if (options && options.copyTemplate) copyOrderRowTemplate_(sheet, row, lastColumn);
+    if (options && options.copyTemplate && copyOrderRowTemplate_(sheet, row, lastColumn)) return;
     const current = target.getDataValidations();
     const source = sheet.getRange(sourceRow, 1, 1, lastColumn).getDataValidations();
     for (let index = 0; index < lastColumn; index++) {
