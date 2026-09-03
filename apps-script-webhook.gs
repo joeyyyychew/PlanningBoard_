@@ -947,9 +947,15 @@ function dropdownValueOrBlank_(sheet, row, column, value) {
 function ensureOrderRowDropdowns_(sheet, row, order) {
   const lastColumn = Math.max(37, sheet.getLastColumn());
   const target = sheet.getRange(row, 1, 1, lastColumn);
-  const current = target.getDataValidations();
   const sourceRow = findOrderValidationSourceRow_(sheet, row, lastColumn);
   if (sourceRow) {
+    try {
+      sheet.getRange(sourceRow, 1, 1, lastColumn)
+        .copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    } catch (formatError) {
+      // Keep writing even if Google Sheets rejects a format-only copy.
+    }
+    const current = target.getDataValidations();
     const source = sheet.getRange(sourceRow, 1, 1, lastColumn).getDataValidations();
     for (let index = 0; index < lastColumn; index++) {
       if (!current[0][index] && source[0][index]) current[0][index] = source[0][index];
@@ -1121,6 +1127,7 @@ function updateOrderEntryDate_(body) {
       const reservation = reserveOrderRow_(newSheet, newDate);
       const nextRow = reservation.row;
       if (reservation.shifted) reseatStoredOrderRows_(newSheet.getName(), nextRow, reservation.delta);
+      ensureOrderRowDropdowns_(newSheet, nextRow, {});
       newSheet.getRange(nextRow, 4, 1, rowDS.length).setValues([rowDS]);
       newSheet.getRange(nextRow, 37).setValue(receipt);
       styleSgdRemark_(newSheet.getRange(nextRow, 15));
