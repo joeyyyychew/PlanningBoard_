@@ -187,7 +187,7 @@
     .paste-block { display:grid; gap:7px; }
     .paste-block-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .paste-block small { color:var(--muted); font-size:10px; font-weight:900; letter-spacing:.04em; }
-    .paste-block textarea { min-height:190px; }
+    .paste-block textarea { min-height:190px; overflow:hidden; }
     textarea:focus, select:focus, input:focus { border-color:#d8a8b2; box-shadow:0 0 0 4px rgba(111,16,39,.08); background:white; }
     .inline { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     main:has(.custom-select.is-open),
@@ -257,7 +257,11 @@
     .field strong { display:block; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
     .simple-preview { display:grid; gap:10px; }
     .order-preview-card { display:grid; gap:9px; padding:12px; border:1px solid rgba(94,30,43,.12); border-radius:18px; background:rgba(255,255,255,.48); }
+    .order-preview-card.is-collapsed { grid-template-columns:1fr auto; align-items:center; background:rgba(255,255,255,.68); }
     .order-preview-card h3 { margin:0; font-size:12px; color:var(--wine); letter-spacing:.02em; }
+    .order-preview-summary { display:grid; gap:4px; }
+    .order-preview-summary strong { color:var(--ink); font-size:13px; }
+    .order-preview-summary span { color:var(--muted); font-size:11px; font-weight:850; }
     .simple-row { display:grid; grid-template-columns:108px 1fr; gap:12px; align-items:start; padding:12px 13px; border:1px solid #f0dfdc; border-radius:15px; background:rgba(255,255,255,.62); }
     .simple-row small { color:var(--muted); font-size:10px; font-weight:900; }
     .simple-row strong { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -267,6 +271,23 @@
     .order-preview-page-select,
     .payment-row .payment-method-select { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
     .payment-row .custom-select-button { min-height:42px; padding:10px 13px; font-size:13px; font-weight:850; }
+    .preview-done-button {
+      justify-self:start;
+      border:1px solid #d8a8b2;
+      border-radius:999px;
+      padding:9px 14px;
+      background:rgba(255,255,255,.82);
+      color:var(--wine);
+      font:inherit;
+      font-size:11px;
+      font-weight:950;
+      cursor:pointer;
+    }
+    .preview-done-button.is-done {
+      background:var(--wine);
+      border-color:var(--wine);
+      color:white;
+    }
     .sheet-details { margin-top:14px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.5); overflow:hidden; }
     .sheet-details summary { cursor:pointer; padding:12px 14px; color:var(--wine); font-size:12px; font-weight:900; list-style:none; }
     .sheet-details summary::-webkit-details-marker { display:none; }
@@ -525,6 +546,7 @@
             <option>鳞记 - 天然胶原蛋白</option>
             <option>鳞记 SG</option>
             <option>Main 968 MC</option>
+            <option>Live Channel</option>
           </select>
           <input id="channelPreview" type="hidden" value="Knee 990 MC" readonly />
 
@@ -726,6 +748,7 @@
     const paymentMethodOptions = ["", "BANK IN", "TNG", "ATOME", "STRIPE", "FPX", "COD"];
     const paymentOverrides = new Map();
     const pageOverrides = new Map();
+    const collapsedPreviewOrders = new Set();
     function orderLoadedKey(dateKey) {
       return `orderKeyInLoaded:${dateKey}`;
     }
@@ -811,7 +834,8 @@
       "Scalestory - 天然胶原蛋白": "Knee 990 MC",
       "鳞记 - 天然胶原蛋白": "Main Front",
       "鳞记 SG": "SG 715 MC",
-      "Main 968 MC": "Main 968 MC"
+      "Main 968 MC": "Main 968 MC",
+      "Live Channel": "Live Channel"
     };
     const accountPageMap = {
       fb108701968299986: "Scalestory - 天然胶原蛋白",
@@ -1129,6 +1153,40 @@
       return /[a-z\u4e00-\u9fff]/i.test(text);
     }
 
+    function hasOrderDetails(lines = []) {
+      const text = lines.join("\n");
+      const hasPhone = phoneRegex().test(text);
+      const hasAmount = /(?:RM|MYR|SGD|S\$)\s*\d/i.test(text);
+      const hasProduct = lines.some(isProductLine);
+      const hasAddress = lines.some(isAddressLine);
+      return hasPhone && (hasAmount || hasProduct || hasAddress);
+    }
+
+    function shouldStartNextOrder(lines, index) {
+      if (!isLikelyNameLine(lines[index])) return false;
+      const before = lines.slice(0, index);
+      if (!hasOrderDetails(before)) return false;
+      const after = lines.slice(index, Math.min(lines.length, index + 10));
+      return hasOrderDetails(after);
+    }
+
+    function splitOrderTextByNextName(value = "") {
+      const lines = cleanLines(value);
+      if (!lines.length) return [];
+      const blocks = [];
+      let current = [];
+      lines.forEach((line, index) => {
+        if (current.length && shouldStartNextOrder([...current, line, ...lines.slice(index + 1)], current.length)) {
+          blocks.push(current.join("\n").trim());
+          current = [line];
+          return;
+        }
+        current.push(line);
+      });
+      if (current.length) blocks.push(current.join("\n").trim());
+      return blocks.filter(Boolean);
+    }
+
     function inferLooseOrder(text) {
       const lines = cleanLines(text);
       const urls = lines.filter(line => /^https?:\/\//i.test(line));
@@ -1197,10 +1255,11 @@
     }
 
     function splitSinglePasteValue(value = "") {
-      return String(value || "")
+      const sections = String(value || "")
         .split(/^\s*[—–-]{4,}\s*$|^\s*[-─━]{4,}\s*$/gm)
         .map(block => block.trim())
         .filter(Boolean);
+      return sections.flatMap(section => splitOrderTextByNextName(section));
     }
 
     function splitOrderBlocks() {
@@ -1223,6 +1282,7 @@
       const textarea = block.querySelector("textarea");
       textarea.value = value;
       if (index === 1) textarea.id = "rawInfo";
+      autoResizePasteInput(textarea);
       return block;
     }
 
@@ -1249,9 +1309,17 @@
     function resetPasteBars() {
       paymentOverrides.clear();
       pageOverrides.clear();
+      collapsedPreviewOrders.clear();
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
       window.customSelectRefresh?.();
+    }
+
+    function autoResizePasteInput(input) {
+      if (!input) return;
+      input.style.height = "auto";
+      const nextHeight = Math.max(190, input.scrollHeight + 2);
+      input.style.height = `${nextHeight}px`;
     }
 
     function parseOrder(text = splitOrderBlocks()[0] || "", selectedPage = page.value) {
@@ -1344,12 +1412,22 @@
       }
       const orders = buildParsedOrdersFromPaste();
       simplePreview.innerHTML = orders.map((data, index) => `
-        <div class="order-preview-card">
+        ${collapsedPreviewOrders.has(index) ? `
+        <div class="order-preview-card is-collapsed" data-preview-card="${index}">
+          <div class="order-preview-summary">
+            <h3>订单 ${index + 1}</h3>
+            <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
+            <span>${escapeHtml([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认")}</span>
+          </div>
+          <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}">✓ 已确认</button>
+        </div>
+        ` : `
+        <div class="order-preview-card" data-preview-card="${index}">
           <h3>订单 ${index + 1}</h3>
           ${previewRowsForData(data).map(([key, value]) => `
             <div class="simple-row">
               <small>${key}</small>
-              <strong>${value}</strong>
+              <strong>${escapeHtml(value)}</strong>
             </div>
           `).join("")}
           <div class="simple-row order-preview-select-row">
@@ -1368,7 +1446,9 @@
               ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
             </select>
           </div>
+          <button type="button" class="preview-done-button" data-preview-toggle="${index}">✓ 确认这单并收起</button>
         </div>
+        `}
       `).join("");
       window.customSelectRefresh?.(simplePreview);
       sheetRows.innerHTML = orders.map((data, index) => `
@@ -1804,14 +1884,18 @@
     });
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
-      const pastedText = event.clipboardData?.getData("text") || "";
-      const pieces = splitSinglePasteValue(pastedText);
-      if (pieces.length <= 1) return;
-      pageOverrides.clear();
-      paymentOverrides.clear();
+      setTimeout(() => {
+        pageOverrides.clear();
+        paymentOverrides.clear();
+        collapsedPreviewOrders.clear();
+        autoResizePasteInput(event.target);
+        render();
+      }, 0);
     });
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
+      collapsedPreviewOrders.clear();
+      autoResizePasteInput(event.target);
       ensureTrailingPasteBar();
       render();
     });
@@ -1826,9 +1910,26 @@
         render();
       }
     });
+    simplePreview.addEventListener("click", event => {
+      const toggle = event.target.closest("[data-preview-toggle]");
+      if (!toggle) return;
+      const index = Number(toggle.dataset.previewToggle);
+      if (!Number.isInteger(index)) return;
+      if (collapsedPreviewOrders.has(index)) {
+        collapsedPreviewOrders.delete(index);
+        render();
+        return;
+      }
+      collapsedPreviewOrders.add(index);
+      render();
+      requestAnimationFrame(() => {
+        simplePreview.querySelector(`[data-preview-card="${index}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
     orderEntryDate.addEventListener("input", render);
     page.addEventListener("change", () => {
       pageOverrides.clear();
+      collapsedPreviewOrders.clear();
       window.customSelectRefresh?.();
       render();
     });
