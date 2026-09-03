@@ -921,31 +921,27 @@ function findOrderValidationSourceRow_(sheet, targetRow, lastColumn) {
   return 0;
 }
 
-function ensureDropdownListValue_(sheet, row, column, value) {
-  const text = String(value || '').trim();
-  if (!text) return;
-  const range = sheet.getRange(row, column);
+function dropdownOptionsForCell_(range) {
   const rule = range.getDataValidation();
-  if (!rule) return;
+  if (!rule) return null;
   const type = rule.getCriteriaType();
   const criteria = rule.getCriteriaValues();
-  let list = [];
   if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
-    list = (criteria[0] || []).map(function(item) { return String(item || '').trim(); }).filter(Boolean);
-  } else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE && criteria[0] && typeof criteria[0].getValues === 'function') {
-    list = criteria[0].getValues().flat().map(function(item) { return String(item || '').trim(); }).filter(Boolean);
-  } else {
-    return;
+    return (criteria[0] || []).map(function(item) { return String(item || '').trim(); }).filter(Boolean);
   }
-  const exists = list.some(function(item) { return item.toLowerCase() === text.toLowerCase(); });
-  if (exists) return;
-  const showDropdown = criteria.length > 1 ? criteria[1] !== false : true;
-  const helpText = typeof rule.getHelpText === 'function' ? rule.getHelpText() : '';
-  const builder = SpreadsheetApp.newDataValidation()
-    .requireValueInList(list.concat([text]), showDropdown)
-    .setAllowInvalid(true);
-  if (helpText) builder.setHelpText(helpText);
-  range.setDataValidation(builder.build());
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE && criteria[0] && typeof criteria[0].getValues === 'function') {
+    return criteria[0].getValues().flat().map(function(item) { return String(item || '').trim(); }).filter(Boolean);
+  }
+  return null;
+}
+
+function dropdownValueOrBlank_(sheet, row, column, value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const options = dropdownOptionsForCell_(sheet.getRange(row, column));
+  if (!options) return text;
+  const matched = options.find(function(item) { return item.toLowerCase() === text.toLowerCase(); });
+  return matched || '';
 }
 
 function ensureOrderRowDropdowns_(sheet, row, order) {
@@ -960,26 +956,24 @@ function ensureOrderRowDropdowns_(sheet, row, order) {
     }
     target.setDataValidations(current);
   }
-  ensureDropdownListValue_(sheet, row, 4, value_(order, 'D · Sales Person') || 'Joey');
-  ensureDropdownListValue_(sheet, row, 7, value_(order, 'G · Platform Name'));
-  ensureDropdownListValue_(sheet, row, 8, value_(order, 'H · Channel / Chanel'));
-  ensureDropdownListValue_(sheet, row, 13, value_(order, 'M · Payment Method'));
-  ensureDropdownListValue_(sheet, row, 14, value_(order, 'N · Variant'));
 }
 
-function rowDSFromOrder_(order, orderNo) {
+function rowDSFromOrder_(order, orderNo, sheet, row) {
+  const dropdownValue = function(column, value) {
+    return sheet && row ? dropdownValueOrBlank_(sheet, row, column, value) : String(value || '').trim();
+  };
   return [
-    value_(order, 'D · Sales Person') || 'Joey',
+    dropdownValue(4, value_(order, 'D · Sales Person') || 'Joey'),
     orderNo,
     value_(order, 'F · Date'),
-    value_(order, 'G · Platform Name'),
-    value_(order, 'H · Channel / Chanel'),
+    dropdownValue(7, value_(order, 'G · Platform Name')),
+    dropdownValue(8, value_(order, 'H · Channel / Chanel')),
     value_(order, 'I · Classic BTL'),
     value_(order, 'J · Knee BTL'),
     value_(order, 'K · Ginseng BTL'),
     value_(order, 'L · Floral BTL'),
-    value_(order, 'M · Payment Method'),
-    value_(order, 'N · Variant'),
+    dropdownValue(13, value_(order, 'M · Payment Method')),
+    dropdownValue(14, value_(order, 'N · Variant')),
     value_(order, 'O · Remark'),
     value_(order, 'P · Name'),
     value_(order, 'Q · Phone'),
@@ -1007,8 +1001,8 @@ function reseatStoredOrderRows_(sheetName, startRow, delta) {
 }
 
 function writeOrderRow_(sheet, row, order, orderNo) {
-  const rowDS = rowDSFromOrder_(order, orderNo);
   ensureOrderRowDropdowns_(sheet, row, order);
+  const rowDS = rowDSFromOrder_(order, orderNo, sheet, row);
   sheet.getRange(row, 4, 1, rowDS.length).setValues([rowDS]);
   sheet.getRange(row, 37).setValue(value_(order, 'AK · Receipt Link'));
   styleSgdRemark_(sheet.getRange(row, 15));
