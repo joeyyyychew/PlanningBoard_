@@ -900,10 +900,33 @@ function ensureRows_(sheet, targetRow) {
   sheet.insertRowsAfter(sheet.getMaxRows(), targetRow - sheet.getMaxRows());
 }
 
+function orderRowHasContent_(sheet, row) {
+  if (row < 2 || row > sheet.getMaxRows()) return false;
+  const values = sheet.getRange(row, 4, 1, 16).getValues()[0]; // D:S
+  values.push(sheet.getRange(row, 37).getValue()); // AK receipt
+  return values.some(function(cell) { return String(cell || '').trim() !== ''; });
+}
+
+function orderRowHasDropdowns_(sheet, row, lastColumn) {
+  if (row < 2 || row > sheet.getMaxRows()) return false;
+  return rowHasDataValidation_(sheet.getRange(row, 1, 1, lastColumn).getDataValidations());
+}
+
+function findEmptyOrderDropdownRow_(sheet, startRow) {
+  const lastColumn = Math.max(37, sheet.getLastColumn());
+  const maxRow = sheet.getMaxRows();
+  for (let row = Math.max(2, startRow); row <= maxRow; row++) {
+    if (!orderRowHasContent_(sheet, row) && orderRowHasDropdowns_(sheet, row, lastColumn)) return row;
+  }
+  return 0;
+}
+
 function reserveOrderRow_(sheet, orderDate) {
   const nextRow = nextOrderRow_(sheet, orderDate);
   ensureRows_(sheet, nextRow);
-  return {row: nextRow, shifted: false};
+  const templateRow = findEmptyOrderDropdownRow_(sheet, nextRow);
+  if (!templateRow) throw new Error('order_sheet_dropdown_template_row_missing_' + sheet.getName());
+  return {row: templateRow, shifted: false, usesTemplateRow: true};
 }
 
 function rowHasDataValidation_(validations) {
@@ -1050,7 +1073,7 @@ function appendOrderEntry_(body) {
     const nextRow = reservation.row;
     if (reservation.shifted) reseatStoredOrderRows_(sheet.getName(), nextRow, reservation.delta);
     const orderNo = nextOrderNo_(sheet);
-    const rowDS = writeOrderRow_(sheet, nextRow, order, orderNo, {copyTemplate:true});
+    const rowDS = writeOrderRow_(sheet, nextRow, order, orderNo);
     SpreadsheetApp.flush();
     const check = sheet.getRange(nextRow, 4, 1, rowDS.length).getValues()[0];
     const receipt = sheet.getRange(nextRow, 37).getValue();
@@ -1141,7 +1164,7 @@ function updateOrderEntryDate_(body) {
       const reservation = reserveOrderRow_(newSheet, newDate);
       const nextRow = reservation.row;
       if (reservation.shifted) reseatStoredOrderRows_(newSheet.getName(), nextRow, reservation.delta);
-      ensureOrderRowDropdowns_(newSheet, nextRow, {}, {copyTemplate:true});
+      ensureOrderRowDropdowns_(newSheet, nextRow, {});
       newSheet.getRange(nextRow, 4, 1, rowDS.length).setValues([rowDS]);
       newSheet.getRange(nextRow, 37).setValue(receipt);
       styleSgdRemark_(newSheet.getRange(nextRow, 15));
@@ -1183,7 +1206,7 @@ function updateOrderEntry_(body) {
       const reservation = reserveOrderRow_(newSheet, newDate);
       row = reservation.row;
       if (reservation.shifted) reseatStoredOrderRows_(newSheet.getName(), row, reservation.delta);
-      writeOrderRow_(newSheet, row, order, existingNo, {copyTemplate:true});
+      writeOrderRow_(newSheet, row, order, existingNo);
     }
 
     removeOrderRecord_(oldDateKey, previousOrderLookup_(body, oldRow));
