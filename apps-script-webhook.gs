@@ -944,17 +944,33 @@ function dropdownValueOrBlank_(sheet, row, column, value) {
   return matched || '';
 }
 
-function ensureOrderRowDropdowns_(sheet, row, order) {
+function copyOrderRowTemplate_(sheet, row, columnCount) {
+  const lastColumn = Math.max(37, columnCount || sheet.getLastColumn());
+  const target = sheet.getRange(row, 1, 1, lastColumn);
+  const sourceRow = findOrderValidationSourceRow_(sheet, row, lastColumn);
+  if (!sourceRow) return false;
+  const source = sheet.getRange(sourceRow, 1, 1, lastColumn);
+  try {
+    source.copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    source.copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+    return true;
+  } catch (copyError) {
+    try {
+      source.copyTo(target);
+      target.clearContent();
+      return true;
+    } catch (fallbackError) {
+      return false;
+    }
+  }
+}
+
+function ensureOrderRowDropdowns_(sheet, row, order, options) {
   const lastColumn = Math.max(37, sheet.getLastColumn());
   const target = sheet.getRange(row, 1, 1, lastColumn);
   const sourceRow = findOrderValidationSourceRow_(sheet, row, lastColumn);
   if (sourceRow) {
-    try {
-      sheet.getRange(sourceRow, 1, 1, lastColumn)
-        .copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
-    } catch (formatError) {
-      // Keep writing even if Google Sheets rejects a format-only copy.
-    }
+    if (options && options.copyTemplate) copyOrderRowTemplate_(sheet, row, lastColumn);
     const current = target.getDataValidations();
     const source = sheet.getRange(sourceRow, 1, 1, lastColumn).getDataValidations();
     for (let index = 0; index < lastColumn; index++) {
@@ -1006,8 +1022,8 @@ function reseatStoredOrderRows_(sheetName, startRow, delta) {
   });
 }
 
-function writeOrderRow_(sheet, row, order, orderNo) {
-  ensureOrderRowDropdowns_(sheet, row, order);
+function writeOrderRow_(sheet, row, order, orderNo, options) {
+  ensureOrderRowDropdowns_(sheet, row, order, options || {});
   const rowDS = rowDSFromOrder_(order, orderNo, sheet, row);
   sheet.getRange(row, 4, 1, rowDS.length).setValues([rowDS]);
   sheet.getRange(row, 37).setValue(value_(order, 'AK · Receipt Link'));
@@ -1036,7 +1052,7 @@ function appendOrderEntry_(body) {
     const nextRow = reservation.row;
     if (reservation.shifted) reseatStoredOrderRows_(sheet.getName(), nextRow, reservation.delta);
     const orderNo = nextOrderNo_(sheet);
-    const rowDS = writeOrderRow_(sheet, nextRow, order, orderNo);
+    const rowDS = writeOrderRow_(sheet, nextRow, order, orderNo, {copyTemplate:true});
     SpreadsheetApp.flush();
     const check = sheet.getRange(nextRow, 4, 1, rowDS.length).getValues()[0];
     const receipt = sheet.getRange(nextRow, 37).getValue();
@@ -1127,7 +1143,7 @@ function updateOrderEntryDate_(body) {
       const reservation = reserveOrderRow_(newSheet, newDate);
       const nextRow = reservation.row;
       if (reservation.shifted) reseatStoredOrderRows_(newSheet.getName(), nextRow, reservation.delta);
-      ensureOrderRowDropdowns_(newSheet, nextRow, {});
+      ensureOrderRowDropdowns_(newSheet, nextRow, {}, {copyTemplate:true});
       newSheet.getRange(nextRow, 4, 1, rowDS.length).setValues([rowDS]);
       newSheet.getRange(nextRow, 37).setValue(receipt);
       styleSgdRemark_(newSheet.getRange(nextRow, 15));
@@ -1169,7 +1185,7 @@ function updateOrderEntry_(body) {
       const reservation = reserveOrderRow_(newSheet, newDate);
       row = reservation.row;
       if (reservation.shifted) reseatStoredOrderRows_(newSheet.getName(), row, reservation.delta);
-      writeOrderRow_(newSheet, row, order, existingNo);
+      writeOrderRow_(newSheet, row, order, existingNo, {copyTemplate:true});
     }
 
     removeOrderRecord_(oldDateKey, previousOrderLookup_(body, oldRow));
