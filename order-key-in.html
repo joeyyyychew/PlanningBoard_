@@ -822,6 +822,9 @@
     let orderRecordsLoaded = new Set();
     let loadingOrdersFor = "";
     const paymentMethodOptions = ["", "BANK IN", "TNG", "ATOME", "STRIPE", "FPX", "COD"];
+    // Keep this list aligned with the strict PIC dropdown in Order Sept column D.
+    // Joey remains the default for a newly pasted order.
+    const picOptions = ["TT", "Anson", "Angel", "Yoki", "Thor", "LC", "Joey", "Josephine"];
     const paymentOverrides = new Map();
     const pageOverrides = new Map();
     const productOverrides = new Map();
@@ -1886,7 +1889,9 @@
           ${previewRowsForData(data).map(([label, field, value]) => `
             <div class="simple-row">
               <small>${label}</small>
-              ${field ? (field === "R · Address"
+              ${field ? (field === "D · Sales Person"
+                ? `<select class="pic-select" data-native="true" data-order-index="${index}" data-order-field="${field}">${picOptions.map(option => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`
+                : field === "R · Address"
                 ? `<textarea class="order-detail-input" data-order-index="${index}" data-order-field="${field}">${escapeHtml(value)}</textarea>`
                 : `<input class="order-detail-input" data-order-index="${index}" data-order-field="${field}" value="${escapeHtml(value)}" />`)
                 : `<strong>${escapeHtml(value)}</strong>`}
@@ -2551,6 +2556,13 @@
       fieldOverrides.set(index, { ...(fieldOverrides.get(index) || {}), [field]:event.target.value });
     });
     simplePreview.addEventListener("change", event => {
+      if (event.target.classList.contains("pic-select")) {
+        const index = Number(event.target.dataset.orderIndex);
+        const field = event.target.dataset.orderField;
+        if (!Number.isInteger(index) || !field) return;
+        fieldOverrides.set(index, { ...(fieldOverrides.get(index) || {}), [field]: event.target.value || "Joey" });
+        return;
+      }
       if (event.target.classList.contains("order-preview-select-toggle")) {
         const index = Number(event.target.dataset.orderIndex);
         if (event.target.checked) selectedPreviewOrders.add(index);
