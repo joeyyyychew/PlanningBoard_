@@ -299,14 +299,11 @@
     .draft-controls select { min-height:42px; padding:9px 12px; font-size:11px; font-weight:800; }
     .draft-delete { border:0; border-radius:999px; padding:9px 11px; background:#f5e6e2; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
     .draft-list-button { border:1px solid #d8a8b2; border-radius:999px; padding:9px 12px; background:rgba(255,255,255,.8); color:var(--wine); font:inherit; font-size:11px; font-weight:900; cursor:pointer; white-space:nowrap; }
-    .draft-order-dialog { width:min(720px,calc(100vw - 34px)); border:0; border-radius:25px; padding:0; background:#fffaf8; box-shadow:0 28px 90px rgba(41,12,17,.32); }
-    .draft-order-dialog::backdrop { background:rgba(54,22,26,.42); backdrop-filter:blur(4px); }
-    .draft-order-body { padding:24px; }
+    .draft-orders-panel { margin-top:16px; }
     .draft-order-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:16px; }
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
     .draft-order-head p { margin:0; color:var(--muted); font-size:12px; }
-    .draft-close { width:38px; height:38px; border:0; border-radius:50%; background:#f4e8e8; color:var(--wine); font-size:18px; cursor:pointer; }
-    .draft-order-list { display:grid; gap:10px; max-height:min(62vh,560px); overflow:auto; padding-right:2px; }
+    .draft-order-list { display:grid; gap:10px; }
     .draft-order-card { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:15px; border:1px solid #ecdcd7; border-radius:17px; background:rgba(255,255,255,.76); }
     .draft-order-card h3 { margin:0 0 4px; color:var(--wine); font-size:13px; }
     .draft-order-card p { margin:0; color:var(--muted); font-size:11px; line-height:1.5; }
@@ -584,7 +581,7 @@
           </div>
           <div class="draft-controls">
             <select id="draftSelect" aria-label="已保存草稿"><option value="">草稿（尚未保存）</option></select>
-            <button class="draft-list-button" id="openDraftOrdersBtn" type="button">Draft Orders</button>
+            <button class="draft-list-button" id="openDraftOrdersBtn" type="button" aria-expanded="false">Draft Orders</button>
           </div>
         </div>
 
@@ -606,6 +603,13 @@
           <div id="sheetRows" hidden></div>
 
         </div>
+      </section>
+
+      <section class="card panel draft-orders-panel" id="draftOrdersPanel" hidden>
+        <div class="draft-order-head">
+          <div><h2>Draft Orders</h2><p>草稿尚未写入 Google Sheet。</p></div>
+        </div>
+        <div class="draft-order-list" id="draftOrderList"></div>
       </section>
 
       <section class="card panel confirmed-panel" id="confirmedPanel">
@@ -709,16 +713,6 @@
       </div>
     </div>
   </dialog>
-  <dialog class="draft-order-dialog" id="draftOrderDialog">
-    <div class="draft-order-body">
-      <div class="draft-order-head">
-        <div><h2>Draft Orders</h2><p>草稿尚未写入 Google Sheet。</p></div>
-        <button class="draft-close" id="draftOrderClose" type="button" aria-label="关闭">×</button>
-      </div>
-      <div class="draft-order-list" id="draftOrderList"></div>
-    </div>
-  </dialog>
-
   <script>
     const pasteBlocks = document.getElementById("pasteBlocks");
     const rawInfo = document.getElementById("rawInfo");
@@ -793,7 +787,7 @@
     const collapsedPreviewOrders = new Set();
     const orderDraftsKey = "orderKeyInDraftsV1";
     const draftSelect = document.getElementById("draftSelect");
-    const draftOrderDialog = document.getElementById("draftOrderDialog");
+    const draftOrdersPanel = document.getElementById("draftOrdersPanel");
     const draftOrderList = document.getElementById("draftOrderList");
 
     function readOrderDrafts() {
@@ -2113,11 +2107,13 @@
     draftSelect.addEventListener("change", () => {
       if (draftSelect.value) loadDraft(draftSelect.value);
     });
-    document.getElementById("openDraftOrdersBtn").addEventListener("click", () => {
+    document.getElementById("openDraftOrdersBtn").addEventListener("click", event => {
+      const willShow = draftOrdersPanel.hidden;
+      draftOrdersPanel.hidden = !willShow;
+      event.currentTarget.setAttribute("aria-expanded", String(willShow));
       renderDraftOrderCards();
-      draftOrderDialog.showModal();
+      if (willShow) draftOrdersPanel.scrollIntoView({ behavior:"smooth", block:"start" });
     });
-    document.getElementById("draftOrderClose").addEventListener("click", () => draftOrderDialog.close());
     draftOrderList.addEventListener("click", event => {
       const open = event.target.closest("[data-draft-open]");
       const remove = event.target.closest("[data-draft-delete]");
@@ -2125,7 +2121,8 @@
         const id = open.dataset.draftOpen;
         renderDraftChoices(id);
         loadDraft(id);
-        draftOrderDialog.close();
+        draftOrdersPanel.hidden = true;
+        document.getElementById("openDraftOrdersBtn").setAttribute("aria-expanded", "false");
         return;
       }
       if (!remove) return;
