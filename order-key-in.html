@@ -307,6 +307,13 @@
     .draft-order-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:16px; }
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
     .draft-order-head p { margin:0; color:var(--muted); font-size:12px; }
+    .draft-bulk-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:11px 12px; margin:-4px 0 14px; border:1px solid #ead8d3; border-radius:14px; background:rgba(255,255,255,.48); }
+    .draft-bulk-controls label, .draft-order-select { display:flex; align-items:center; gap:8px; margin:0; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
+    .draft-bulk-controls input, .draft-order-select input { width:17px; height:17px; padding:0; accent-color:var(--wine); }
+    .draft-bulk-actions { display:flex; align-items:center; gap:9px; }
+    .draft-selection-count { color:var(--muted); font-size:11px; font-weight:800; }
+    .draft-confirm { border:0; border-radius:999px; padding:9px 13px; background:var(--wine); color:#fff; font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+    .draft-confirm:disabled { opacity:.62; cursor:wait; }
     .draft-order-list { display:grid; gap:10px; }
     .draft-order-card { display:grid; gap:12px; padding:15px; border:1px solid #ecdcd7; border-radius:17px; background:rgba(255,255,255,.76); }
     .draft-order-card h3 { margin:0 0 4px; color:var(--wine); font-size:13px; }
@@ -625,6 +632,10 @@
         <div class="draft-order-head">
           <div><h2>Draft Orders</h2><p>草稿尚未写入 Google Sheet。</p></div>
         </div>
+        <div class="draft-bulk-controls" id="draftBulkControls" hidden>
+          <label><input id="selectAllDraftOrders" type="checkbox" /> Select All</label>
+          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">确认已选</button></div>
+        </div>
         <div class="draft-order-list" id="draftOrderList"></div>
       </section>
 
@@ -810,6 +821,15 @@
     const previewSelectionControls = document.getElementById("previewSelectionControls");
     const selectAllPreviewOrders = document.getElementById("selectAllPreviewOrders");
     const previewSelectionCount = document.getElementById("previewSelectionCount");
+    const selectedDraftOrders = new Set();
+    const draftBulkControls = document.getElementById("draftBulkControls");
+    const selectAllDraftOrders = document.getElementById("selectAllDraftOrders");
+    const draftSelectionCount = document.getElementById("draftSelectionCount");
+    const confirmSelectedDraftsBtn = document.getElementById("confirmSelectedDraftsBtn");
+
+    function draftOrderKey(draftId, index) {
+      return `${draftId}:${index}`;
+    }
 
     function readOrderDrafts() {
       try {
@@ -836,7 +856,7 @@
       return { name, count: blocks.length || 1 };
     }
 
-    function parsedDraftOrders(draft = {}) {
+    function draftOrderEntries(draft = {}) {
       const pages = new Map((draft.pages || []).map(([index, value]) => [Number(index), value]));
       const payments = new Map((draft.payments || []).map(([index, value]) => [Number(index), value]));
       const products = new Map((draft.products || []).map(([index, value]) => [Number(index), value]));
@@ -857,25 +877,43 @@
           data["N · Variant"] = product.variant;
           data["O · Remark"] = product.remark;
         }
-        return data;
+        data["F · Date"] = inputDateToSheetDate(normalizeTypedOrderDate(draft.entryDate || orderEntryDate.value));
+        return { index, raw:text, data };
       });
+    }
+
+    function parsedDraftOrders(draft = {}) {
+      return draftOrderEntries(draft).map(entry => entry.data);
+    }
+
+    function updateDraftSelectionControls(drafts = []) {
+      const allKeys = drafts.flatMap(draft => draftOrderEntries(draft).map(entry => draftOrderKey(draft.id, entry.index)));
+      const allowed = new Set(allKeys);
+      [...selectedDraftOrders].forEach(key => { if (!allowed.has(key)) selectedDraftOrders.delete(key); });
+      draftBulkControls.hidden = !allKeys.length;
+      selectAllDraftOrders.checked = Boolean(allKeys.length && selectedDraftOrders.size === allKeys.length);
+      selectAllDraftOrders.indeterminate = Boolean(selectedDraftOrders.size && selectedDraftOrders.size < allKeys.length);
+      draftSelectionCount.textContent = `${selectedDraftOrders.size} / ${allKeys.length} 已选择`;
+      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `确认已选 (${selectedDraftOrders.size})` : "确认已选";
     }
 
     function renderDraftOrderCards() {
       const drafts = readOrderDrafts().sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
       if (!drafts.length) {
+        draftBulkControls.hidden = true;
         draftOrderList.innerHTML = `<div class="draft-empty">目前没有保存中的 Draft Order。</div>`;
         return;
       }
       draftOrderList.innerHTML = drafts.map(draft => {
         const summary = draftOrderSummary(draft);
-        const orders = parsedDraftOrders(draft);
+        const orders = draftOrderEntries(draft);
         const updated = new Date(Number(draft.updatedAt || Date.now())).toLocaleString("zh-CN", {timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
         return `<article class="draft-order-card" data-draft-card="${escapeHtml(draft.id)}">
           <div class="draft-order-card-top"><div><h3>${escapeHtml(summary.name)}${summary.count > 1 ? ` 等 ${summary.count} 单` : ""}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div><div class="draft-card-actions"><button class="draft-open" type="button" data-draft-open="${escapeHtml(draft.id)}">继续编辑</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div></div>
-          <div class="draft-detail-list">${orders.map((data, index) => `<div class="draft-detail-card"><div><h4>订单 ${index + 1}</h4><p>${escapeHtml(data["Page / Account"] || "待确认")} → ${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div></div>`).join("")}</div>
+          <div class="draft-detail-list">${orders.map(({data, index}) => `<div class="draft-detail-card"><div><label class="draft-order-select"><input class="draft-order-select-toggle" type="checkbox" data-draft-id="${escapeHtml(draft.id)}" data-order-index="${index}" ${selectedDraftOrders.has(draftOrderKey(draft.id, index)) ? "checked" : ""} /> Select · 订单 ${index + 1}</label><p>${escapeHtml(data["Page / Account"] || "待确认")} → ${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div></div>`).join("")}</div>
         </article>`;
       }).join("");
+      updateDraftSelectionControls(drafts);
     }
 
     function saveCurrentDraft() {
@@ -1987,6 +2025,79 @@
       }
     }
 
+    function removeConfirmedDraftEntries(successfulKeys = new Set()) {
+      const now = Date.now();
+      const remappedDrafts = readOrderDrafts().flatMap(draft => {
+        const entries = draftOrderEntries(draft);
+        const keep = entries.filter(entry => !successfulKeys.has(draftOrderKey(draft.id, entry.index)));
+        if (!keep.length) return [];
+        const oldToNew = new Map(keep.map((entry, nextIndex) => [entry.index, nextIndex]));
+        const remapPairs = pairs => (pairs || [])
+          .filter(([oldIndex]) => oldToNew.has(Number(oldIndex)))
+          .map(([oldIndex, value]) => [oldToNew.get(Number(oldIndex)), value]);
+        return [{
+          ...draft,
+          raw: keep.map(entry => entry.raw).join("\n\n"),
+          pages: remapPairs(draft.pages),
+          payments: remapPairs(draft.payments),
+          products: remapPairs(draft.products),
+          updatedAt: now
+        }];
+      });
+      localStorage.setItem(orderDraftsKey, JSON.stringify(remappedDrafts));
+      selectedDraftOrders.clear();
+      renderDraftChoices();
+    }
+
+    async function confirmSelectedDraftOrders() {
+      const drafts = readOrderDrafts();
+      const items = drafts.flatMap(draft => draftOrderEntries(draft).map(entry => ({ draft, ...entry })))
+        .filter(item => selectedDraftOrders.has(draftOrderKey(item.draft.id, item.index)));
+      if (!items.length) {
+        showNotice("error", "没有选择订单", "请先勾选 Draft Order，或使用 Select All。");
+        return;
+      }
+      confirmSelectedDraftsBtn.disabled = true;
+      const saved = [];
+      const failed = [];
+      const successfulKeys = new Set();
+      try {
+        for (let position = 0; position < items.length; position += 1) {
+          const item = items[position];
+          confirmSelectedDraftsBtn.textContent = `保存 ${position + 1}/${items.length}…`;
+          const response = await fetch(`${apiBase}/api/order-entry`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ page:item.data["Page / Account"], raw:item.raw, order:item.data })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok || !result.entry) {
+            failed.push({ name:item.data["P · Name"] || "订单", error:result.error || "写入 Google Sheet 失败" });
+            continue;
+          }
+          saved.push(buildOrderRecord(item.data, result.entry?.record || result.entry || {}));
+          successfulKeys.add(draftOrderKey(item.draft.id, item.index));
+        }
+        if (!saved.length) throw new Error(failed.map(item => `${item.name}: ${item.error}`).join("；") || "写入 Google Sheet 失败");
+        saved.forEach(unmarkOrderDeleted);
+        previewOrders = [...saved.reverse(), ...previewOrders];
+        localStorage.setItem(orderEntriesKey, JSON.stringify(previewOrders));
+        hasConfirmedOrder = true;
+        removeConfirmedDraftEntries(successfulKeys);
+        renderDraftOrderCards();
+        renderConfirmedOrders();
+        const rows = saved.map(order => order.row).filter(Boolean).join("、");
+        showNotice(failed.length ? "error" : "success", failed.length ? "部分进单失败" : "已确认进单", failed.length
+          ? `${saved.length} 单已写入${rows ? ` Row ${rows}` : ""}；${failed.length} 单失败：${failed.map(item => `${item.name}（${item.error}）`).join("、")}`
+          : `${saved.length} 单资料已经写入 Google Sheet${rows ? `，位置：Row ${rows}` : ""}。`);
+      } catch (error) {
+        showNotice("error", "进单失败", error.message || "暂时无法写入 Google Sheet。");
+      } finally {
+        confirmSelectedDraftsBtn.disabled = false;
+        updateDraftSelectionControls(readOrderDrafts());
+      }
+    }
+
     function renderConfirmedOrders() {
       if (!hasConfirmedOrder) {
         confirmedTotal.hidden = false;
@@ -2232,8 +2343,16 @@
       if (willShow) draftOrdersPanel.scrollIntoView({ behavior:"smooth", block:"start" });
     });
     draftOrderList.addEventListener("click", event => {
+      const select = event.target.closest(".draft-order-select-toggle");
       const open = event.target.closest("[data-draft-open]");
       const remove = event.target.closest("[data-draft-delete]");
+      if (select) {
+        const key = draftOrderKey(select.dataset.draftId, Number(select.dataset.orderIndex));
+        if (select.checked) selectedDraftOrders.add(key);
+        else selectedDraftOrders.delete(key);
+        updateDraftSelectionControls(readOrderDrafts());
+        return;
+      }
       if (open) {
         const id = open.dataset.draftOpen;
         renderDraftChoices(id);
@@ -2256,6 +2375,16 @@
       }
       render();
     });
+    selectAllDraftOrders.addEventListener("change", () => {
+      selectedDraftOrders.clear();
+      if (selectAllDraftOrders.checked) {
+        readOrderDrafts().forEach(draft => {
+          draftOrderEntries(draft).forEach(entry => selectedDraftOrders.add(draftOrderKey(draft.id, entry.index)));
+        });
+      }
+      renderDraftOrderCards();
+    });
+    confirmSelectedDraftsBtn.addEventListener("click", confirmSelectedDraftOrders);
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
       setTimeout(() => {
