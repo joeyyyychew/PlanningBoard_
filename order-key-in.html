@@ -309,6 +309,8 @@
     .product-builder-item { display:grid; grid-template-columns:1fr 1.15fr 72px 76px auto; gap:7px; align-items:center; }
     .product-builder-item select, .product-builder-item input { min-height:40px; padding:9px 10px; font-size:12px; font-weight:800; }
     .product-builder-item .product-collagen-note { color:var(--muted); font-size:11px; font-weight:800; }
+    .collagen-product-builder-item { grid-template-columns:145px minmax(0, 1fr) 64px 42px auto; }
+    .collagen-product-builder-item > strong { white-space:nowrap; font-size:11px; }
     .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
     .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
     .draft-orders-panel { margin-top:16px; }
@@ -1746,7 +1748,7 @@
         const items = collagenItemsForOrder(index, originalProduct);
         return `<div class="product-builder" data-product-builder="${index}">
           <div class="product-builder-head"><small>COLLAGEN DRINKS（1 BOX = 6 BTL）</small><small>可加多项</small></div>
-          ${items.map((item, itemIndex) => `<div class="product-builder-item" data-product-item="${itemIndex}">
+          ${items.map((item, itemIndex) => `<div class="product-builder-item collagen-product-builder-item" data-product-item="${itemIndex}">
             <strong>COLLAGEN DRINKS</strong><span class="product-collagen-note">自动换算为 ${escapeHtml(Number(item.quantity) * 6)} BTL</span>
             <input class="product-quantity-input collagen-quantity-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.quantity)}" aria-label="BOX 数量" />
             <strong>BOX</strong>
