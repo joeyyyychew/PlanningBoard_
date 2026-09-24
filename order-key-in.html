@@ -589,9 +589,9 @@
           <input id="channelPreview" type="hidden" value="Knee 990 MC" readonly />
 
           <div class="actions">
-            <button class="primary" id="confirmPreviewBtn">确认</button>
-            <button class="secondary" id="saveDraftBtn" type="button">保存草稿</button>
-            <button class="secondary" id="clearBtn">清空</button>
+            <button class="primary" id="confirmPreviewBtn">COMFIRM</button>
+            <button class="secondary" id="saveDraftBtn" type="button">DRAFT</button>
+            <button class="secondary" id="clearBtn">CLEAR</button>
           </div>
         </div>
 
@@ -626,7 +626,7 @@
         </div>
         <div class="draft-bulk-controls" id="draftBulkControls" hidden>
           <label><input id="selectAllDraftOrders" type="checkbox" /> Select All</label>
-          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">确认已选</button></div>
+          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">COMFIRM</button></div>
         </div>
         <div class="draft-order-list" id="draftOrderList"></div>
       </section>
@@ -882,7 +882,7 @@
       selectAllDraftOrders.checked = Boolean(allKeys.length && selectedDraftOrders.size === allKeys.length);
       selectAllDraftOrders.indeterminate = Boolean(selectedDraftOrders.size && selectedDraftOrders.size < allKeys.length);
       draftSelectionCount.textContent = `${selectedDraftOrders.size} / ${allKeys.length} 已选择`;
-      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `确认已选 (${selectedDraftOrders.size})` : "确认已选";
+      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `COMFIRM (${selectedDraftOrders.size})` : "COMFIRM";
     }
 
     function renderDraftOrderCards() {
@@ -1715,7 +1715,7 @@
       selectAllPreviewOrders.indeterminate = Boolean(selected && selected < total);
       previewSelectionCount.textContent = `${selected} / ${total} 已选择`;
       const button = document.getElementById("confirmPreviewBtn");
-      button.textContent = selected ? `确认已选 (${selected})` : "确认已选";
+      button.textContent = selected ? `COMFIRM (${selected})` : "COMFIRM";
     }
 
     function render() {
@@ -2012,7 +2012,7 @@
         showNotice("error", "进单失败", error.message || "暂时无法写入 Google Sheet。");
       } finally {
         button.disabled = false;
-        button.textContent = "确认";
+        button.textContent = "COMFIRM";
       }
     }
 
