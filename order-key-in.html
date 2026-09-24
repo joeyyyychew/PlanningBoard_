@@ -308,6 +308,7 @@
     .product-builder-head small { color:var(--muted); font-size:10px; font-weight:900; }
     .product-builder-item { display:grid; grid-template-columns:1fr 1.15fr 72px 76px auto; gap:7px; align-items:center; }
     .product-builder-item select, .product-builder-item input { min-height:40px; padding:9px 10px; font-size:12px; font-weight:800; }
+    .product-builder-item .product-collagen-note { color:var(--muted); font-size:11px; font-weight:800; }
     .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
     .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
     .draft-orders-panel { margin-top:16px; }
@@ -951,6 +952,18 @@
         Object.assign(data, fields.get(index) || {});
         data["F · Date"] = inputDateToSheetDate(normalizeTypedOrderDate(draft.entryDate || orderEntryDate.value));
         Object.assign(data, fields.get(index) || {});
+        if (isCollagenDrinkOrder(data)) {
+          const collagen = collagenProductDataFromItems(products.has(index)
+            ? normaliseCollagenItems(products.get(index))
+            : collagenItemsFromText(text));
+          data["I · Classic BTL"] = "-";
+          data["J · Knee BTL"] = "-";
+          data["K · Ginseng BTL"] = "-";
+          data["L · Floral BTL"] = "-";
+          data["M · Collagen Drinks BTL"] = collagen.bottles;
+          data["N · Variant"] = collagen.variant;
+          data["O · Remark"] = collagen.remark;
+        }
         return { index, raw:text, data };
       });
     }
@@ -1597,6 +1610,10 @@
     }
 
     const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL"];
+    const orderTypeOptions = [
+      { value:"", label:"ScaleStory Products" },
+      { value:"COLLAGEN_DRINKS", label:"Collagen Drinks" }
+    ];
     const productVariantOptions = {
       CLASSIC: ["LONGAN", "OSMANTHUS", "PASSIONFRUIT", "LYCHEE"],
       KNEE: ["", "LEMON GRASS"],
@@ -1639,6 +1656,45 @@
       })).filter(item => item.quantity > 0);
     }
 
+    function isCollagenDrinkOrder(data = {}) {
+      return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_DRINKS";
+    }
+
+    function collagenItemsFromText(productText = "") {
+      const source = String(productText || "").toUpperCase();
+      const quantities = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)]
+        .map(match => Number(match[1]))
+        .filter(value => Number.isFinite(value) && value > 0);
+      return [{ type:"COLLAGEN_DRINKS", quantity:quantities.reduce((sum, value) => sum + value, 0) || 1, unit:"BOX" }];
+    }
+
+    function normaliseCollagenItems(items = []) {
+      return items.map(item => ({
+        type:"COLLAGEN_DRINKS",
+        quantity:Math.max(0.5, Number(item?.quantity || 1)),
+        unit:"BOX"
+      })).filter(item => item.quantity > 0);
+    }
+
+    function collagenItemsForOrder(index, originalProduct = "") {
+      const override = productOverrides.get(index);
+      return override
+        ? normaliseCollagenItems(override)
+        : collagenItemsFromText(originalProduct);
+    }
+
+    function collagenProductDataFromItems(items = []) {
+      const normalized = normaliseCollagenItems(items);
+      const boxCount = normalized.reduce((sum, item) => sum + item.quantity, 0);
+      const format = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+      const sets = normalized.map(item => `${format(item.quantity)} BOX`).join(" + ");
+      return {
+        bottles:boxCount * 6,
+        variant:sets,
+        remark:normalized.map(item => `${format(item.quantity)} BOX COLLAGEN DRINKS`).join(" + ")
+      };
+    }
+
     function productDataFromItems(items = []) {
       const normalized = normaliseProductItems(items);
       const totals = { classic: 0, knee: 0, ginseng: 0, floral: 0 };
@@ -1663,6 +1719,17 @@
     }
 
     function applyProductItems(data, index, originalProduct = "") {
+      if (isCollagenDrinkOrder(data)) {
+        const collagen = collagenProductDataFromItems(collagenItemsForOrder(index, originalProduct));
+        data["I · Classic BTL"] = "-";
+        data["J · Knee BTL"] = "-";
+        data["K · Ginseng BTL"] = "-";
+        data["L · Floral BTL"] = "-";
+        data["M · Collagen Drinks BTL"] = collagen.bottles;
+        data["N · Variant"] = collagen.variant;
+        data["O · Remark"] = collagen.remark;
+        return data;
+      }
       if (!productOverrides.has(index)) return data;
       const product = productDataFromItems(productItemsForOrder(index, originalProduct));
       data["I · Classic BTL"] = product.totals.classic || "-";
@@ -1674,7 +1741,20 @@
       return data;
     }
 
-    function productBuilderHtml(index, originalProduct = "") {
+    function productBuilderHtml(index, originalProduct = "", data = {}) {
+      if (isCollagenDrinkOrder(data)) {
+        const items = collagenItemsForOrder(index, originalProduct);
+        return `<div class="product-builder" data-product-builder="${index}">
+          <div class="product-builder-head"><small>COLLAGEN DRINKS（1 BOX = 6 BTL）</small><small>可加多项</small></div>
+          ${items.map((item, itemIndex) => `<div class="product-builder-item" data-product-item="${itemIndex}">
+            <strong>COLLAGEN DRINKS</strong><span class="product-collagen-note">自动换算为 ${escapeHtml(Number(item.quantity) * 6)} BTL</span>
+            <input class="product-quantity-input collagen-quantity-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.quantity)}" aria-label="BOX 数量" />
+            <strong>BOX</strong>
+            <button class="product-builder-remove" type="button" data-product-remove="${index}" data-product-index="${itemIndex}" aria-label="移除产品">×</button>
+          </div>`).join("")}
+          <button class="product-builder-add" type="button" data-product-add="${index}">＋ 添加产品</button>
+        </div>`;
+      }
       const items = editableProductItemsForOrder(index, originalProduct);
       return `<div class="product-builder" data-product-builder="${index}">
         <div class="product-builder-head"><small>产品（自动大写；可选择 BOX / BTL）</small><small>可加多项</small></div>
@@ -1781,6 +1861,7 @@
         /SGD|S\$/i.test(amount) ? amount : ""
       ].filter(Boolean);
       const parsed = {
+        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : "",
         "D · Sales Person": "Joey",
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
@@ -1803,6 +1884,9 @@
     }
 
     function productLineFromData(data) {
+      if (isCollagenDrinkOrder(data)) {
+        return `Collagen Drinks ${data["M · Collagen Drinks BTL"] || "待确认"} BTL`;
+      }
       return [
         data["I · Classic BTL"] !== "-" ? `Classic ${data["I · Classic BTL"]} BTL` : "",
         data["J · Knee BTL"] !== "-" ? `Knee ${data["J · Knee BTL"]} BTL` : "",
@@ -1839,7 +1923,8 @@
         }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
-        return applyFieldOverrides(applyProductItems(data, index, originalProduct), index);
+        data = applyFieldOverrides(data, index);
+        return applyProductItems(data, index, originalProduct);
       });
     }
 
@@ -1912,6 +1997,12 @@
               ${Object.keys(pageChannelMap).map(option => `<option value="${escapeHtml(option)}" ${option === (data["Page / Account"] || page.value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
             </select>
           </div>
+          <div class="simple-row order-preview-select-row">
+            <small>Product Type</small>
+            <select class="order-type-select" data-native="true" data-order-index="${index}">
+              ${orderTypeOptions.map(option => `<option value="${option.value}" ${option.value === (data["Order Type"] || "") ? "selected" : ""}>${option.label}</option>`).join("")}
+            </select>
+          </div>
           <div class="simple-row">
             <small>Channel</small>
             <strong>${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</strong>
@@ -1922,7 +2013,7 @@
               ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
             </select>
           </div>
-          ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product)}
+          ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product, data)}
           ${editingDraftEntry ? `<button type="button" class="draft-save-button" data-save-draft-entry="true">SAVE DRAFT</button>` : ""}
         </div>
         `}
@@ -2058,6 +2149,7 @@
       const keptPageOverrides = remap(pageOverrides);
       const keptPaymentOverrides = remap(paymentOverrides);
       const keptProductOverrides = remap(productOverrides);
+      const keptFieldOverrides = remap(fieldOverrides);
       const activePasteBar = pasteTextareas()[0];
       if (activePasteBar) {
         activePasteBar.value = entries.filter((_, index) => keep.has(index)).map(entry => entry.text).join("\n\n");
@@ -2066,6 +2158,7 @@
       pageOverrides.clear(); keptPageOverrides.forEach((value, index) => pageOverrides.set(index, value));
       paymentOverrides.clear(); keptPaymentOverrides.forEach((value, index) => paymentOverrides.set(index, value));
       productOverrides.clear(); keptProductOverrides.forEach((value, index) => productOverrides.set(index, value));
+      fieldOverrides.clear(); keptFieldOverrides.forEach((value, index) => fieldOverrides.set(index, value));
       collapsedPreviewOrders.clear();
       selectedPreviewOrders.clear();
       previewSelectionSignature = "";
@@ -2594,10 +2687,30 @@
         render();
         return;
       }
+      if (event.target.classList.contains("order-type-select")) {
+        const orderIndex = Number(event.target.dataset.orderIndex);
+        const orderType = event.target.value || "";
+        fieldOverrides.set(orderIndex, { ...(fieldOverrides.get(orderIndex) || {}), "Order Type":orderType });
+        const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
+        productOverrides.set(orderIndex, orderType === "COLLAGEN_DRINKS"
+          ? collagenItemsFromText(originalProduct)
+          : manualProductItemsFromText(originalProduct));
+        render();
+        return;
+      }
       if (event.target.classList.contains("product-type-select") || event.target.classList.contains("product-variant-select") || event.target.classList.contains("product-quantity-input") || event.target.classList.contains("product-unit-select")) {
         const orderIndex = Number(event.target.dataset.orderIndex);
         const productIndex = Number(event.target.dataset.productIndex);
         const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
+        const currentData = buildParsedOrdersFromPaste()[orderIndex] || {};
+        if (isCollagenDrinkOrder(currentData)) {
+          const items = collagenItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
+          if (!items[productIndex]) return;
+          if (event.target.classList.contains("product-quantity-input")) items[productIndex].quantity = Number(event.target.value || 0);
+          productOverrides.set(orderIndex, items);
+          render();
+          return;
+        }
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
         if (!items[productIndex]) return;
         if (event.target.classList.contains("product-type-select")) {
@@ -2623,6 +2736,18 @@
         const trigger = addProduct || removeProduct;
         const orderIndex = Number(trigger.dataset.productAdd ?? trigger.dataset.productRemove);
         const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
+        const currentData = buildParsedOrdersFromPaste()[orderIndex] || {};
+        if (isCollagenDrinkOrder(currentData)) {
+          const items = collagenItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
+          if (addProduct) items.push({ type:"COLLAGEN_DRINKS", quantity:1, unit:"BOX" });
+          if (removeProduct) {
+            items.splice(Number(removeProduct.dataset.productIndex), 1);
+            if (!items.length) items.push({ type:"COLLAGEN_DRINKS", quantity:1, unit:"BOX" });
+          }
+          productOverrides.set(orderIndex, items);
+          render();
+          return;
+        }
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
         if (addProduct) items.push({ type:"CLASSIC", variant:"LONGAN", quantity:1, unit:"BOX" });
         if (removeProduct) {

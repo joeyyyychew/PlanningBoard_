@@ -23,9 +23,18 @@ const ORDER_SHEET_GIDS = {
   6: "1222127904",
   8: "1989301272"
 };
-function currentOrderSheetUrl() {
-  const month = Number(new Intl.DateTimeFormat("en", { timeZone: "Asia/Kuala_Lumpur", month: "numeric" }).format(new Date())) - 1;
-  const gid = ORDER_SHEET_GIDS[month] || ORDER_SHEET_GIDS[6];
+const COLLAGEN_DRINK_SHEET_GIDS = {
+  7: "950412788",
+  8: "1105797480"
+};
+function currentOrderSheetUrl(order = {}) {
+  const rawDate = String(order["F · Date"] || "").trim();
+  const slash = rawDate.match(/^\d{1,2}[\/-](\d{1,2})[\/-]\d{2,4}$/);
+  const iso = rawDate.match(/^\d{4}-(\d{2})-\d{2}$/);
+  const month = slash ? Number(slash[1]) - 1 : iso ? Number(iso[1]) - 1 : Number(new Intl.DateTimeFormat("en", { timeZone: "Asia/Kuala_Lumpur", month: "numeric" }).format(new Date())) - 1;
+  const isCollagen = String(order["Order Type"] || "").toUpperCase() === "COLLAGEN_DRINKS";
+  const gid = (isCollagen ? COLLAGEN_DRINK_SHEET_GIDS : ORDER_SHEET_GIDS)[month]
+    || (isCollagen ? COLLAGEN_DRINK_SHEET_GIDS[8] : ORDER_SHEET_GIDS[6]);
   return `https://docs.google.com/spreadsheets/d/${ORDER_SPREADSHEET_ID}/edit?gid=${gid}#gid=${gid}`;
 }
 function broadcastSheetUrl() {
@@ -1555,7 +1564,7 @@ const server = http.createServer(async (req, res) => {
           entries: result.entries,
           entry: result.entries[0] || null,
           errors: result.errors,
-          sheetUrl: currentOrderSheetUrl()
+          sheetUrl: currentOrderSheetUrl(batchEntries[0]?.order || batchEntries[0] || {})
         });
       }
       if (!request.order || typeof request.order !== "object") {
@@ -1566,7 +1575,7 @@ const server = http.createServer(async (req, res) => {
         raw: request.raw || "",
         order: request.order
       });
-      return json(res, 200, { ok: true, entry, sheetUrl: currentOrderSheetUrl() });
+      return json(res, 200, { ok: true, entry, sheetUrl: currentOrderSheetUrl(request.order) });
     }
 
     if (url.pathname === "/api/order-entries" && req.method === "GET") {
