@@ -862,10 +862,40 @@
       return { ...data, ...(fieldOverrides.get(index) || {}) };
     }
 
+    function valueAtDraftIndex(pairs = [], index) {
+      return new Map((pairs || []).map(([itemIndex, value]) => [Number(itemIndex), value])).get(index);
+    }
+
+    function splitDraftIntoSingleOrders(draft = {}) {
+      const entries = splitSinglePasteValue(draft.raw || "");
+      if (entries.length <= 1) return [draft];
+      return entries.map((raw, index) => {
+        const pageValue = valueAtDraftIndex(draft.pages, index);
+        const paymentValue = valueAtDraftIndex(draft.payments, index);
+        const productValue = valueAtDraftIndex(draft.products, index);
+        const fieldValue = valueAtDraftIndex(draft.fields, index);
+        return {
+          ...draft,
+          id: `${draft.id}-order-${index + 1}`,
+          label: `订单 ${index + 1}`,
+          raw,
+          pages: pageValue === undefined ? [] : [[0, pageValue]],
+          payments: paymentValue === undefined ? [] : [[0, paymentValue]],
+          products: productValue === undefined ? [] : [[0, productValue]],
+          fields: fieldValue === undefined ? [] : [[0, fieldValue]]
+        };
+      });
+    }
+
     function readOrderDrafts() {
       try {
         const drafts = JSON.parse(localStorage.getItem(orderDraftsKey) || "[]");
-        return Array.isArray(drafts) ? drafts : [];
+        if (!Array.isArray(drafts)) return [];
+        const singleOrderDrafts = drafts.flatMap(splitDraftIntoSingleOrders);
+        if (singleOrderDrafts.length !== drafts.length) {
+          localStorage.setItem(orderDraftsKey, JSON.stringify(singleOrderDrafts.slice(-30)));
+        }
+        return singleOrderDrafts;
       } catch (error) {
         return [];
       }
@@ -958,27 +988,28 @@
         return;
       }
       const drafts = readOrderDrafts();
-      const currentId = activeDraftId;
       const now = Date.now();
-      const orders = buildParsedOrdersFromPaste();
-      const snapshot = {
-        id: currentId || `draft-${now}-${Math.random().toString(16).slice(2)}`,
-        label: `${orders[0]?.["P · Name"] || "订单"}${orders.length > 1 ? ` 等 ${orders.length} 单` : ""} · ${new Date(now).toLocaleString("zh-CN", { timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" })}`,
+      const entries = orderPasteEntries();
+      const singleEntryUpdate = activeDraftId && entries.length === 1;
+      const snapshots = entries.map((entry, index) => ({
+        id: singleEntryUpdate ? activeDraftId : `draft-${now}-${index + 1}-${Math.random().toString(16).slice(2)}`,
+        label: `订单 ${index + 1}`,
         updatedAt: now,
-        raw,
+        raw: entry.text,
         entryDate: orderEntryDate.value,
-        pages: [...pageOverrides.entries()],
-        payments: [...paymentOverrides.entries()],
-        products: [...productOverrides.entries()],
-        fields: [...fieldOverrides.entries()]
-      };
-      const next = [...drafts.filter(draft => draft.id !== snapshot.id), snapshot].slice(-30);
+        pages: pageOverrides.has(index) ? [[0, pageOverrides.get(index)]] : [],
+        payments: paymentOverrides.has(index) ? [[0, paymentOverrides.get(index)]] : [],
+        products: productOverrides.has(index) ? [[0, productOverrides.get(index)]] : [],
+        fields: fieldOverrides.has(index) ? [[0, fieldOverrides.get(index)]] : []
+      }));
+      const snapshotIds = new Set(snapshots.map(snapshot => snapshot.id));
+      const next = [...drafts.filter(draft => !snapshotIds.has(draft.id)), ...snapshots].slice(-30);
       localStorage.setItem(orderDraftsKey, JSON.stringify(next));
-      activeDraftId = snapshot.id;
+      activeDraftId = snapshots.length === 1 ? snapshots[0].id : "";
       draftOrdersDetails.open = true;
       renderDraftChoices();
       renderDraftOrderCards();
-      showNotice("success", "草稿已保存", "这批订单尚未写入 Google Sheet；之后可从草稿列表继续编辑或确认。");
+      showNotice("success", "草稿已保存", `${snapshots.length} 单已分别保存为独立 Draft，尚未写入 Google Sheet。`);
     }
 
     function replaceDraftPair(pairs = [], orderIndex, value) {
