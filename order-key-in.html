@@ -288,9 +288,14 @@
       cursor:pointer;
     }
     .preview-done-button.is-done {
+      width:36px;
+      height:36px;
+      padding:0;
       background:var(--wine);
       border-color:var(--wine);
       color:white;
+      font-size:22px;
+      line-height:1;
     }
     .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
     .product-builder-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
@@ -1756,7 +1761,7 @@
         simplePreview.innerHTML = "";
         sheetRows.innerHTML = "";
         previewSelectionControls.hidden = true;
-        document.getElementById("confirmPreviewBtn").textContent = "确认";
+        document.getElementById("confirmPreviewBtn").textContent = "CONFIRM";
         renderConfirmedOrders();
         return;
       }
@@ -1771,7 +1776,7 @@
             <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
             <span>${escapeHtml([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认")}</span>
           </div>
-          <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}">✓ 已确认</button>
+          <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}" title="展开订单" aria-label="展开订单">⌄</button>
         </div>
         ` : `
         <div class="order-preview-card" data-preview-card="${index}">
