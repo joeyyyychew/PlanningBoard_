@@ -260,7 +260,7 @@
     .preview-selection-controls label, .preview-select { display:flex; align-items:center; gap:8px; margin:0; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
     .preview-selection-controls input, .preview-select input { width:17px; height:17px; padding:0; accent-color:var(--wine); }
     .preview-selection-count { color:var(--muted); font-size:11px; font-weight:800; }
-    .order-preview-card { display:grid; gap:9px; padding:12px; border:1px solid rgba(94,30,43,.12); border-radius:18px; background:rgba(255,255,255,.48); }
+    .order-preview-card { position:relative; display:grid; gap:9px; padding:12px; border:1px solid rgba(94,30,43,.12); border-radius:18px; background:rgba(255,255,255,.48); }
     .order-preview-card.is-collapsed { grid-template-columns:1fr auto; align-items:center; background:rgba(255,255,255,.68); }
     .order-preview-card h3 { margin:0; font-size:12px; color:var(--wine); letter-spacing:.02em; }
     .order-preview-summary { display:grid; gap:4px; }
@@ -299,6 +299,8 @@
       font-size:22px;
       line-height:1;
     }
+    .order-preview-card:not(.is-collapsed) > .preview-select { margin-right:44px; }
+    .order-preview-card:not(.is-collapsed) > .preview-done-button:not(.is-done) { position:absolute; top:12px; right:12px; width:36px; height:36px; padding:0; display:grid; place-items:center; border-radius:10px; font-size:21px; line-height:1; }
     .draft-save-button { justify-self:end; border:0; border-radius:999px; padding:9px 13px; background:var(--wine); color:#fff; font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
     .draft-save-button:disabled { opacity:.62; cursor:wait; }
     .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
@@ -1862,7 +1864,7 @@
           </div>
           ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product)}
           ${editingDraftEntry ? `<button type="button" class="draft-save-button" data-save-draft-entry="true">SAVE DRAFT</button>` : ""}
-          <button type="button" class="preview-done-button" data-preview-toggle="${index}">✓ 确认这单并收起</button>
+          <button type="button" class="preview-done-button" data-preview-toggle="${index}" title="收起订单" aria-label="收起订单">⌃</button>
         </div>
         `}
       `).join("");
