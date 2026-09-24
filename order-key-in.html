@@ -299,8 +299,8 @@
       font-size:22px;
       line-height:1;
     }
-    .order-preview-card:not(.is-collapsed) > .preview-select { margin-right:44px; }
-    .order-preview-card:not(.is-collapsed) > .preview-done-button:not(.is-done) { position:absolute; top:12px; right:12px; width:36px; height:36px; padding:0; display:grid; place-items:center; border-radius:10px; font-size:21px; line-height:1; }
+    .order-preview-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .order-preview-card-head .preview-done-button { width:36px; height:36px; padding:0; display:grid; place-items:center; border-radius:10px; font-size:21px; line-height:1; }
     .draft-save-button { justify-self:end; border:0; border-radius:999px; padding:9px 13px; background:var(--wine); color:#fff; font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
     .draft-save-button:disabled { opacity:.62; cursor:wait; }
     .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
@@ -928,7 +928,7 @@
         const orders = draftOrderEntries(draft);
         const updated = new Date(Number(draft.updatedAt || Date.now())).toLocaleString("zh-CN", {timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
         return `<article class="draft-order-card" data-draft-card="${escapeHtml(draft.id)}">
-          <div class="draft-order-card-top"><div><h3>${escapeHtml(summary.name)}${summary.count > 1 ? ` 等 ${summary.count} 单` : ""}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div><div class="draft-card-actions"><button class="draft-open" type="button" data-draft-open="${escapeHtml(draft.id)}">继续编辑</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div></div>
+          <div class="draft-order-card-top"><div><h3>${summary.count} ${summary.count === 1 ? "ORDER" : "ORDERS"}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div><div class="draft-card-actions"><button class="draft-open" type="button" data-draft-open="${escapeHtml(draft.id)}">继续编辑</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div></div>
           <div class="draft-detail-list">${orders.map(({data, index}) => `<div class="draft-detail-card"><div><label class="draft-order-select"><input class="draft-order-select-toggle" type="checkbox" data-draft-id="${escapeHtml(draft.id)}" data-order-index="${index}" ${selectedDraftOrders.has(draftOrderKey(draft.id, index)) ? "checked" : ""} /> Select · 订单 ${index + 1}</label><p>${escapeHtml(data["Page / Account"] || "待确认")} → ${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div><button class="draft-entry-edit" type="button" data-draft-entry-edit="${escapeHtml(draft.id)}" data-order-index="${index}" title="Edit" aria-label="Edit 订单 ${index + 1}">✎</button></div>`).join("")}</div>
         </article>`;
       }).join("");
@@ -1836,7 +1836,7 @@
         </div>
         ` : `
         <div class="order-preview-card" data-preview-card="${index}">
-          <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select · 订单 ${index + 1}</label>
+          <div class="order-preview-card-head"><label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select · 订单 ${index + 1}</label><button type="button" class="preview-done-button" data-preview-toggle="${index}" title="收起订单" aria-label="收起订单">⌃</button></div>
           ${previewRowsForData(data).map(([label, field, value]) => `
             <div class="simple-row">
               <small>${label}</small>
@@ -1864,7 +1864,6 @@
           </div>
           ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product)}
           ${editingDraftEntry ? `<button type="button" class="draft-save-button" data-save-draft-entry="true">SAVE DRAFT</button>` : ""}
-          <button type="button" class="preview-done-button" data-preview-toggle="${index}" title="收起订单" aria-label="收起订单">⌃</button>
         </div>
         `}
       `).join("");
