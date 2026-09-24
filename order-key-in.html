@@ -269,6 +269,8 @@
     .simple-row { display:grid; grid-template-columns:108px 1fr; gap:12px; align-items:start; padding:12px 13px; border:1px solid #f0dfdc; border-radius:15px; background:rgba(255,255,255,.62); }
     .simple-row small { color:var(--muted); font-size:10px; font-weight:900; }
     .simple-row strong { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+    .simple-row .order-detail-input { min-height:40px; padding:9px 11px; border-radius:12px; font-size:12px; font-weight:750; }
+    .simple-row textarea.order-detail-input { min-height:68px; resize:vertical; }
     .payment-row { align-items:center; }
     .order-preview-select-row { align-items:center; }
     .order-preview-channel { color:var(--muted); font-size:11px; font-weight:900; }
@@ -297,6 +299,8 @@
       font-size:22px;
       line-height:1;
     }
+    .draft-save-button { justify-self:end; border:0; border-radius:999px; padding:9px 13px; background:var(--wine); color:#fff; font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+    .draft-save-button:disabled { opacity:.62; cursor:wait; }
     .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
     .product-builder-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .product-builder-head small { color:var(--muted); font-size:10px; font-weight:900; }
@@ -596,7 +600,6 @@
           <input id="channelPreview" type="hidden" value="Knee 990 MC" readonly />
 
           <div class="actions">
-            <button class="primary" id="confirmPreviewBtn">CONFIRM</button>
             <button class="secondary" id="saveDraftBtn" type="button">DRAFT</button>
             <button class="secondary" id="clearBtn">CLEAR</button>
           </div>
@@ -608,6 +611,7 @@
               <h2>Confirm Order</h2>
               <span>确认重点资料后再进单。</span>
             </div>
+            <button class="primary" id="confirmPreviewBtn" type="button">Check Out</button>
           </div>
 
           <div class="sheet-target" id="sheetTarget">
@@ -632,7 +636,7 @@
         </div>
         <div class="draft-bulk-controls" id="draftBulkControls" hidden>
           <label><input id="selectAllDraftOrders" type="checkbox" /> Select All</label>
-          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">CONFIRM</button></div>
+          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">Check Out</button></div>
         </div>
         <div class="draft-order-list" id="draftOrderList"></div>
       </section>
@@ -640,7 +644,7 @@
       <section class="card panel confirmed-panel" id="confirmedPanel">
         <div class="confirmed-head">
           <div>
-            <h2>已确认进单记录</h2>
+            <h2>Checked Out Order</h2>
             <span>根据日期查看当天进单。</span>
           </div>
           <div class="confirmed-controls">
@@ -809,6 +813,7 @@
     const paymentOverrides = new Map();
     const pageOverrides = new Map();
     const productOverrides = new Map();
+    const fieldOverrides = new Map();
     const collapsedPreviewOrders = new Set();
     const selectedPreviewOrders = new Set();
     let previewSelectionSignature = "";
@@ -828,6 +833,20 @@
 
     function draftOrderKey(draftId, index) {
       return `${draftId}:${index}`;
+    }
+
+    function activeOrderEntries() {
+      if (editingDraftEntry) {
+        return [{
+          text: editingDraftEntry.raw || "",
+          page: editingDraftEntry.data?.["Page / Account"] || page.value
+        }];
+      }
+      return orderPasteEntries();
+    }
+
+    function applyFieldOverrides(data, index) {
+      return { ...data, ...(fieldOverrides.get(index) || {}) };
     }
 
     function readOrderDrafts() {
@@ -855,6 +874,7 @@
       const pages = new Map((draft.pages || []).map(([index, value]) => [Number(index), value]));
       const payments = new Map((draft.payments || []).map(([index, value]) => [Number(index), value]));
       const products = new Map((draft.products || []).map(([index, value]) => [Number(index), value]));
+      const fields = new Map((draft.fields || []).map(([index, value]) => [Number(index), value]));
       return splitSinglePasteValue(draft.raw || "").map((text, index) => {
         const selectedPage = pages.get(index) || page.value;
         const data = {
@@ -872,7 +892,9 @@
           data["N · Variant"] = product.variant;
           data["O · Remark"] = product.remark;
         }
+        Object.assign(data, fields.get(index) || {});
         data["F · Date"] = inputDateToSheetDate(normalizeTypedOrderDate(draft.entryDate || orderEntryDate.value));
+        Object.assign(data, fields.get(index) || {});
         return { index, raw:text, data };
       });
     }
@@ -889,7 +911,7 @@
       selectAllDraftOrders.checked = Boolean(allKeys.length && selectedDraftOrders.size === allKeys.length);
       selectAllDraftOrders.indeterminate = Boolean(selectedDraftOrders.size && selectedDraftOrders.size < allKeys.length);
       draftSelectionCount.textContent = `${selectedDraftOrders.size} / ${allKeys.length} 已选择`;
-      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `CONFIRM (${selectedDraftOrders.size})` : "CONFIRM";
+      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `Check Out (${selectedDraftOrders.size})` : "Check Out";
     }
 
     function renderDraftOrderCards() {
@@ -912,6 +934,10 @@
     }
 
     function saveCurrentDraft() {
+      if (editingDraftEntry) {
+        saveEditedDraftEntry();
+        return;
+      }
       const raw = (pasteTextareas()[0]?.value || "").trim();
       if (!raw) {
         showNotice("error", "没有资料", "请先贴上订单资料后再保存草稿。");
@@ -929,7 +955,8 @@
         entryDate: orderEntryDate.value,
         pages: [...pageOverrides.entries()],
         payments: [...paymentOverrides.entries()],
-        products: [...productOverrides.entries()]
+        products: [...productOverrides.entries()],
+        fields: [...fieldOverrides.entries()]
       };
       const next = [...drafts.filter(draft => draft.id !== snapshot.id), snapshot].slice(-30);
       localStorage.setItem(orderDraftsKey, JSON.stringify(next));
@@ -937,6 +964,32 @@
       renderDraftChoices();
       renderDraftOrderCards();
       showNotice("success", "草稿已保存", "这批订单尚未写入 Google Sheet；之后可从草稿列表继续编辑或确认。");
+    }
+
+    function replaceDraftPair(pairs = [], orderIndex, value) {
+      return [...(pairs || []).filter(([index]) => Number(index) !== Number(orderIndex)), [orderIndex, value]];
+    }
+
+    function saveEditedDraftEntry() {
+      if (!editingDraftEntry) return;
+      const { draftId, orderIndex } = editingDraftEntry;
+      const drafts = readOrderDrafts();
+      const draft = drafts.find(item => item.id === draftId);
+      if (!draft) return;
+      const editedData = buildParsedOrdersFromPaste()[0] || {};
+      const nextDrafts = drafts.map(item => item.id !== draftId ? item : {
+        ...item,
+        pages: replaceDraftPair(item.pages, orderIndex, editedData["Page / Account"] || page.value),
+        payments: replaceDraftPair(item.payments, orderIndex, editedData["M · Payment Method"] || ""),
+        products: replaceDraftPair(item.products, orderIndex, productOverrides.get(0) || []),
+        fields: replaceDraftPair(item.fields, orderIndex, fieldOverrides.get(0) || {}),
+        updatedAt: Date.now()
+      });
+      localStorage.setItem(orderDraftsKey, JSON.stringify(nextDrafts));
+      editingDraftEntry.data = { ...editedData };
+      renderDraftChoices();
+      renderDraftOrderCards();
+      showNotice("success", "Draft 已更新", "这单修改已保存回原本的 Draft，尚未写入 Google Sheet。");
     }
 
     function loadDraft(id) {
@@ -951,9 +1004,11 @@
       pageOverrides.clear();
       paymentOverrides.clear();
       productOverrides.clear();
+      fieldOverrides.clear();
       (draft.pages || []).forEach(([index, value]) => pageOverrides.set(Number(index), value));
       (draft.payments || []).forEach(([index, value]) => paymentOverrides.set(Number(index), value));
       (draft.products || []).forEach(([index, value]) => productOverrides.set(Number(index), value));
+      (draft.fields || []).forEach(([index, value]) => fieldOverrides.set(Number(index), value));
       collapsedPreviewOrders.clear();
       autoResizePasteInput(activePasteBar);
       render();
@@ -962,23 +1017,22 @@
     function editDraftEntry(draftId, orderIndex) {
       const draft = readOrderDrafts().find(item => item.id === draftId);
       const entry = draftOrderEntries(draft).find(item => item.index === orderIndex);
-      const activePasteBar = pasteTextareas()[0];
-      if (!draft || !entry || !activePasteBar) return;
+      if (!draft || !entry) return;
       activeDraftId = "";
-      editingDraftEntry = { draftId, orderIndex };
-      activePasteBar.value = entry.raw || "";
-      orderEntryDate.value = draft.entryDate || orderEntryDate.value;
+      editingDraftEntry = { draftId, orderIndex, raw:entry.raw || "", data:{ ...entry.data } };
       pageOverrides.clear();
       paymentOverrides.clear();
       productOverrides.clear();
+      fieldOverrides.clear();
       pageOverrides.set(0, entry.data["Page / Account"] || page.value);
       if (entry.data["M · Payment Method"]) paymentOverrides.set(0, entry.data["M · Payment Method"]);
       const product = new Map((draft.products || []).map(([index, value]) => [Number(index), value])).get(orderIndex);
       if (product) productOverrides.set(0, product);
+      const fields = new Map((draft.fields || []).map(([index, value]) => [Number(index), value])).get(orderIndex);
+      if (fields) fieldOverrides.set(0, fields);
       collapsedPreviewOrders.clear();
       selectedPreviewOrders.clear();
       previewSelectionSignature = "";
-      autoResizePasteInput(activePasteBar);
       render();
       simplePreview.scrollIntoView({ behavior:"smooth", block:"start" });
     }
@@ -1636,6 +1690,7 @@
       paymentOverrides.clear();
       pageOverrides.clear();
       productOverrides.clear();
+      fieldOverrides.clear();
       collapsedPreviewOrders.clear();
       selectedPreviewOrders.clear();
       previewSelectionSignature = "";
@@ -1698,23 +1753,23 @@
     }
 
     function previewRowsForData(data) {
-      const selectedPage = data["Page / Account"] || page.value;
       return [
-        ["日期", data["F · Date"] || sheetDateFromTypedInput()],
-        ["顾客", data["P · Name"] || "待确认"],
-        ["电话", data["Q · Phone"] || "待确认"],
-        ["地址", data["R · Address"] || "待确认"],
-        ["产品", productLineFromData(data)],
-        ["金额", data["S · Total/RM"] || "待确认"],
-        ["备注", data["O · Remark"] || "—"],
-        ["Receipt", data["AK · Receipt Link"] || "—"]
+        ["日期", "F · Date", data["F · Date"] || sheetDateFromTypedInput()],
+        ["顾客", "P · Name", data["P · Name"] || ""],
+        ["电话", "Q · Phone", data["Q · Phone"] || ""],
+        ["地址", "R · Address", data["R · Address"] || ""],
+        ["产品", "", productLineFromData(data)],
+        ["金额", "S · Total/RM", data["S · Total/RM"] || ""],
+        ["备注", "O · Remark", data["O · Remark"] || ""],
+        ["Receipt", "AK · Receipt Link", data["AK · Receipt Link"] || ""]
       ];
     }
 
     function buildParsedOrdersFromPaste() {
-      return orderPasteEntries().map((entry, index) => {
-        const data = {
-          ...parseOrder(entry.text, entry.page),
+      return activeOrderEntries().map((entry, index) => {
+        const isDraftEditor = Boolean(editingDraftEntry);
+        let data = {
+          ...(isDraftEditor ? editingDraftEntry.data : parseOrder(entry.text, entry.page)),
           "Page / Account": entry.page,
           "H · Channel / Chanel": channelForPage(entry.page)
         };
@@ -1724,7 +1779,7 @@
         }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
-        return applyProductItems(data, index, originalProduct);
+        return applyFieldOverrides(applyProductItems(data, index, originalProduct), index);
       });
     }
 
@@ -1747,7 +1802,7 @@
       selectAllPreviewOrders.indeterminate = Boolean(selected && selected < total);
       previewSelectionCount.textContent = `${selected} / ${total} 已选择`;
       const button = document.getElementById("confirmPreviewBtn");
-      button.textContent = selected ? `CONFIRM (${selected})` : "CONFIRM";
+      button.textContent = selected ? `Check Out (${selected})` : "Check Out";
     }
 
     function render() {
@@ -1755,12 +1810,12 @@
       const entryDate = normalizeTypedOrderDate(orderEntryDate.value);
       updateOrderDateLabel();
       updateSheetButton(confirmedDate.value || entryDate);
-      const entries = orderPasteEntries();
+      const entries = activeOrderEntries();
       if (!entries.length) {
         simplePreview.innerHTML = "";
         sheetRows.innerHTML = "";
         previewSelectionControls.hidden = true;
-        document.getElementById("confirmPreviewBtn").textContent = "CONFIRM";
+        document.getElementById("confirmPreviewBtn").textContent = "Check Out";
         renderConfirmedOrders();
         return;
       }
@@ -1780,10 +1835,13 @@
         ` : `
         <div class="order-preview-card" data-preview-card="${index}">
           <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select · 订单 ${index + 1}</label>
-          ${previewRowsForData(data).map(([key, value]) => `
+          ${previewRowsForData(data).map(([label, field, value]) => `
             <div class="simple-row">
-              <small>${key}</small>
-              <strong>${escapeHtml(value)}</strong>
+              <small>${label}</small>
+              ${field ? (field === "R · Address"
+                ? `<textarea class="order-detail-input" data-order-index="${index}" data-order-field="${field}">${escapeHtml(value)}</textarea>`
+                : `<input class="order-detail-input" data-order-index="${index}" data-order-field="${field}" value="${escapeHtml(value)}" />`)
+                : `<strong>${escapeHtml(value)}</strong>`}
             </div>
           `).join("")}
           <div class="simple-row order-preview-select-row">
@@ -1803,6 +1861,7 @@
             </select>
           </div>
           ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product)}
+          ${editingDraftEntry ? `<button type="button" class="draft-save-button" data-save-draft-entry="true">SAVE DRAFT</button>` : ""}
           <button type="button" class="preview-done-button" data-preview-toggle="${index}">✓ 确认这单并收起</button>
         </div>
         `}
@@ -1952,7 +2011,7 @@
     }
 
     async function confirmOrder() {
-      const entries = orderPasteEntries();
+      const entries = activeOrderEntries();
       if (!entries.length) {
         showNotice("error", "没有资料", "请先 paste 至少一组顾客下单资料。");
         return;
@@ -1966,14 +2025,15 @@
       const ordersToWrite = selectedIndexes.map(index => ({ index, data: allOrders[index], entry: entries[index] }));
       const button = document.getElementById("confirmPreviewBtn");
       button.disabled = true;
-      button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
+      button.textContent = ordersToWrite.length > 1 ? `Check Out 1/${ordersToWrite.length}…` : "Check Out…";
       const saved = [];
       const failed = [];
       const savedIndexes = new Set();
+      const isEditingDraft = Boolean(editingDraftEntry);
       try {
         for (let position = 0; position < ordersToWrite.length; position += 1) {
           const { index, data, entry } = ordersToWrite[position];
-          button.textContent = ordersToWrite.length > 1 ? `保存 ${position + 1}/${ordersToWrite.length}…` : "保存中…";
+          button.textContent = ordersToWrite.length > 1 ? `Check Out ${position + 1}/${ordersToWrite.length}…` : "Check Out…";
           const response = await fetch(`${apiBase}/api/order-entry`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -2007,8 +2067,8 @@
         hasConfirmedOrder = true;
         setConfirmedDate(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
         await loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
-        retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
-        removeEditedDraftEntryAfterConfirm(savedIndexes);
+        if (isEditingDraft) removeEditedDraftEntryAfterConfirm(savedIndexes);
+        else retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
         render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
@@ -2037,8 +2097,8 @@
           renderConfirmedOrders();
         }
         if (quotaSoftSuccess && saved.length) {
-          retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
-          removeEditedDraftEntryAfterConfirm(savedIndexes);
+          if (isEditingDraft) removeEditedDraftEntryAfterConfirm(savedIndexes);
+          else retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
           render();
           showNotice("success", "已确认进单", `${saved.length} 单已写入 Google Sheet。Dashboard 暂存空间已满，我已先保留在本机记录；需要重新部署 Apps Script 清理 storage。`);
           return;
@@ -2046,7 +2106,7 @@
         showNotice("error", "进单失败", error.message || "暂时无法写入 Google Sheet。");
       } finally {
         button.disabled = false;
-        button.textContent = "CONFIRM";
+        button.textContent = "Check Out";
       }
     }
 
@@ -2066,6 +2126,7 @@
           pages: remapPairs(draft.pages),
           payments: remapPairs(draft.payments),
           products: remapPairs(draft.products),
+          fields: remapPairs(draft.fields),
           updatedAt: now
         }];
       });
@@ -2097,7 +2158,7 @@
       try {
         for (let position = 0; position < items.length; position += 1) {
           const item = items[position];
-          confirmSelectedDraftsBtn.textContent = `保存 ${position + 1}/${items.length}…`;
+          confirmSelectedDraftsBtn.textContent = `Check Out ${position + 1}/${items.length}…`;
           const response = await fetch(`${apiBase}/api/order-entry`, {
             method: "POST",
             headers: {"Content-Type":"application/json"},
@@ -2397,7 +2458,7 @@
       renderDraftOrderCards();
     });
     selectAllPreviewOrders.addEventListener("change", () => {
-      const total = orderPasteEntries().length;
+      const total = activeOrderEntries().length;
       selectedPreviewOrders.clear();
       if (selectAllPreviewOrders.checked) {
         for (let index = 0; index < total; index += 1) selectedPreviewOrders.add(index);
@@ -2427,18 +2488,27 @@
     });
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
+      editingDraftEntry = null;
+      fieldOverrides.clear();
       collapsedPreviewOrders.clear();
       previewSelectionSignature = "";
       autoResizePasteInput(event.target);
       ensureTrailingPasteBar();
       render();
     });
+    simplePreview.addEventListener("input", event => {
+      if (!event.target.classList.contains("order-detail-input")) return;
+      const index = Number(event.target.dataset.orderIndex);
+      const field = event.target.dataset.orderField;
+      if (!Number.isInteger(index) || !field) return;
+      fieldOverrides.set(index, { ...(fieldOverrides.get(index) || {}), [field]:event.target.value });
+    });
     simplePreview.addEventListener("change", event => {
       if (event.target.classList.contains("order-preview-select-toggle")) {
         const index = Number(event.target.dataset.orderIndex);
         if (event.target.checked) selectedPreviewOrders.add(index);
         else selectedPreviewOrders.delete(index);
-        updatePreviewSelectionControls(orderPasteEntries().length);
+        updatePreviewSelectionControls(activeOrderEntries().length);
         return;
       }
       if (event.target.classList.contains("payment-method-select")) {
@@ -2450,7 +2520,7 @@
         const selectedIndex = Number(event.target.dataset.orderIndex);
         // Freeze the current assignment for every existing card, then use this
         // choice as the default for orders pasted afterwards.
-        orderPasteEntries().forEach((entry, index) => pageOverrides.set(index, entry.page));
+        activeOrderEntries().forEach((entry, index) => pageOverrides.set(index, entry.page));
         pageOverrides.set(selectedIndex, event.target.value);
         page.value = event.target.value;
         render();
@@ -2459,7 +2529,7 @@
       if (event.target.classList.contains("product-type-select") || event.target.classList.contains("product-variant-select") || event.target.classList.contains("product-quantity-input") || event.target.classList.contains("product-unit-select")) {
         const orderIndex = Number(event.target.dataset.orderIndex);
         const productIndex = Number(event.target.dataset.productIndex);
-        const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
+        const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
         if (!items[productIndex]) return;
         if (event.target.classList.contains("product-type-select")) {
@@ -2474,12 +2544,17 @@
       }
     });
     simplePreview.addEventListener("click", event => {
+      const saveDraft = event.target.closest("[data-save-draft-entry]");
+      if (saveDraft) {
+        saveEditedDraftEntry();
+        return;
+      }
       const addProduct = event.target.closest("[data-product-add]");
       const removeProduct = event.target.closest("[data-product-remove]");
       if (addProduct || removeProduct) {
         const trigger = addProduct || removeProduct;
         const orderIndex = Number(trigger.dataset.productAdd ?? trigger.dataset.productRemove);
-        const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
+        const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
         if (addProduct) items.push({ type:"CLASSIC", variant:"LONGAN", quantity:1, unit:"BOX" });
         if (removeProduct) {
