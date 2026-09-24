@@ -288,6 +288,16 @@
       border-color:var(--wine);
       color:white;
     }
+    .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
+    .product-builder-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .product-builder-head small { color:var(--muted); font-size:10px; font-weight:900; }
+    .product-builder-item { display:grid; grid-template-columns:1fr 1.15fr 78px auto; gap:7px; align-items:center; }
+    .product-builder-item select, .product-builder-item input { min-height:40px; padding:9px 10px; font-size:12px; font-weight:800; }
+    .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
+    .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
+    .draft-controls { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin-top:12px; }
+    .draft-controls select { min-height:42px; padding:9px 12px; font-size:11px; font-weight:800; }
+    .draft-delete { border:0; border-radius:999px; padding:9px 11px; background:#f5e6e2; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
     .sheet-details { margin-top:14px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.5); overflow:hidden; }
     .sheet-details summary { cursor:pointer; padding:12px 14px; color:var(--wine); font-size:12px; font-weight:900; list-style:none; }
     .sheet-details summary::-webkit-details-marker { display:none; }
@@ -552,7 +562,12 @@
 
           <div class="actions">
             <button class="primary" id="confirmPreviewBtn">确认</button>
+            <button class="secondary" id="saveDraftBtn" type="button">保存草稿</button>
             <button class="secondary" id="clearBtn">清空</button>
+          </div>
+          <div class="draft-controls">
+            <select id="draftSelect" aria-label="已保存草稿"><option value="">草稿（尚未保存）</option></select>
+            <button class="draft-delete" id="deleteDraftBtn" type="button" hidden>删除草稿</button>
           </div>
         </div>
 
@@ -748,7 +763,74 @@
     const paymentMethodOptions = ["", "BANK IN", "TNG", "ATOME", "STRIPE", "FPX", "COD"];
     const paymentOverrides = new Map();
     const pageOverrides = new Map();
+    const productOverrides = new Map();
     const collapsedPreviewOrders = new Set();
+    const orderDraftsKey = "orderKeyInDraftsV1";
+    const draftSelect = document.getElementById("draftSelect");
+    const deleteDraftBtn = document.getElementById("deleteDraftBtn");
+
+    function readOrderDrafts() {
+      try {
+        const drafts = JSON.parse(localStorage.getItem(orderDraftsKey) || "[]");
+        return Array.isArray(drafts) ? drafts : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function renderDraftChoices(selectedId = draftSelect.value) {
+      const drafts = readOrderDrafts();
+      draftSelect.innerHTML = `<option value="">草稿（${drafts.length ? `${drafts.length} 个已保存` : "尚未保存"}）</option>` + drafts
+        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+        .map(draft => `<option value="${escapeHtml(draft.id)}">${escapeHtml(draft.label || "未命名草稿")}</option>`).join("");
+      draftSelect.value = drafts.some(draft => draft.id === selectedId) ? selectedId : "";
+      deleteDraftBtn.hidden = !draftSelect.value;
+    }
+
+    function saveCurrentDraft() {
+      const raw = (pasteTextareas()[0]?.value || "").trim();
+      if (!raw) {
+        showNotice("error", "没有资料", "请先贴上订单资料后再保存草稿。");
+        return;
+      }
+      const drafts = readOrderDrafts();
+      const currentId = draftSelect.value;
+      const now = Date.now();
+      const orders = buildParsedOrdersFromPaste();
+      const snapshot = {
+        id: currentId || `draft-${now}-${Math.random().toString(16).slice(2)}`,
+        label: `${orders[0]?.["P · Name"] || "订单"}${orders.length > 1 ? ` 等 ${orders.length} 单` : ""} · ${new Date(now).toLocaleString("zh-CN", { timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" })}`,
+        updatedAt: now,
+        raw,
+        entryDate: orderEntryDate.value,
+        pages: [...pageOverrides.entries()],
+        payments: [...paymentOverrides.entries()],
+        products: [...productOverrides.entries()]
+      };
+      const next = [...drafts.filter(draft => draft.id !== snapshot.id), snapshot].slice(-30);
+      localStorage.setItem(orderDraftsKey, JSON.stringify(next));
+      renderDraftChoices(snapshot.id);
+      showNotice("success", "草稿已保存", "这批订单尚未写入 Google Sheet；之后可从草稿列表继续编辑或确认。");
+    }
+
+    function loadDraft(id) {
+      const draft = readOrderDrafts().find(item => item.id === id);
+      if (!draft) return;
+      const activePasteBar = pasteTextareas()[0];
+      if (!activePasteBar) return;
+      activePasteBar.value = draft.raw || "";
+      orderEntryDate.value = draft.entryDate || orderEntryDate.value;
+      pageOverrides.clear();
+      paymentOverrides.clear();
+      productOverrides.clear();
+      (draft.pages || []).forEach(([index, value]) => pageOverrides.set(Number(index), value));
+      (draft.payments || []).forEach(([index, value]) => paymentOverrides.set(Number(index), value));
+      (draft.products || []).forEach(([index, value]) => productOverrides.set(Number(index), value));
+      collapsedPreviewOrders.clear();
+      autoResizePasteInput(activePasteBar);
+      render();
+      deleteDraftBtn.hidden = false;
+    }
     function orderLoadedKey(dateKey) {
       return `orderKeyInLoaded:${dateKey}`;
     }
@@ -1250,6 +1332,95 @@
       return { totals, variant: variantParts.join(" + ") };
     }
 
+    const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL"];
+    const productVariantOptions = {
+      CLASSIC: ["", "LYCHEE", "LONGAN", "OSMANTHUS", "PASSION FRUIT", "GIFT BOX"],
+      KNEE: ["", "LEMON GRASS"],
+      GINSENG: ["", "GINSENG"],
+      FLORAL: ["", "FLORAL"]
+    };
+
+    function productTypeForText(text = "") {
+      const value = String(text).toUpperCase();
+      if (/GINSENG/.test(value)) return "GINSENG";
+      if (/LEMON\s*GRASS|LEMONGRASS|KNEE/.test(value)) return "KNEE";
+      if (/FLORAL/.test(value)) return "FLORAL";
+      return "CLASSIC";
+    }
+
+    function manualProductItemsFromText(productText = "") {
+      const source = String(productText || "").toUpperCase().trim();
+      if (!source) return [{ type: "CLASSIC", variant: "", boxes: 1 }];
+      const parts = source.split(/[,+，\n]/).map(value => value.trim()).filter(Boolean);
+      const items = parts.map(part => {
+        const type = productTypeForText(part);
+        const boxes = Number((part.match(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/) || [])[1] || 1);
+        const variant = part
+          .replace(/\d+(?:\.\d+)?\s*(?:BOX|盒|BTL|BOTTLE|瓶)/g, "")
+          .replace(/\b(CLASSIC|KNEE|GINSENG|FLORAL)\b/g, "")
+          .replace(/\s+/g, " ").trim();
+        return { type, variant, boxes: Number.isFinite(boxes) && boxes > 0 ? boxes : 1 };
+      });
+      return items.length ? items : [{ type: "CLASSIC", variant: "", boxes: 1 }];
+    }
+
+    function normaliseProductItems(items = []) {
+      return items.map(item => ({
+        type: productTypes.includes(String(item?.type || "").toUpperCase()) ? String(item.type).toUpperCase() : "CLASSIC",
+        variant: String(item?.variant || "").toUpperCase().trim(),
+        boxes: Math.max(0, Number(item?.boxes || 0))
+      })).filter(item => item.boxes > 0);
+    }
+
+    function productDataFromItems(items = []) {
+      const normalized = normaliseProductItems(items);
+      const totals = { classic: 0, knee: 0, ginseng: 0, floral: 0 };
+      const keyForType = { CLASSIC: "classic", KNEE: "knee", GINSENG: "ginseng", FLORAL: "floral" };
+      normalized.forEach(item => {
+        const multiplier = item.type === "CLASSIC" && /GIFT\s*BOX/.test(item.variant) ? 6 : 12;
+        totals[keyForType[item.type]] += item.boxes * multiplier;
+      });
+      const formatBoxes = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+      const variant = normalized.map(item => `${item.type}${item.variant ? ` ${item.variant}` : ""} · ${formatBoxes(item.boxes)} BOX`).join(" + ");
+      return { totals, variant, remark: variant };
+    }
+
+    function productItemsForOrder(index, originalProduct = "") {
+      const override = productOverrides.get(index);
+      return override ? normaliseProductItems(override) : (String(originalProduct || "").trim() ? manualProductItemsFromText(originalProduct) : []);
+    }
+
+    function editableProductItemsForOrder(index, originalProduct = "") {
+      const items = productItemsForOrder(index, originalProduct);
+      return items.length ? items : [{ type: "CLASSIC", variant: "", boxes: 1 }];
+    }
+
+    function applyProductItems(data, index, originalProduct = "") {
+      if (!productOverrides.has(index)) return data;
+      const product = productDataFromItems(productItemsForOrder(index, originalProduct));
+      data["I · Classic BTL"] = product.totals.classic || "-";
+      data["J · Knee BTL"] = product.totals.knee || "-";
+      data["K · Ginseng BTL"] = product.totals.ginseng || "-";
+      data["L · Floral BTL"] = product.totals.floral || "-";
+      data["N · Variant"] = product.variant;
+      if (productOverrides.has(index)) data["O · Remark"] = product.remark;
+      return data;
+    }
+
+    function productBuilderHtml(index, originalProduct = "") {
+      const items = editableProductItemsForOrder(index, originalProduct);
+      return `<div class="product-builder" data-product-builder="${index}">
+        <div class="product-builder-head"><small>产品（自动大写；数量以 BOX 填写）</small><small>可加多项</small></div>
+        ${items.map((item, itemIndex) => `<div class="product-builder-item" data-product-item="${itemIndex}">
+          <select class="product-type-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${productTypes.map(type => `<option value="${type}" ${type === item.type ? "selected" : ""}>${type}</option>`).join("")}</select>
+          <input class="product-variant-input" data-order-index="${index}" data-product-index="${itemIndex}" value="${escapeHtml(item.variant)}" placeholder="口味 / VARIANT" />
+          <input class="product-box-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.boxes)}" aria-label="BOX 数量" />
+          <button class="product-builder-remove" type="button" data-product-remove="${index}" data-product-index="${itemIndex}" aria-label="移除产品">×</button>
+        </div>`).join("")}
+        <button class="product-builder-add" type="button" data-product-add="${index}">＋ 添加产品</button>
+      </div>`;
+    }
+
     function pasteTextareas() {
       return [...pasteBlocks.querySelectorAll(".order-paste")];
     }
@@ -1309,6 +1480,7 @@
     function resetPasteBars() {
       paymentOverrides.clear();
       pageOverrides.clear();
+      productOverrides.clear();
       collapsedPreviewOrders.clear();
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
@@ -1394,7 +1566,8 @@
           data["H · Channel / Chanel"] = channelForPage(data["Page / Account"]);
         }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
-        return data;
+        const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
+        return applyProductItems(data, index, originalProduct);
       });
     }
 
@@ -1446,6 +1619,7 @@
               ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
             </select>
           </div>
+          ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product)}
           <button type="button" class="preview-done-button" data-preview-toggle="${index}">✓ 确认这单并收起</button>
         </div>
         `}
@@ -1882,11 +2056,24 @@
       resetPasteBars();
       render();
     });
+    document.getElementById("saveDraftBtn").addEventListener("click", saveCurrentDraft);
+    draftSelect.addEventListener("change", () => {
+      if (draftSelect.value) loadDraft(draftSelect.value);
+      deleteDraftBtn.hidden = !draftSelect.value;
+    });
+    deleteDraftBtn.addEventListener("click", () => {
+      const id = draftSelect.value;
+      if (!id) return;
+      localStorage.setItem(orderDraftsKey, JSON.stringify(readOrderDrafts().filter(draft => draft.id !== id)));
+      renderDraftChoices();
+      showNotice("success", "草稿已删除", "草稿已从这台浏览器移除，Google Sheet 不会受影响。");
+    });
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
       setTimeout(() => {
         pageOverrides.clear();
         paymentOverrides.clear();
+        productOverrides.clear();
         collapsedPreviewOrders.clear();
         autoResizePasteInput(event.target);
         render();
@@ -1908,9 +2095,39 @@
       if (event.target.classList.contains("order-preview-page-select")) {
         pageOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
         render();
+        return;
+      }
+      if (event.target.classList.contains("product-type-select") || event.target.classList.contains("product-variant-input") || event.target.classList.contains("product-box-input")) {
+        const orderIndex = Number(event.target.dataset.orderIndex);
+        const productIndex = Number(event.target.dataset.productIndex);
+        const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
+        const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
+        if (!items[productIndex]) return;
+        if (event.target.classList.contains("product-type-select")) items[productIndex].type = event.target.value;
+        if (event.target.classList.contains("product-variant-input")) items[productIndex].variant = event.target.value.toUpperCase();
+        if (event.target.classList.contains("product-box-input")) items[productIndex].boxes = Number(event.target.value || 0);
+        productOverrides.set(orderIndex, items);
+        render();
       }
     });
     simplePreview.addEventListener("click", event => {
+      const addProduct = event.target.closest("[data-product-add]");
+      const removeProduct = event.target.closest("[data-product-remove]");
+      if (addProduct || removeProduct) {
+        const trigger = addProduct || removeProduct;
+        const orderIndex = Number(trigger.dataset.productAdd ?? trigger.dataset.productRemove);
+        const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
+        const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
+        if (addProduct) items.push({ type:"CLASSIC", variant:"", boxes:1 });
+        if (removeProduct) {
+          const productIndex = Number(removeProduct.dataset.productIndex);
+          items.splice(productIndex, 1);
+          if (!items.length) items.push({ type:"CLASSIC", variant:"", boxes:1 });
+        }
+        productOverrides.set(orderIndex, items);
+        render();
+        return;
+      }
       const toggle = event.target.closest("[data-preview-toggle]");
       if (!toggle) return;
       const index = Number(toggle.dataset.previewToggle);
@@ -1929,6 +2146,7 @@
     orderEntryDate.addEventListener("input", render);
     page.addEventListener("change", () => {
       pageOverrides.clear();
+      productOverrides.clear();
       collapsedPreviewOrders.clear();
       window.customSelectRefresh?.();
       render();
@@ -2006,6 +2224,7 @@
         orderDateLabel.setAttribute("aria-expanded", "false");
       }
     });
+    renderDraftChoices();
     render();
     if (isBrowserReload() || !orderRecordsAlreadyLoaded(confirmedDate.value) || !hasLocalOrdersFor(confirmedDate.value)) {
       loadConfirmedOrders(confirmedDate.value).finally(() => {
