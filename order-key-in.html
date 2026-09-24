@@ -299,10 +299,6 @@
     .product-builder-item select, .product-builder-item input { min-height:40px; padding:9px 10px; font-size:12px; font-weight:800; }
     .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
     .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
-    .draft-controls { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin-top:12px; }
-    .draft-controls select { min-height:42px; padding:9px 12px; font-size:11px; font-weight:800; }
-    .draft-delete { border:0; border-radius:999px; padding:9px 11px; background:#f5e6e2; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
-    .draft-list-button { border:1px solid #d8a8b2; border-radius:999px; padding:9px 12px; background:rgba(255,255,255,.8); color:var(--wine); font:inherit; font-size:11px; font-weight:900; cursor:pointer; white-space:nowrap; }
     .draft-orders-panel { margin-top:16px; }
     .draft-order-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:16px; }
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
@@ -597,10 +593,6 @@
             <button class="secondary" id="saveDraftBtn" type="button">保存草稿</button>
             <button class="secondary" id="clearBtn">清空</button>
           </div>
-          <div class="draft-controls">
-            <select id="draftSelect" aria-label="已保存草稿"><option value="">草稿（尚未保存）</option></select>
-            <button class="draft-list-button" id="openDraftOrdersBtn" type="button" aria-expanded="false">Draft Orders</button>
-          </div>
         </div>
 
         <div class="card panel">
@@ -815,7 +807,7 @@
     const selectedPreviewOrders = new Set();
     let previewSelectionSignature = "";
     const orderDraftsKey = "orderKeyInDraftsV1";
-    const draftSelect = document.getElementById("draftSelect");
+    let activeDraftId = "";
     const draftOrdersPanel = document.getElementById("draftOrdersPanel");
     const draftOrderList = document.getElementById("draftOrderList");
     const previewSelectionControls = document.getElementById("previewSelectionControls");
@@ -840,13 +832,9 @@
       }
     }
 
-    function renderDraftChoices(selectedId = draftSelect.value) {
+    function renderDraftChoices() {
       const drafts = readOrderDrafts();
-      draftSelect.innerHTML = `<option value="">草稿（${drafts.length ? `${drafts.length} 个已保存` : "尚未保存"}）</option>` + drafts
-        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
-        .map(draft => `<option value="${escapeHtml(draft.id)}">${escapeHtml(draft.label || "未命名草稿")}</option>`).join("");
-      draftSelect.value = drafts.some(draft => draft.id === selectedId) ? selectedId : "";
-      document.getElementById("openDraftOrdersBtn").textContent = `Draft Orders${drafts.length ? ` · ${drafts.length}` : ""}`;
+      draftOrdersPanel.hidden = !drafts.length;
     }
 
     function draftOrderSummary(draft = {}) {
@@ -923,7 +911,7 @@
         return;
       }
       const drafts = readOrderDrafts();
-      const currentId = draftSelect.value;
+      const currentId = activeDraftId;
       const now = Date.now();
       const orders = buildParsedOrdersFromPaste();
       const snapshot = {
@@ -938,13 +926,16 @@
       };
       const next = [...drafts.filter(draft => draft.id !== snapshot.id), snapshot].slice(-30);
       localStorage.setItem(orderDraftsKey, JSON.stringify(next));
-      renderDraftChoices(snapshot.id);
+      activeDraftId = snapshot.id;
+      renderDraftChoices();
+      renderDraftOrderCards();
       showNotice("success", "草稿已保存", "这批订单尚未写入 Google Sheet；之后可从草稿列表继续编辑或确认。");
     }
 
     function loadDraft(id) {
       const draft = readOrderDrafts().find(item => item.id === id);
       if (!draft) return;
+      activeDraftId = id;
       const activePasteBar = pasteTextareas()[0];
       if (!activePasteBar) return;
       activePasteBar.value = draft.raw || "";
@@ -2328,20 +2319,11 @@
     });
     document.getElementById("noticeClose").addEventListener("click", () => noticeDialog.close());
     document.getElementById("clearBtn").addEventListener("click", () => {
+      activeDraftId = "";
       resetPasteBars();
       render();
     });
     document.getElementById("saveDraftBtn").addEventListener("click", saveCurrentDraft);
-    draftSelect.addEventListener("change", () => {
-      if (draftSelect.value) loadDraft(draftSelect.value);
-    });
-    document.getElementById("openDraftOrdersBtn").addEventListener("click", event => {
-      const willShow = draftOrdersPanel.hidden;
-      draftOrdersPanel.hidden = !willShow;
-      event.currentTarget.setAttribute("aria-expanded", String(willShow));
-      renderDraftOrderCards();
-      if (willShow) draftOrdersPanel.scrollIntoView({ behavior:"smooth", block:"start" });
-    });
     draftOrderList.addEventListener("click", event => {
       const select = event.target.closest(".draft-order-select-toggle");
       const open = event.target.closest("[data-draft-open]");
@@ -2355,15 +2337,13 @@
       }
       if (open) {
         const id = open.dataset.draftOpen;
-        renderDraftChoices(id);
         loadDraft(id);
-        draftOrdersPanel.hidden = true;
-        document.getElementById("openDraftOrdersBtn").setAttribute("aria-expanded", "false");
         return;
       }
       if (!remove) return;
       const id = remove.dataset.draftDelete;
       localStorage.setItem(orderDraftsKey, JSON.stringify(readOrderDrafts().filter(draft => draft.id !== id)));
+      if (activeDraftId === id) activeDraftId = "";
       renderDraftChoices();
       renderDraftOrderCards();
     });
