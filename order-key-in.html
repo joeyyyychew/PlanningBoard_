@@ -291,7 +291,7 @@
     .product-builder { display:grid; gap:8px; padding:12px; border:1px solid #ead8d3; border-radius:15px; background:rgba(255,250,247,.75); }
     .product-builder-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .product-builder-head small { color:var(--muted); font-size:10px; font-weight:900; }
-    .product-builder-item { display:grid; grid-template-columns:1fr 1.15fr 78px auto; gap:7px; align-items:center; }
+    .product-builder-item { display:grid; grid-template-columns:1fr 1.15fr 72px 76px auto; gap:7px; align-items:center; }
     .product-builder-item select, .product-builder-item input { min-height:40px; padding:9px 10px; font-size:12px; font-weight:800; }
     .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
     .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
@@ -1334,7 +1334,7 @@
 
     const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL"];
     const productVariantOptions = {
-      CLASSIC: ["", "LYCHEE", "LONGAN", "OSMANTHUS", "PASSION FRUIT", "GIFT BOX"],
+      CLASSIC: ["LONGAN", "OSMANTHUS", "PASSIONFRUIT", "LYCHEE"],
       KNEE: ["", "LEMON GRASS"],
       GINSENG: ["", "GINSENG"],
       FLORAL: ["", "FLORAL"]
@@ -1350,26 +1350,29 @@
 
     function manualProductItemsFromText(productText = "") {
       const source = String(productText || "").toUpperCase().trim();
-      if (!source) return [{ type: "CLASSIC", variant: "", boxes: 1 }];
+      if (!source) return [{ type: "CLASSIC", variant: "LONGAN", quantity: 1, unit: "BOX" }];
       const parts = source.split(/[,+，\n]/).map(value => value.trim()).filter(Boolean);
       const items = parts.map(part => {
         const type = productTypeForText(part);
-        const boxes = Number((part.match(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/) || [])[1] || 1);
+        const quantityMatch = part.match(/(\d+(?:\.\d+)?)\s*(BOX|盒|BTL|BOTTLE|瓶)/);
+        const quantity = Number(quantityMatch?.[1] || 1);
+        const unit = /BTL|BOTTLE|瓶/.test(quantityMatch?.[2] || "") ? "BTL" : "BOX";
         const variant = part
           .replace(/\d+(?:\.\d+)?\s*(?:BOX|盒|BTL|BOTTLE|瓶)/g, "")
           .replace(/\b(CLASSIC|KNEE|GINSENG|FLORAL)\b/g, "")
           .replace(/\s+/g, " ").trim();
-        return { type, variant, boxes: Number.isFinite(boxes) && boxes > 0 ? boxes : 1 };
+        return { type, variant, quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1, unit };
       });
-      return items.length ? items : [{ type: "CLASSIC", variant: "", boxes: 1 }];
+      return items.length ? items : [{ type: "CLASSIC", variant: "LONGAN", quantity: 1, unit: "BOX" }];
     }
 
     function normaliseProductItems(items = []) {
       return items.map(item => ({
         type: productTypes.includes(String(item?.type || "").toUpperCase()) ? String(item.type).toUpperCase() : "CLASSIC",
         variant: String(item?.variant || "").toUpperCase().trim(),
-        boxes: Math.max(0, Number(item?.boxes || 0))
-      })).filter(item => item.boxes > 0);
+        quantity: Math.max(0, Number(item?.quantity ?? item?.boxes ?? 0)),
+        unit: String(item?.unit || "BOX").toUpperCase() === "BTL" ? "BTL" : "BOX"
+      })).filter(item => item.quantity > 0);
     }
 
     function productDataFromItems(items = []) {
@@ -1378,10 +1381,10 @@
       const keyForType = { CLASSIC: "classic", KNEE: "knee", GINSENG: "ginseng", FLORAL: "floral" };
       normalized.forEach(item => {
         const multiplier = item.type === "CLASSIC" && /GIFT\s*BOX/.test(item.variant) ? 6 : 12;
-        totals[keyForType[item.type]] += item.boxes * multiplier;
+        totals[keyForType[item.type]] += item.unit === "BTL" ? item.quantity : item.quantity * multiplier;
       });
       const formatBoxes = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
-      const variant = normalized.map(item => `${item.type}${item.variant ? ` ${item.variant}` : ""} · ${formatBoxes(item.boxes)} BOX`).join(" + ");
+      const variant = normalized.map(item => `${item.type}${item.variant ? ` ${item.variant}` : ""} · ${formatBoxes(item.quantity)} ${item.unit}`).join(" + ");
       return { totals, variant, remark: variant };
     }
 
@@ -1392,7 +1395,7 @@
 
     function editableProductItemsForOrder(index, originalProduct = "") {
       const items = productItemsForOrder(index, originalProduct);
-      return items.length ? items : [{ type: "CLASSIC", variant: "", boxes: 1 }];
+      return items.length ? items : [{ type: "CLASSIC", variant: "LONGAN", quantity: 1, unit: "BOX" }];
     }
 
     function applyProductItems(data, index, originalProduct = "") {
@@ -1410,11 +1413,12 @@
     function productBuilderHtml(index, originalProduct = "") {
       const items = editableProductItemsForOrder(index, originalProduct);
       return `<div class="product-builder" data-product-builder="${index}">
-        <div class="product-builder-head"><small>产品（自动大写；数量以 BOX 填写）</small><small>可加多项</small></div>
+        <div class="product-builder-head"><small>产品（自动大写；可选择 BOX / BTL）</small><small>可加多项</small></div>
         ${items.map((item, itemIndex) => `<div class="product-builder-item" data-product-item="${itemIndex}">
           <select class="product-type-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${productTypes.map(type => `<option value="${type}" ${type === item.type ? "selected" : ""}>${type}</option>`).join("")}</select>
-          <input class="product-variant-input" data-order-index="${index}" data-product-index="${itemIndex}" value="${escapeHtml(item.variant)}" placeholder="口味 / VARIANT" />
-          <input class="product-box-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.boxes)}" aria-label="BOX 数量" />
+          <select class="product-variant-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${(productVariantOptions[item.type] || [""]).map(variant => `<option value="${escapeHtml(variant)}" ${variant === item.variant ? "selected" : ""}>${escapeHtml(variant || "VARIANT")}</option>`).join("")}</select>
+          <input class="product-quantity-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.quantity)}" aria-label="数量" />
+          <select class="product-unit-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true"><option value="BOX" ${item.unit === "BOX" ? "selected" : ""}>BOX</option><option value="BTL" ${item.unit === "BTL" ? "selected" : ""}>BTL</option></select>
           <button class="product-builder-remove" type="button" data-product-remove="${index}" data-product-index="${itemIndex}" aria-label="移除产品">×</button>
         </div>`).join("")}
         <button class="product-builder-add" type="button" data-product-add="${index}">＋ 添加产品</button>
@@ -2097,15 +2101,19 @@
         render();
         return;
       }
-      if (event.target.classList.contains("product-type-select") || event.target.classList.contains("product-variant-input") || event.target.classList.contains("product-box-input")) {
+      if (event.target.classList.contains("product-type-select") || event.target.classList.contains("product-variant-select") || event.target.classList.contains("product-quantity-input") || event.target.classList.contains("product-unit-select")) {
         const orderIndex = Number(event.target.dataset.orderIndex);
         const productIndex = Number(event.target.dataset.productIndex);
         const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
         if (!items[productIndex]) return;
-        if (event.target.classList.contains("product-type-select")) items[productIndex].type = event.target.value;
-        if (event.target.classList.contains("product-variant-input")) items[productIndex].variant = event.target.value.toUpperCase();
-        if (event.target.classList.contains("product-box-input")) items[productIndex].boxes = Number(event.target.value || 0);
+        if (event.target.classList.contains("product-type-select")) {
+          items[productIndex].type = event.target.value;
+          items[productIndex].variant = (productVariantOptions[event.target.value] || [""])[0];
+        }
+        if (event.target.classList.contains("product-variant-select")) items[productIndex].variant = event.target.value.toUpperCase();
+        if (event.target.classList.contains("product-quantity-input")) items[productIndex].quantity = Number(event.target.value || 0);
+        if (event.target.classList.contains("product-unit-select")) items[productIndex].unit = event.target.value;
         productOverrides.set(orderIndex, items);
         render();
       }
@@ -2118,11 +2126,11 @@
         const orderIndex = Number(trigger.dataset.productAdd ?? trigger.dataset.productRemove);
         const originalProduct = inferLooseOrder(orderPasteEntries()[orderIndex]?.text || "").product;
         const items = editableProductItemsForOrder(orderIndex, originalProduct).map(item => ({ ...item }));
-        if (addProduct) items.push({ type:"CLASSIC", variant:"", boxes:1 });
+        if (addProduct) items.push({ type:"CLASSIC", variant:"LONGAN", quantity:1, unit:"BOX" });
         if (removeProduct) {
           const productIndex = Number(removeProduct.dataset.productIndex);
           items.splice(productIndex, 1);
-          if (!items.length) items.push({ type:"CLASSIC", variant:"", boxes:1 });
+          if (!items.length) items.push({ type:"CLASSIC", variant:"LONGAN", quantity:1, unit:"BOX" });
         }
         productOverrides.set(orderIndex, items);
         render();
