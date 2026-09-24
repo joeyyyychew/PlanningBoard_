@@ -311,12 +311,13 @@
     .product-builder-remove { border:0; width:32px; height:32px; border-radius:10px; background:#f5e6e2; color:var(--wine); font-weight:950; cursor:pointer; }
     .product-builder-add { justify-self:start; border:1px dashed #cfa9a0; border-radius:999px; padding:7px 11px; background:rgba(255,255,255,.74); color:var(--wine); font-size:10px; font-weight:900; cursor:pointer; }
     .draft-orders-panel { margin-top:16px; }
-    .draft-order-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:16px; }
+    .draft-order-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:16px; cursor:pointer; list-style:none; }
+    .draft-order-head::-webkit-details-marker { display:none; }
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
     .draft-order-head p { margin:0; color:var(--muted); font-size:12px; }
     .draft-orders-toggle { display:inline-flex; align-items:center; gap:8px; border:1px solid #d8a8b2; border-radius:999px; padding:9px 13px; background:rgba(255,255,255,.78); color:var(--wine); font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
     .draft-orders-toggle .draft-toggle-chevron { font-size:14px; line-height:1; transition:transform .16s ease; }
-    .draft-orders-toggle[aria-expanded="true"] .draft-toggle-chevron { transform:rotate(180deg); }
+    .draft-orders-details[open] .draft-toggle-chevron { transform:rotate(180deg); }
     .draft-order-content { display:grid; }
     .draft-bulk-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:11px 12px; margin:-4px 0 14px; border:1px solid #ead8d3; border-radius:14px; background:rgba(255,255,255,.48); }
     .draft-bulk-controls label, .draft-order-select { display:flex; align-items:center; gap:8px; margin:0; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
@@ -637,17 +638,19 @@
       </section>
 
       <section class="card panel draft-orders-panel" id="draftOrdersPanel" hidden>
-        <div class="draft-order-head">
+        <details class="draft-orders-details" id="draftOrdersDetails">
+        <summary class="draft-order-head">
           <div><h2>Draft Orders</h2><p>草稿尚未写入 Google Sheet。</p></div>
-          <button class="draft-orders-toggle" id="draftOrdersToggle" type="button" aria-expanded="false" aria-controls="draftOrderContent">View Drafts <span class="draft-toggle-chevron">⌄</span></button>
-        </div>
-        <div class="draft-order-content" id="draftOrderContent" hidden>
+          <span class="draft-orders-toggle">View Drafts <span class="draft-toggle-chevron">⌄</span></span>
+        </summary>
+        <div class="draft-order-content" id="draftOrderContent">
           <div class="draft-bulk-controls" id="draftBulkControls" hidden>
             <label><input id="selectAllDraftOrders" type="checkbox" /> Select All</label>
             <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">Check Out</button></div>
           </div>
           <div class="draft-order-list" id="draftOrderList"></div>
         </div>
+        </details>
       </section>
 
       <section class="card panel confirmed-panel" id="confirmedPanel">
@@ -829,10 +832,8 @@
     const orderDraftsKey = "orderKeyInDraftsV1";
     let activeDraftId = "";
     let editingDraftEntry = null;
-    let draftOrdersExpanded = false;
     const draftOrdersPanel = document.getElementById("draftOrdersPanel");
-    const draftOrdersToggle = document.getElementById("draftOrdersToggle");
-    const draftOrderContent = document.getElementById("draftOrderContent");
+    const draftOrdersDetails = document.getElementById("draftOrdersDetails");
     const draftOrderList = document.getElementById("draftOrderList");
     const previewSelectionControls = document.getElementById("previewSelectionControls");
     const selectAllPreviewOrders = document.getElementById("selectAllPreviewOrders");
@@ -873,15 +874,7 @@
     function renderDraftChoices() {
       const drafts = readOrderDrafts();
       draftOrdersPanel.hidden = !drafts.length;
-      if (!drafts.length) draftOrdersExpanded = false;
-      draftOrderContent.hidden = !draftOrdersExpanded;
-      draftOrdersToggle.setAttribute("aria-expanded", String(draftOrdersExpanded));
-    }
-
-    function setDraftOrdersExpanded(expanded) {
-      draftOrdersExpanded = Boolean(expanded && readOrderDrafts().length);
-      renderDraftChoices();
-      if (draftOrdersExpanded) renderDraftOrderCards();
+      if (!drafts.length) draftOrdersDetails.open = false;
     }
 
     function draftOrderSummary(draft = {}) {
@@ -982,7 +975,7 @@
       const next = [...drafts.filter(draft => draft.id !== snapshot.id), snapshot].slice(-30);
       localStorage.setItem(orderDraftsKey, JSON.stringify(next));
       activeDraftId = snapshot.id;
-      draftOrdersExpanded = true;
+      draftOrdersDetails.open = true;
       renderDraftChoices();
       renderDraftOrderCards();
       showNotice("success", "草稿已保存", "这批订单尚未写入 Google Sheet；之后可从草稿列表继续编辑或确认。");
@@ -1009,7 +1002,7 @@
       });
       localStorage.setItem(orderDraftsKey, JSON.stringify(nextDrafts));
       editingDraftEntry.data = { ...editedData };
-      draftOrdersExpanded = true;
+      draftOrdersDetails.open = true;
       renderDraftChoices();
       renderDraftOrderCards();
       showNotice("success", "Draft 已更新", "这单修改已保存回原本的 Draft，尚未写入 Google Sheet。");
@@ -2450,9 +2443,6 @@
       render();
     });
     document.getElementById("saveDraftBtn").addEventListener("click", saveCurrentDraft);
-    draftOrdersToggle.addEventListener("click", () => {
-      setDraftOrdersExpanded(!draftOrdersExpanded);
-    });
     draftOrderList.addEventListener("click", event => {
       const select = event.target.closest(".draft-order-select-toggle");
       const open = event.target.closest("[data-draft-open]");
