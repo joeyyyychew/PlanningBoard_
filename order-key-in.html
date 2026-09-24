@@ -965,6 +965,8 @@
           data["M · Collagen Drinks BTL"] = collagen.bottles;
           data["N · Variant"] = collagen.variant;
           data["O · Remark"] = collagen.remark;
+          data["Page / Account"] = "";
+          data["H · Channel / Chanel"] = "";
         }
         return { index, raw:text, data };
       });
@@ -998,7 +1000,7 @@
         const updated = new Date(Number(draft.updatedAt || Date.now())).toLocaleString("zh-CN", {timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
         return `<article class="draft-order-card" data-draft-card="${escapeHtml(draft.id)}">
           <div class="draft-order-card-top"><div><h3>订单 ${draftPosition + 1}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div><div class="draft-card-actions"><button class="draft-entry-edit" type="button" data-draft-entry-edit="${escapeHtml(draft.id)}" data-order-index="0" title="Edit" aria-label="Edit 订单 ${draftPosition + 1}">✎</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div></div>
-          <div class="draft-detail-list">${orders.map(({data, index}) => `<div class="draft-detail-card"><div class="draft-detail-meta"><label class="draft-order-select" title="选择订单"><input class="draft-order-select-toggle" type="checkbox" aria-label="选择订单 ${draftPosition + 1}" data-draft-id="${escapeHtml(draft.id)}" data-order-index="${index}" ${selectedDraftOrders.has(draftOrderKey(draft.id, index)) ? "checked" : ""} /></label><p>${escapeHtml(data["Page / Account"] || "待确认")} → ${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div></div>`).join("")}</div>
+          <div class="draft-detail-list">${orders.map(({data, index}) => `<div class="draft-detail-card"><div class="draft-detail-meta"><label class="draft-order-select" title="选择订单"><input class="draft-order-select-toggle" type="checkbox" aria-label="选择订单 ${draftPosition + 1}" data-draft-id="${escapeHtml(draft.id)}" data-order-index="${index}" ${selectedDraftOrders.has(draftOrderKey(draft.id, index)) ? "checked" : ""} /></label><p>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : `${data["Page / Account"] || "待确认"} → ${data["H · Channel / Chanel"] || "待确认"}`)}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div></div>`).join("")}</div>
         </article>`;
       }).join("");
       updateDraftSelectionControls(drafts);
@@ -1926,7 +1928,12 @@
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
         data = applyFieldOverrides(data, index);
-        return applyProductItems(data, index, originalProduct);
+        data = applyProductItems(data, index, originalProduct);
+        if (isCollagenDrinkOrder(data)) {
+          data["Page / Account"] = "";
+          data["H · Channel / Chanel"] = "";
+        }
+        return data;
       });
     }
 
@@ -1975,7 +1982,7 @@
             <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select</label>
             <h3>订单 ${index + 1}</h3>
             <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
-            <span>${escapeHtml([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认")}</span>
+            <span>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : ([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认"))}</span>
           </div>
           <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}" title="展开订单" aria-label="展开订单">⌄</button>
         </div>
@@ -1993,22 +2000,22 @@
                 : `<strong>${escapeHtml(value)}</strong>`}
             </div>
           `).join("")}
-          <div class="simple-row order-preview-select-row">
+          ${isCollagenDrinkOrder(data) ? "" : `<div class="simple-row order-preview-select-row">
             <small>Page / Account</small>
             <select class="order-preview-page-select" data-native="true" data-order-index="${index}">
               ${Object.keys(pageChannelMap).map(option => `<option value="${escapeHtml(option)}" ${option === (data["Page / Account"] || page.value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
             </select>
-          </div>
+          </div>`}
           <div class="simple-row order-preview-select-row">
             <small>Product Type</small>
             <select class="order-type-select" data-native="true" data-order-index="${index}">
               ${orderTypeOptions.map(option => `<option value="${option.value}" ${option.value === (data["Order Type"] || "") ? "selected" : ""}>${option.label}</option>`).join("")}
             </select>
           </div>
-          <div class="simple-row">
+          ${isCollagenDrinkOrder(data) ? "" : `<div class="simple-row">
             <small>Channel</small>
             <strong>${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</strong>
-          </div>
+          </div>`}
           <div class="simple-row payment-row">
             <small>Payment Method</small>
             <select class="payment-method-select" data-native="true" data-order-index="${index}">
