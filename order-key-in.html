@@ -2617,6 +2617,7 @@
       }
       if (!remove) return;
       const id = remove.dataset.draftDelete;
+      if (!window.confirm("确认删除这张 Draft Order？删除后无法恢复。")) return;
       localStorage.setItem(orderDraftsKey, JSON.stringify(readOrderDrafts().filter(draft => draft.id !== id)));
       if (activeDraftId === id) activeDraftId = "";
       if (editingDraftEntry?.draftId === id) editingDraftEntry = null;
