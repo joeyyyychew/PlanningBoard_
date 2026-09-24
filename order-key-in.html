@@ -1033,7 +1033,11 @@
       const snapshotIds = new Set(snapshots.map(snapshot => snapshot.id));
       const next = [...drafts.filter(draft => !snapshotIds.has(draft.id)), ...snapshots].slice(-30);
       localStorage.setItem(orderDraftsKey, JSON.stringify(next));
-      activeDraftId = snapshots.length === 1 ? snapshots[0].id : "";
+      // A saved paste becomes its own independent draft. Clear the working area
+      // so the next paste never overwrites that draft by accident.
+      activeDraftId = "";
+      resetPasteBars();
+      render();
       draftOrdersDetails.open = true;
       renderDraftChoices();
       renderDraftOrderCards();
