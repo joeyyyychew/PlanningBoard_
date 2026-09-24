@@ -589,7 +589,7 @@
           <input id="channelPreview" type="hidden" value="Knee 990 MC" readonly />
 
           <div class="actions">
-            <button class="primary" id="confirmPreviewBtn">COMFIRM</button>
+            <button class="primary" id="confirmPreviewBtn">CONFIRM</button>
             <button class="secondary" id="saveDraftBtn" type="button">DRAFT</button>
             <button class="secondary" id="clearBtn">CLEAR</button>
           </div>
@@ -604,8 +604,7 @@
           </div>
 
           <div class="sheet-target" id="sheetTarget">
-            <b>Google Sheet：</b>Order List<br>
-            <b>动作：</b>确认后新增一单
+            <b>Google Sheet：</b>Order List
           </div>
 
           <div class="preview-selection-controls" id="previewSelectionControls" hidden>
@@ -626,7 +625,7 @@
         </div>
         <div class="draft-bulk-controls" id="draftBulkControls" hidden>
           <label><input id="selectAllDraftOrders" type="checkbox" /> Select All</label>
-          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">COMFIRM</button></div>
+          <div class="draft-bulk-actions"><span class="draft-selection-count" id="draftSelectionCount">0 / 0 已选择</span><button class="draft-confirm" id="confirmSelectedDraftsBtn" type="button">CONFIRM</button></div>
         </div>
         <div class="draft-order-list" id="draftOrderList"></div>
       </section>
@@ -882,7 +881,7 @@
       selectAllDraftOrders.checked = Boolean(allKeys.length && selectedDraftOrders.size === allKeys.length);
       selectAllDraftOrders.indeterminate = Boolean(selectedDraftOrders.size && selectedDraftOrders.size < allKeys.length);
       draftSelectionCount.textContent = `${selectedDraftOrders.size} / ${allKeys.length} 已选择`;
-      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `COMFIRM (${selectedDraftOrders.size})` : "COMFIRM";
+      confirmSelectedDraftsBtn.textContent = selectedDraftOrders.size ? `CONFIRM (${selectedDraftOrders.size})` : "CONFIRM";
     }
 
     function renderDraftOrderCards() {
@@ -1715,7 +1714,7 @@
       selectAllPreviewOrders.indeterminate = Boolean(selected && selected < total);
       previewSelectionCount.textContent = `${selected} / ${total} 已选择`;
       const button = document.getElementById("confirmPreviewBtn");
-      button.textContent = selected ? `COMFIRM (${selected})` : "COMFIRM";
+      button.textContent = selected ? `CONFIRM (${selected})` : "CONFIRM";
     }
 
     function render() {
@@ -2012,7 +2011,7 @@
         showNotice("error", "进单失败", error.message || "暂时无法写入 Google Sheet。");
       } finally {
         button.disabled = false;
-        button.textContent = "COMFIRM";
+        button.textContent = "CONFIRM";
       }
     }
 
@@ -2368,7 +2367,6 @@
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
       setTimeout(() => {
-        pageOverrides.clear();
         paymentOverrides.clear();
         productOverrides.clear();
         collapsedPreviewOrders.clear();
@@ -2399,7 +2397,12 @@
         return;
       }
       if (event.target.classList.contains("order-preview-page-select")) {
-        pageOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
+        const selectedIndex = Number(event.target.dataset.orderIndex);
+        // Freeze the current assignment for every existing card, then use this
+        // choice as the default for orders pasted afterwards.
+        orderPasteEntries().forEach((entry, index) => pageOverrides.set(index, entry.page));
+        pageOverrides.set(selectedIndex, event.target.value);
+        page.value = event.target.value;
         render();
         return;
       }
