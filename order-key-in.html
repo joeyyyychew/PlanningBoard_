@@ -1802,6 +1802,7 @@
     function previewRowsForData(data) {
       return [
         ["日期", "F · Date", data["F · Date"] || sheetDateFromTypedInput()],
+        ["PIC", "D · Sales Person", data["D · Sales Person"] || "Joey"],
         ["顾客", "P · Name", data["P · Name"] || ""],
         ["电话", "Q · Phone", data["Q · Phone"] || ""],
         ["地址", "R · Address", data["R · Address"] || ""],
