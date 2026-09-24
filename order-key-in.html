@@ -1535,7 +1535,7 @@
         totals[keyForType[item.type]] += item.unit === "BTL" ? item.quantity : item.quantity * multiplier;
       });
       const formatBoxes = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
-      const variant = normalized.map(item => `${item.variant || item.type} · ${formatBoxes(item.quantity)} ${item.unit}`).join(" + ");
+      const variant = normalized.map(item => `${formatBoxes(item.quantity)} ${item.unit} ${item.variant || item.type}`).join(" + ");
       return { totals, variant, remark: variant };
     }
 
