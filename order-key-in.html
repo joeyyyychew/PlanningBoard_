@@ -318,6 +318,8 @@
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
     .draft-order-head p { margin:0; color:var(--muted); font-size:12px; }
     .draft-orders-toggle { display:inline-flex; align-items:center; gap:8px; border:1px solid #d8a8b2; border-radius:999px; padding:9px 13px; background:rgba(255,255,255,.78); color:var(--wine); font:inherit; font-size:11px; font-weight:900; cursor:pointer; }
+    .draft-header-actions { display:flex; align-items:center; gap:9px; }
+    .draft-total-amount { display:inline-flex; align-items:center; min-height:34px; padding:0 12px; border-radius:999px; background:var(--wine); color:#fff; font-size:11px; font-weight:900; white-space:nowrap; }
     .draft-notification-badge { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border:2px solid #fff8f5; border-radius:999px; background:#c42044; color:#fff; font-size:10px; font-weight:950; line-height:1; box-shadow:0 2px 6px rgba(92,15,27,.26); }
     .draft-orders-toggle .draft-toggle-chevron { font-size:14px; line-height:1; transition:transform .16s ease; }
     .draft-orders-details[open] .draft-toggle-chevron { transform:rotate(180deg); }
@@ -648,7 +650,7 @@
         <details class="draft-orders-details" id="draftOrdersDetails">
         <summary class="draft-order-head">
           <div><h2>Draft Orders</h2><p>草稿尚未写入 Google Sheet。</p></div>
-          <span class="draft-orders-toggle">View Drafts <span class="draft-notification-badge" id="draftNotificationBadge" hidden aria-label="0 个 Draft Order">0</span><span class="draft-toggle-chevron">⌄</span></span>
+          <div class="draft-header-actions"><span class="draft-total-amount" id="draftTotalAmount">Total Amount · RM 0.00</span><span class="draft-orders-toggle">View Drafts <span class="draft-notification-badge" id="draftNotificationBadge" hidden aria-label="0 个 Draft Order">0</span><span class="draft-toggle-chevron">⌄</span></span></div>
         </summary>
         <div class="draft-order-content" id="draftOrderContent">
           <div class="draft-bulk-controls" id="draftBulkControls" hidden>
@@ -845,6 +847,7 @@
     const draftOrdersPanel = document.getElementById("draftOrdersPanel");
     const draftOrdersDetails = document.getElementById("draftOrdersDetails");
     const draftNotificationBadge = document.getElementById("draftNotificationBadge");
+    const draftTotalAmount = document.getElementById("draftTotalAmount");
     const draftOrderList = document.getElementById("draftOrderList");
     const previewSelectionControls = document.getElementById("previewSelectionControls");
     const selectAllPreviewOrders = document.getElementById("selectAllPreviewOrders");
@@ -914,10 +917,13 @@
 
     function renderDraftChoices() {
       const drafts = readOrderDrafts();
+      const totalAmount = drafts.flatMap(draft => draftOrderEntries(draft))
+        .reduce((sum, entry) => sum + (Number(String(entry.data["S · Total/RM"] || "").replace(/[^0-9.-]/g, "")) || 0), 0);
       draftOrdersPanel.hidden = !drafts.length;
       draftNotificationBadge.hidden = !drafts.length;
       draftNotificationBadge.textContent = String(drafts.length);
       draftNotificationBadge.setAttribute("aria-label", `${drafts.length} 个 Draft Order`);
+      draftTotalAmount.textContent = `Total Amount · RM ${totalAmount.toLocaleString("en-MY", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
       if (!drafts.length) draftOrdersDetails.open = false;
     }
 
