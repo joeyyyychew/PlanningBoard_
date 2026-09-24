@@ -256,6 +256,10 @@
     .field small { display:block; color:var(--muted); font-size:10px; font-weight:850; margin-bottom:6px; }
     .field strong { display:block; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
     .simple-preview { display:grid; gap:10px; }
+    .preview-selection-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; margin:0 0 10px; border:1px solid #ead8d3; border-radius:14px; background:rgba(255,255,255,.52); }
+    .preview-selection-controls label, .preview-select { display:flex; align-items:center; gap:8px; margin:0; color:var(--wine); font-size:11px; font-weight:900; cursor:pointer; }
+    .preview-selection-controls input, .preview-select input { width:17px; height:17px; padding:0; accent-color:var(--wine); }
+    .preview-selection-count { color:var(--muted); font-size:11px; font-weight:800; }
     .order-preview-card { display:grid; gap:9px; padding:12px; border:1px solid rgba(94,30,43,.12); border-radius:18px; background:rgba(255,255,255,.48); }
     .order-preview-card.is-collapsed { grid-template-columns:1fr auto; align-items:center; background:rgba(255,255,255,.68); }
     .order-preview-card h3 { margin:0; font-size:12px; color:var(--wine); letter-spacing:.02em; }
@@ -304,13 +308,20 @@
     .draft-order-head h2 { margin:0 0 4px; color:var(--wine-dark); font-size:19px; }
     .draft-order-head p { margin:0; color:var(--muted); font-size:12px; }
     .draft-order-list { display:grid; gap:10px; }
-    .draft-order-card { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:15px; border:1px solid #ecdcd7; border-radius:17px; background:rgba(255,255,255,.76); }
+    .draft-order-card { display:grid; gap:12px; padding:15px; border:1px solid #ecdcd7; border-radius:17px; background:rgba(255,255,255,.76); }
     .draft-order-card h3 { margin:0 0 4px; color:var(--wine); font-size:13px; }
     .draft-order-card p { margin:0; color:var(--muted); font-size:11px; line-height:1.5; }
     .draft-card-actions { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
     .draft-card-actions button { border-radius:999px; padding:8px 11px; font:inherit; font-size:10px; font-weight:900; cursor:pointer; }
     .draft-open { border:0; background:var(--wine); color:#fff; }
     .draft-card-delete { border:1px solid #d8a8b2; background:#fff; color:var(--wine); }
+    .draft-order-card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .draft-detail-list { display:grid; gap:8px; }
+    .draft-detail-card { display:grid; grid-template-columns:132px 1fr; gap:10px; padding:11px 12px; border:1px solid #f0dfdc; border-radius:14px; background:#fffdfc; }
+    .draft-detail-card h4 { margin:0; color:var(--wine); font-size:11px; }
+    .draft-detail-card p { margin:3px 0 0; color:var(--muted); font-size:10px; line-height:1.45; }
+    .draft-detail-values { display:grid; gap:4px; font-size:11px; line-height:1.45; }
+    .draft-detail-values b { color:var(--ink); }
     .draft-empty { padding:24px; border:1px dashed #dbc3bd; border-radius:16px; color:var(--muted); text-align:center; font-size:12px; }
     .sheet-details { margin-top:14px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.5); overflow:hidden; }
     .sheet-details summary { cursor:pointer; padding:12px 14px; color:var(--wine); font-size:12px; font-weight:900; list-style:none; }
@@ -598,6 +609,11 @@
             <b>动作：</b>确认后新增一单
           </div>
 
+          <div class="preview-selection-controls" id="previewSelectionControls" hidden>
+            <label><input id="selectAllPreviewOrders" type="checkbox" /> Select All</label>
+            <span class="preview-selection-count" id="previewSelectionCount">0 / 0 已选择</span>
+          </div>
+
           <div class="simple-preview" id="simplePreview"></div>
 
           <div id="sheetRows" hidden></div>
@@ -785,10 +801,15 @@
     const pageOverrides = new Map();
     const productOverrides = new Map();
     const collapsedPreviewOrders = new Set();
+    const selectedPreviewOrders = new Set();
+    let previewSelectionSignature = "";
     const orderDraftsKey = "orderKeyInDraftsV1";
     const draftSelect = document.getElementById("draftSelect");
     const draftOrdersPanel = document.getElementById("draftOrdersPanel");
     const draftOrderList = document.getElementById("draftOrderList");
+    const previewSelectionControls = document.getElementById("previewSelectionControls");
+    const selectAllPreviewOrders = document.getElementById("selectAllPreviewOrders");
+    const previewSelectionCount = document.getElementById("previewSelectionCount");
 
     function readOrderDrafts() {
       try {
@@ -815,6 +836,31 @@
       return { name, count: blocks.length || 1 };
     }
 
+    function parsedDraftOrders(draft = {}) {
+      const pages = new Map((draft.pages || []).map(([index, value]) => [Number(index), value]));
+      const payments = new Map((draft.payments || []).map(([index, value]) => [Number(index), value]));
+      const products = new Map((draft.products || []).map(([index, value]) => [Number(index), value]));
+      return splitSinglePasteValue(draft.raw || "").map((text, index) => {
+        const selectedPage = pages.get(index) || page.value;
+        const data = {
+          ...parseOrder(text, selectedPage),
+          "Page / Account": selectedPage,
+          "H · Channel / Chanel": channelForPage(selectedPage)
+        };
+        if (payments.has(index)) data["M · Payment Method"] = payments.get(index);
+        if (products.has(index)) {
+          const product = productDataFromItems(products.get(index));
+          data["I · Classic BTL"] = product.totals.classic || "-";
+          data["J · Knee BTL"] = product.totals.knee || "-";
+          data["K · Ginseng BTL"] = product.totals.ginseng || "-";
+          data["L · Floral BTL"] = product.totals.floral || "-";
+          data["N · Variant"] = product.variant;
+          data["O · Remark"] = product.remark;
+        }
+        return data;
+      });
+    }
+
     function renderDraftOrderCards() {
       const drafts = readOrderDrafts().sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
       if (!drafts.length) {
@@ -823,10 +869,11 @@
       }
       draftOrderList.innerHTML = drafts.map(draft => {
         const summary = draftOrderSummary(draft);
+        const orders = parsedDraftOrders(draft);
         const updated = new Date(Number(draft.updatedAt || Date.now())).toLocaleString("zh-CN", {timeZone:"Asia/Kuala_Lumpur", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
         return `<article class="draft-order-card" data-draft-card="${escapeHtml(draft.id)}">
-          <div><h3>${escapeHtml(summary.name)}${summary.count > 1 ? ` 等 ${summary.count} 单` : ""}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div>
-          <div class="draft-card-actions"><button class="draft-open" type="button" data-draft-open="${escapeHtml(draft.id)}">打开草稿</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div>
+          <div class="draft-order-card-top"><div><h3>${escapeHtml(summary.name)}${summary.count > 1 ? ` 等 ${summary.count} 单` : ""}</h3><p>进单日期：${escapeHtml(draft.entryDate || "未填写")} · 最后保存：${escapeHtml(updated)}</p></div><div class="draft-card-actions"><button class="draft-open" type="button" data-draft-open="${escapeHtml(draft.id)}">继续编辑</button><button class="draft-card-delete" type="button" data-draft-delete="${escapeHtml(draft.id)}">删除</button></div></div>
+          <div class="draft-detail-list">${orders.map((data, index) => `<div class="draft-detail-card"><div><h4>订单 ${index + 1}</h4><p>${escapeHtml(data["Page / Account"] || "待确认")} → ${escapeHtml(data["H · Channel / Chanel"] || "待确认")}</p></div><div class="draft-detail-values"><b>${escapeHtml(data["P · Name"] || "待确认")} · ${escapeHtml(data["Q · Phone"] || "电话待确认")}</b><span>${escapeHtml(data["R · Address"] || "地址待确认")}</span><span>${escapeHtml(data["N · Variant"] || data["O · Remark"] || "产品待确认")} · RM ${escapeHtml(data["S · Total/RM"] || "待确认")} · ${escapeHtml(data["M · Payment Method"] || "付款待确认")}</span></div></div>`).join("")}</div>
         </article>`;
       }).join("");
     }
@@ -1529,6 +1576,8 @@
       pageOverrides.clear();
       productOverrides.clear();
       collapsedPreviewOrders.clear();
+      selectedPreviewOrders.clear();
+      previewSelectionSignature = "";
       pasteBlocks.innerHTML = "";
       pasteBlocks.appendChild(createPasteBlock(1));
       window.customSelectRefresh?.();
@@ -1618,6 +1667,28 @@
       });
     }
 
+    function ensurePreviewSelection(entries = []) {
+      const signature = entries.map(entry => entry.text).join("\u001f");
+      if (signature !== previewSelectionSignature) {
+        previewSelectionSignature = signature;
+        selectedPreviewOrders.clear();
+        entries.forEach((_, index) => selectedPreviewOrders.add(index));
+      }
+      [...selectedPreviewOrders].forEach(index => {
+        if (index < 0 || index >= entries.length) selectedPreviewOrders.delete(index);
+      });
+    }
+
+    function updatePreviewSelectionControls(total = 0) {
+      const selected = selectedPreviewOrders.size;
+      previewSelectionControls.hidden = !total;
+      selectAllPreviewOrders.checked = Boolean(total && selected === total);
+      selectAllPreviewOrders.indeterminate = Boolean(selected && selected < total);
+      previewSelectionCount.textContent = `${selected} / ${total} 已选择`;
+      const button = document.getElementById("confirmPreviewBtn");
+      button.textContent = selected ? `确认已选 (${selected})` : "确认已选";
+    }
+
     function render() {
       channelPreview.value = channelForPage();
       const entryDate = normalizeTypedOrderDate(orderEntryDate.value);
@@ -1627,14 +1698,18 @@
       if (!entries.length) {
         simplePreview.innerHTML = "";
         sheetRows.innerHTML = "";
+        previewSelectionControls.hidden = true;
+        document.getElementById("confirmPreviewBtn").textContent = "确认";
         renderConfirmedOrders();
         return;
       }
+      ensurePreviewSelection(entries);
       const orders = buildParsedOrdersFromPaste();
       simplePreview.innerHTML = orders.map((data, index) => `
         ${collapsedPreviewOrders.has(index) ? `
         <div class="order-preview-card is-collapsed" data-preview-card="${index}">
           <div class="order-preview-summary">
+            <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select</label>
             <h3>订单 ${index + 1}</h3>
             <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
             <span>${escapeHtml([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认")}</span>
@@ -1643,7 +1718,7 @@
         </div>
         ` : `
         <div class="order-preview-card" data-preview-card="${index}">
-          <h3>订单 ${index + 1}</h3>
+          <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select · 订单 ${index + 1}</label>
           ${previewRowsForData(data).map(([key, value]) => `
             <div class="simple-row">
               <small>${key}</small>
@@ -1671,6 +1746,7 @@
         </div>
         `}
       `).join("");
+      updatePreviewSelectionControls(orders.length);
       window.customSelectRefresh?.(simplePreview);
       sheetRows.innerHTML = orders.map((data, index) => `
         <h3>订单 ${index + 1}</h3>
@@ -1782,28 +1858,67 @@
       }
     }
 
+    function retainUnwrittenEntries(entries = [], keepIndexes = []) {
+      const keep = new Set(keepIndexes);
+      const newIndexForOld = new Map();
+      let nextIndex = 0;
+      entries.forEach((entry, index) => {
+        if (!keep.has(index)) return;
+        newIndexForOld.set(index, nextIndex);
+        nextIndex += 1;
+      });
+      const remap = source => {
+        const result = new Map();
+        source.forEach((value, oldIndex) => {
+          if (newIndexForOld.has(oldIndex)) result.set(newIndexForOld.get(oldIndex), value);
+        });
+        return result;
+      };
+      const keptPageOverrides = remap(pageOverrides);
+      const keptPaymentOverrides = remap(paymentOverrides);
+      const keptProductOverrides = remap(productOverrides);
+      const activePasteBar = pasteTextareas()[0];
+      if (activePasteBar) {
+        activePasteBar.value = entries.filter((_, index) => keep.has(index)).map(entry => entry.text).join("\n\n");
+        autoResizePasteInput(activePasteBar);
+      }
+      pageOverrides.clear(); keptPageOverrides.forEach((value, index) => pageOverrides.set(index, value));
+      paymentOverrides.clear(); keptPaymentOverrides.forEach((value, index) => paymentOverrides.set(index, value));
+      productOverrides.clear(); keptProductOverrides.forEach((value, index) => productOverrides.set(index, value));
+      collapsedPreviewOrders.clear();
+      selectedPreviewOrders.clear();
+      previewSelectionSignature = "";
+    }
+
     async function confirmOrder() {
       const entries = orderPasteEntries();
       if (!entries.length) {
         showNotice("error", "没有资料", "请先 paste 至少一组顾客下单资料。");
         return;
       }
-      const ordersToWrite = buildParsedOrdersFromPaste();
+      const allOrders = buildParsedOrdersFromPaste();
+      const selectedIndexes = [...selectedPreviewOrders].filter(index => index >= 0 && index < allOrders.length).sort((a, b) => a - b);
+      if (!selectedIndexes.length) {
+        showNotice("error", "没有选择订单", "请先勾选要确认的订单，或使用 Select All。 ");
+        return;
+      }
+      const ordersToWrite = selectedIndexes.map(index => ({ index, data: allOrders[index], entry: entries[index] }));
       const button = document.getElementById("confirmPreviewBtn");
       button.disabled = true;
       button.textContent = ordersToWrite.length > 1 ? `保存 1/${ordersToWrite.length}…` : "保存中…";
       const saved = [];
       const failed = [];
+      const savedIndexes = new Set();
       try {
-        for (let index = 0; index < ordersToWrite.length; index += 1) {
-          const data = ordersToWrite[index];
-          button.textContent = ordersToWrite.length > 1 ? `保存 ${index + 1}/${ordersToWrite.length}…` : "保存中…";
+        for (let position = 0; position < ordersToWrite.length; position += 1) {
+          const { index, data, entry } = ordersToWrite[position];
+          button.textContent = ordersToWrite.length > 1 ? `保存 ${position + 1}/${ordersToWrite.length}…` : "保存中…";
           const response = await fetch(`${apiBase}/api/order-entry`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
               page: data["Page / Account"],
-              raw: entries[index].text,
+              raw: entry.text,
               order: data
             })
           });
@@ -1820,6 +1935,7 @@
             continue;
           }
           saved.push(buildOrderRecord(data, result.entry?.record || result.entry || {}));
+          savedIndexes.add(index);
         }
         if (failed.length && !saved.length) {
           throw new Error(failed.map(item => `${item.name}: ${item.error}`).join("；") || "写入 Google Sheet 失败");
@@ -1830,7 +1946,7 @@
         hasConfirmedOrder = true;
         setConfirmedDate(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
         await loadConfirmedOrders(saved[0]?.dateKey || normalizeTypedOrderDate(orderEntryDate.value));
-        resetPasteBars();
+        retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
         render();
         const sheetText = saved[0]?.sheet ? `「${saved[0].sheet}」` : "Google Sheet";
         const rows = saved.map(order => order.row).filter(Boolean).join("、");
@@ -1842,12 +1958,13 @@
       } catch (error) {
         const quotaSoftSuccess = /property storage quota|exceeded the property storage quota/i.test(String(error && error.message || error || ""));
         if (quotaSoftSuccess && !saved.length) {
-          ordersToWrite.forEach((data, index) => {
+          ordersToWrite.forEach(({data, index}, position) => {
             saved.push(buildOrderRecord(data, {
-              id: `local-${Date.now()}-${index}`,
+              id: `local-${Date.now()}-${position}`,
               source: "dashboard",
               recordWarning: "Google Sheet 已写入，但 Apps Script 暂存空间已满，dashboard 先保留本地记录。"
             }));
+            savedIndexes.add(index);
           });
         }
         if (saved.length) {
@@ -1858,7 +1975,7 @@
           renderConfirmedOrders();
         }
         if (quotaSoftSuccess && saved.length) {
-          resetPasteBars();
+          retainUnwrittenEntries(entries, entries.map((_, index) => index).filter(index => !savedIndexes.has(index)));
           render();
           showNotice("success", "已确认进单", `${saved.length} 单已写入 Google Sheet。Dashboard 暂存空间已满，我已先保留在本机记录；需要重新部署 Apps Script 清理 storage。`);
           return;
@@ -2131,6 +2248,14 @@
       renderDraftChoices();
       renderDraftOrderCards();
     });
+    selectAllPreviewOrders.addEventListener("change", () => {
+      const total = orderPasteEntries().length;
+      selectedPreviewOrders.clear();
+      if (selectAllPreviewOrders.checked) {
+        for (let index = 0; index < total; index += 1) selectedPreviewOrders.add(index);
+      }
+      render();
+    });
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
       setTimeout(() => {
@@ -2138,6 +2263,7 @@
         paymentOverrides.clear();
         productOverrides.clear();
         collapsedPreviewOrders.clear();
+        previewSelectionSignature = "";
         autoResizePasteInput(event.target);
         render();
       }, 0);
@@ -2145,11 +2271,19 @@
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
       collapsedPreviewOrders.clear();
+      previewSelectionSignature = "";
       autoResizePasteInput(event.target);
       ensureTrailingPasteBar();
       render();
     });
     simplePreview.addEventListener("change", event => {
+      if (event.target.classList.contains("order-preview-select-toggle")) {
+        const index = Number(event.target.dataset.orderIndex);
+        if (event.target.checked) selectedPreviewOrders.add(index);
+        else selectedPreviewOrders.delete(index);
+        updatePreviewSelectionControls(orderPasteEntries().length);
+        return;
+      }
       if (event.target.classList.contains("payment-method-select")) {
         paymentOverrides.set(Number(event.target.dataset.orderIndex), event.target.value);
         render();
