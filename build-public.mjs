@@ -11,6 +11,7 @@ const files = [
   "order-key-in.html",
   "broadcast-planning.html",
   "broadcast-tracking.html",
+  "payment-links.html",
   "manychat-setup.html",
   "theme-luxe.css",
   "sidebar-unified.css",
@@ -173,12 +174,13 @@ function serveAsset(pathname) {
   if (cleanPathname === "/favicon.ico") {
     return new Response("", { status: 204, headers: { "Cache-Control": "public, max-age=86400" } });
   }
-  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html"].includes(cleanPathname)) {
+  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/payment-links.html"].includes(cleanPathname)) {
     url.pathname = "/";
     url.searchParams.delete("embedded");
     if (cleanPathname === "/order-key-in.html") url.searchParams.set("view", "order-key-in");
     else if (cleanPathname === "/broadcast-planning.html") url.searchParams.set("view", "broadcast-planning");
     else if (cleanPathname === "/broadcast-tracking.html") url.searchParams.set("view", "broadcast-tracking");
+    else if (cleanPathname === "/payment-links.html") url.searchParams.set("view", "payment-links");
     else url.searchParams.set("view", url.searchParams.get("account") ? "analysis-account" : "analysis-overview");
     return new Response(null, {
       status: 302,
@@ -196,6 +198,8 @@ function serveAsset(pathname) {
     "/broadcast-planning.html": embedded ? "/broadcast-planning.html" : "/dashboard.html",
     "/broadcast-tracking": embedded ? "/broadcast-tracking.html" : "/dashboard.html",
     "/broadcast-tracking.html": embedded ? "/broadcast-tracking.html" : "/dashboard.html",
+    "/payment-links": embedded ? "/payment-links.html" : "/dashboard.html",
+    "/payment-links.html": embedded ? "/payment-links.html" : "/dashboard.html",
     "/manychat-setup": "/manychat-setup.html"
   };
   const clean = routes[cleanPathname] || cleanPathname;
@@ -532,6 +536,16 @@ async function readBroadcastTracking(env, params = {}) {
   return json(result, response.status);
 }
 
+async function readPaymentLinks(env) {
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Dashboard payment link library 尚未连接。" }, 503);
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "payment_links");
+  const response = await fetch(endpoint, { redirect: "follow" });
+  const result = await response.json().catch(() => ({}));
+  return json(result, response.status);
+}
+
 async function forwardWebhookPost(env, eventType, payload) {
   if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) return json({ ok: false, error: "Hosted Google Sheet webhook 尚未连接。" }, 503);
   const endpoint = new URL(env.WEBHOOK_URL);
@@ -752,6 +766,13 @@ export default {
         date_from: url.searchParams.get("date_from") || "",
         date_to: url.searchParams.get("date_to") || ""
       });
+    }
+    if (url.pathname === "/api/payment-links") {
+      if (request.method === "POST") {
+        const payload = await request.json().catch(() => ({}));
+        return forwardWebhookPost(env, payload.action === "delete" ? "payment_link_delete" : "payment_link_upsert", payload);
+      }
+      return readPaymentLinks(env);
     }
     if (url.pathname === "/api/download-report") {
       const date = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);

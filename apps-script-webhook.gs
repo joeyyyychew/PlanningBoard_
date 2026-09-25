@@ -13,6 +13,8 @@ const BROADCAST_SHEET_NAME = 'JULY Broadcast Planning';
 const BROADCAST_DASHBOARD_STORE_KEY = 'broadcast_dashboard_store_v1';
 const BROADCAST_DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU/edit?gid=1673664470#gid=1673664470';
 const BROADCAST_CAMPAIGN_TRACKING_STORE_KEY = 'broadcast_campaign_tracking_store_v1';
+const PAYMENT_LINK_LIBRARY_STORE_KEY = 'payment_link_library_v1';
+const PAYMENT_LINK_SOURCE_SHEET_ID = '1JCNs80hbagQj4JznWq5qTXcafEFqT6TMiW_WzSUGCLw';
 const ORDER_MONTH_SHEETS = {
   0: 'Order Jan',
   1: 'Order Feb',
@@ -1788,6 +1790,114 @@ function getBroadcastRawRows_(limitValue) {
   return {ok:true, sheet:sheet.getName(), rows:rows};
 }
 
+function paymentLinkId_() {
+  return 'payment_link_' + Utilities.getUuid();
+}
+
+function normalizePaymentLink_(value) {
+  value = value || {};
+  const currency = String(value.currency || '').trim().toUpperCase();
+  const amount = Number(String(value.amount || '').replace(/[^0-9.]/g, ''));
+  const url = String(value.url || value.link || '').trim();
+  if (['MYR', 'SGD', 'HKD'].indexOf(currency) < 0) throw new Error('payment_link_currency_invalid');
+  if (!isFinite(amount) || amount <= 0) throw new Error('payment_link_amount_invalid');
+  if (!/^https?:\/\//i.test(url)) throw new Error('payment_link_url_invalid');
+  return {
+    id: String(value.id || '').trim() || paymentLinkId_(),
+    currency: currency,
+    amount: amount,
+    url: url,
+    created_at: String(value.created_at || new Date().toISOString()),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function importPaymentLinkLibrary_() {
+  const spreadsheet = SpreadsheetApp.openById(PAYMENT_LINK_SOURCE_SHEET_ID);
+  const tabs = [
+    {name:'MYR', currency:'MYR'},
+    {name:'SG', currency:'SGD'},
+    {name:'HK', currency:'HKD'}
+  ];
+  const links = [];
+  tabs.forEach(function(tab) {
+    const sheet = spreadsheet.getSheetByName(tab.name);
+    if (!sheet || sheet.getLastRow() < 1) return;
+    const rows = sheet.getRange(1, 2, sheet.getLastRow(), 2).getDisplayValues();
+    const richRows = sheet.getRange(1, 2, sheet.getLastRow(), 2).getRichTextValues();
+    rows.forEach(function(row, index) {
+      const amount = Number(String(row[0] || '').replace(/[^0-9.]/g, ''));
+      const richUrl = richRows[index] && richRows[index][1] && richRows[index][1].getLinkUrl();
+      const url = String(richUrl || row[1] || '').trim();
+      if (!isFinite(amount) || amount <= 0 || !/^https?:\/\//i.test(url)) return;
+      links.push(normalizePaymentLink_({currency:tab.currency, amount:amount, url:url}));
+    });
+  });
+  return {version:1, imported_at:new Date().toISOString(), links:links};
+}
+
+function readPaymentLinkLibrary_() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty(PAYMENT_LINK_LIBRARY_STORE_KEY);
+  if (!raw) {
+    const imported = importPaymentLinkLibrary_();
+    props.setProperty(PAYMENT_LINK_LIBRARY_STORE_KEY, JSON.stringify(imported));
+    return imported;
+  }
+  try {
+    const store = JSON.parse(raw);
+    store.version = 1;
+    store.links = Array.isArray(store.links) ? store.links : [];
+    return store;
+  } catch (err) {
+    throw new Error('payment_link_library_invalid');
+  }
+}
+
+function savePaymentLinkLibrary_(store) {
+  store.version = 1;
+  store.links = Array.isArray(store.links) ? store.links : [];
+  PropertiesService.getScriptProperties().setProperty(PAYMENT_LINK_LIBRARY_STORE_KEY, JSON.stringify(store));
+}
+
+function getPaymentLinkLibrary_() {
+  const store = readPaymentLinkLibrary_();
+  const links = store.links.slice().sort(function(a, b) {
+    return String(a.currency || '').localeCompare(String(b.currency || '')) || Number(a.amount || 0) - Number(b.amount || 0);
+  });
+  return {ok:true, links:links, imported_at:store.imported_at || ''};
+}
+
+function upsertPaymentLink_(body) {
+  const store = readPaymentLinkLibrary_();
+  const id = String(body.id || '').trim();
+  const existing = id ? store.links.find(function(item) { return item.id === id; }) : null;
+  const link = normalizePaymentLink_({
+    id:id,
+    currency:body.currency,
+    amount:body.amount,
+    url:body.url,
+    created_at:existing && existing.created_at
+  });
+  const index = store.links.findIndex(function(item) { return item.id === id; });
+  if (id && index < 0) throw new Error('payment_link_not_found');
+  if (index >= 0) store.links[index] = link;
+  else store.links.push(link);
+  savePaymentLinkLibrary_(store);
+  return {ok:true, link:link};
+}
+
+function deletePaymentLink_(body) {
+  const id = String(body.id || '').trim();
+  if (!id) throw new Error('payment_link_id_required');
+  const store = readPaymentLinkLibrary_();
+  const before = store.links.length;
+  store.links = store.links.filter(function(item) { return item.id !== id; });
+  if (before === store.links.length) throw new Error('payment_link_not_found');
+  savePaymentLinkLibrary_(store);
+  return {ok:true, id:id};
+}
+
 function doPost(e) {
   if (!authorized_(e)) return json_({ok: false, error: 'unauthorized'});
   let body = {};
@@ -1861,6 +1971,20 @@ function doPost(e) {
   if (String(body.event_type || e.parameter.event_type || '') === 'broadcast_order' || type === 'broadcast_order') {
     try {
       return json_(recordBroadcastOrder_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'payment_link_upsert') {
+    try {
+      return json_(upsertPaymentLink_(body));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(body.event_type || e.parameter.event_type || '') === 'payment_link_delete') {
+    try {
+      return json_(deletePaymentLink_(body));
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }
@@ -1979,6 +2103,20 @@ function doGet(e) {
   if (String(e.parameter.action || '') === 'broadcast_raw') {
     try {
       return json_(getBroadcastRawRows_(e.parameter.limit || 10));
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'payment_links') {
+    try {
+      return json_(getPaymentLinkLibrary_());
+    } catch (err) {
+      return json_({ok:false, error:String(err && err.message || err)});
+    }
+  }
+  if (String(e.parameter.action || '') === 'payment_links_import') {
+    try {
+      return json_({ok:true, links:importPaymentLinkLibrary_().links});
     } catch (err) {
       return json_({ok:false, error:String(err && err.message || err)});
     }

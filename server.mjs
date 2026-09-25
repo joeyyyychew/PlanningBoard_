@@ -10,6 +10,7 @@ const REPORTS_FILE = join(DATA_DIR, "reports.json");
 const EVENTS_FILE = join(DATA_DIR, "events.jsonl");
 const RUN_REQUESTS_FILE = join(DATA_DIR, "run-requests.jsonl");
 const CONTACT_WATCHLIST_FILE = join(DATA_DIR, "contact-watchlist.json");
+const PAYMENT_LINKS_FILE = join(DATA_DIR, "payment-links.json");
 const ORDER_SPREADSHEET_ID = "1py5YznTXAD6TU9onEaa12MXWhLCUngQ5PDSTfD4Q_JQ";
 const BROADCAST_SPREADSHEET_ID = "1kyNfmPbTQ39Bg5Nn2Eqtz5r-x7cdYmcM7dd6XZT8bwU";
 const BROADCAST_SHEET_GID = "1673664470";
@@ -1333,6 +1334,62 @@ async function writeBroadcastTrackingEvent(eventType, payload) {
   return body;
 }
 
+async function readPaymentLinks() {
+  const library = await readPaymentLinkFile();
+  return { ok: true, links: library.links, imported_at: library.imported_at || "" };
+}
+
+async function writePaymentLink(eventType, payload) {
+  const library = await readPaymentLinkFile();
+  if (eventType === "payment_link_delete") {
+    const before = library.links.length;
+    library.links = library.links.filter(link => link.id !== String(payload.id || ""));
+    if (before === library.links.length) throw new Error("Payment link not found");
+    await writePaymentLinkFile(library);
+    return { ok: true, id: payload.id };
+  }
+  const currency = String(payload.currency || "").trim().toUpperCase();
+  const amount = Number(String(payload.amount || "").replace(/[^0-9.]/g, ""));
+  const url = String(payload.url || "").trim();
+  if (!['MYR', 'SGD', 'HKD'].includes(currency)) throw new Error("Choose MYR, SGD or HKD");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a valid amount");
+  if (!/^https?:\/\//i.test(url)) throw new Error("Enter a valid payment link");
+  const id = String(payload.id || "").trim();
+  const now = new Date().toISOString();
+  const existingIndex = library.links.findIndex(link => link.id === id);
+  if (id && existingIndex < 0) throw new Error("Payment link not found");
+  const link = { id: id || `payment_link_${randomBytes(12).toString("hex")}`, currency, amount, url, created_at: existingIndex >= 0 ? library.links[existingIndex].created_at : now, updated_at: now };
+  if (existingIndex >= 0) library.links[existingIndex] = link;
+  else library.links.push(link);
+  await writePaymentLinkFile(library);
+  return { ok: true, link };
+}
+
+async function readPaymentLinkFile() {
+  const raw = await readFile(PAYMENT_LINKS_FILE, "utf8").catch(error => error.code === "ENOENT" ? "" : Promise.reject(error));
+  if (raw) {
+    const library = JSON.parse(raw);
+    library.links = Array.isArray(library.links) ? library.links : [];
+    return library;
+  }
+  if (!env.WEBHOOK_URL || !env.EVENT_INGEST_KEY) throw new Error("Payment link import is not connected");
+  const endpoint = new URL(env.WEBHOOK_URL);
+  endpoint.searchParams.set("key", env.EVENT_INGEST_KEY);
+  endpoint.searchParams.set("action", "payment_links_import");
+  const response = await fetch(endpoint, { redirect: "follow", cache: "no-store" });
+  const imported = await response.json().catch(() => ({}));
+  if (!response.ok || !imported.ok || !Array.isArray(imported.links)) throw new Error(imported.error || "Unable to import payment links");
+  const now = new Date().toISOString();
+  const library = { version: 1, imported_at: now, links: imported.links.map((link, index) => ({ ...link, id: link.id || `payment_link_import_${index}`, created_at: link.created_at || now, updated_at: link.updated_at || now })) };
+  await writePaymentLinkFile(library);
+  return library;
+}
+
+async function writePaymentLinkFile(library) {
+  await mkdir(DATA_DIR, { recursive: true });
+  await writeFile(PAYMENT_LINKS_FILE, `${JSON.stringify(library, null, 2)}\n`);
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -1545,6 +1602,16 @@ const server = http.createServer(async (req, res) => {
         date_to: url.searchParams.get("date_to") || ""
       });
       return json(res, 200, result);
+    }
+
+    if (url.pathname === "/api/payment-links" && req.method === "GET") {
+      return json(res, 200, await readPaymentLinks());
+    }
+
+    if (url.pathname === "/api/payment-links" && req.method === "POST") {
+      const request = await readBody(req);
+      const eventType = request.action === "delete" ? "payment_link_delete" : "payment_link_upsert";
+      return json(res, 200, await writePaymentLink(eventType, request));
     }
 
     if (url.pathname === "/api/broadcast-campaign" && req.method === "POST") {

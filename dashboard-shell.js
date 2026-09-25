@@ -28,6 +28,7 @@
     if (target === "broadcast-tracking") {
       return `/broadcast-tracking?account=${encodeURIComponent(account || params.get("account") || "fb108701968299986")}&date=${encodeURIComponent(date)}&embedded=1`;
     }
+    if (target === "payment-links") return "/payment-links?embedded=1";
     if (target === "analysis-account") {
       return `/index?account=${encodeURIComponent(account)}&date=${encodeURIComponent(date)}&embedded=1`;
     }
@@ -115,6 +116,8 @@
       ? "broadcast-planning"
       : location.pathname.includes("broadcast-tracking")
         ? "broadcast-tracking"
+        : location.pathname.includes("payment-links")
+          ? "payment-links"
         : "";
   const initialTarget = params.get("view") || pathTarget || (accounts.has(params.get("account")) ? "analysis-account" : "analysis-overview");
   setActive(initialTarget, params.get("account") || "", false);
