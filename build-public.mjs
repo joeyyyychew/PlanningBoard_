@@ -12,6 +12,7 @@ const files = [
   "broadcast-planning.html",
   "broadcast-tracking.html",
   "payment-links.html",
+  "payment-links-library.js",
   "manychat-setup.html",
   "theme-luxe.css",
   "sidebar-unified.css",
