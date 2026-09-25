@@ -1997,6 +1997,8 @@ const server = http.createServer(async (req, res) => {
       "/broadcast-planning.html": embedded ? "broadcast-planning.html" : "dashboard.html",
       "/broadcast-tracking": embedded ? "broadcast-tracking.html" : "dashboard.html",
       "/broadcast-tracking.html": embedded ? "broadcast-tracking.html" : "dashboard.html",
+      "/payment-links": embedded ? "payment-links.html" : "dashboard.html",
+      "/payment-links.html": embedded ? "payment-links.html" : "dashboard.html",
       "/manychat-setup": "manychat-setup.html",
       "/auth-client.js": "auth-client.js"
     };
