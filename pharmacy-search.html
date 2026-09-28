@@ -12,7 +12,7 @@
 </head>
 <body>
   <main>
-    <header class="page-head"><div><h1>Pharmacy Search</h1><div class="sub">Search any pharmacy detail, then copy it in the original Google Sheet format.</div></div><button class="primary" id="showEditor" type="button">+ Add Pharmacy</button></header>
+    <header class="page-head"><div><h1>Pharmacy Search</h1><div class="sub">Search any pharmacy detail, then copy it in the original Google Sheet format.</div></div><button class="primary" id="showEditor" type="button">Add New</button></header>
     <section class="card editor" id="editor" hidden>
       <form id="pharmacyForm"><div class="editor-grid">
         <div><label for="formName">Pharmacy Name</label><input id="formName" required /></div>
@@ -27,7 +27,7 @@
       <div class="search-field"><div><label for="keyword">Search pharmacy details</label><input id="keyword" placeholder="Name, state, postcode, address or phone…" /></div><button class="primary" id="search">Search</button></div>
       <button class="secondary" type="button" id="clear">Clear</button>
     </section>
-    <div class="result-head"><div><h2>Search Result</h2><div class="sub">Copy keeps the pharmacy name, emoji, address, operating hours and contact number.</div></div><div class="result-tools"><div class="count" id="count"></div><button class="primary copy-all" id="copyAll" type="button">Copy All Results</button></div></div>
+    <div class="result-head"><div><h2>Search Result</h2><div class="sub">Copy keeps the pharmacy name, emoji, address, operating hours and contact number.</div></div><div class="result-tools"><div class="count" id="count"></div><button class="primary copy-all" id="copyAll" type="button">Copy All</button></div></div>
     <section class="card"><div class="results" id="results"><div class="empty">Search by pharmacy name, state, postcode, address, opening hours or phone number.</div></div></section>
   </main>
   <div class="toast" id="toast"></div>
