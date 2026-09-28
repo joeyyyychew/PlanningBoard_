@@ -1975,13 +1975,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     const embedded = url.searchParams.get("embedded") === "1";
-    if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html"].includes(url.pathname)) {
+    if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/pharmacy-search.html"].includes(url.pathname)) {
       const next = new URL(url);
       next.pathname = "/";
       next.searchParams.delete("embedded");
       if (url.pathname === "/order-key-in.html") next.searchParams.set("view", "order-key-in");
       else if (url.pathname === "/broadcast-planning.html") next.searchParams.set("view", "broadcast-planning");
       else if (url.pathname === "/broadcast-tracking.html") next.searchParams.set("view", "broadcast-tracking");
+      else if (url.pathname === "/pharmacy-search.html") next.searchParams.set("view", "pharmacy-search");
       else next.searchParams.set("view", next.searchParams.get("account") ? "analysis-account" : "analysis-overview");
       res.writeHead(302, { Location: `${next.pathname}${next.search}` });
       return res.end();
@@ -1999,6 +2000,8 @@ const server = http.createServer(async (req, res) => {
       "/broadcast-tracking.html": embedded ? "broadcast-tracking.html" : "dashboard.html",
       "/payment-links": embedded ? "payment-links.html" : "dashboard.html",
       "/payment-links.html": embedded ? "payment-links.html" : "dashboard.html",
+      "/pharmacy-search": embedded ? "pharmacy-search.html" : "dashboard.html",
+      "/pharmacy-search.html": embedded ? "pharmacy-search.html" : "dashboard.html",
       "/manychat-setup": "manychat-setup.html",
       "/auth-client.js": "auth-client.js"
     };
