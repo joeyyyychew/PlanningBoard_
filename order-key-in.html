@@ -1923,13 +1923,7 @@
       if (isCollagenDrinkOrder(data)) {
         return `Collagen Drinks ${data["M · Collagen Drinks BTL"] || "待确认"} BTL`;
       }
-      const listedProducts = [
-        data["I · Classic BTL"] !== "-" ? `Classic ${data["I · Classic BTL"]} BTL` : "",
-        data["J · Knee BTL"] !== "-" ? `Knee ${data["J · Knee BTL"]} BTL` : "",
-        data["K · Ginseng BTL"] !== "-" ? `Ginseng ${data["K · Ginseng BTL"]} BTL` : "",
-        data["L · Floral BTL"] !== "-" ? `Floral ${data["L · Floral BTL"]} BTL` : ""
-      ].filter(Boolean).join(" · ");
-      return listedProducts || data["N · Variant"] || data["O · Remark"] || "待确认";
+      return data["N · Variant"] || "";
     }
 
     function previewRowsForData(data) {
