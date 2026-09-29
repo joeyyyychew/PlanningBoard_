@@ -339,10 +339,6 @@ function isCollagenDrinkOrder_(order) {
   return String(value_(order, 'Order Type') || '').trim().toUpperCase() === 'COLLAGEN_DRINKS';
 }
 
-function isCollagenBowlOrder_(order) {
-  return /COLLAGEN\s*BOWL/i.test(String(value_(order, 'N · Variant') || '') + '\n' + String(value_(order, 'O · Remark') || ''));
-}
-
 function isCollagenDrinkSheet_(sheet) {
   return /^Collagen Drink\s+/i.test(String(sheet && sheet.getName() || ''));
 }
@@ -1022,9 +1018,7 @@ function rowDSFromOrder_(order, orderNo, sheet, row) {
   const dropdownValue = function(column, value) {
     return sheet && row ? dropdownValueOrBlank_(sheet, row, column, value) : String(value || '').trim();
   };
-  const variantValue = isCollagenBowlOrder_(order)
-    ? String(value_(order, 'N · Variant') || 'COLLAGEN BOWL').trim()
-    : dropdownValue(14, value_(order, 'N · Variant'));
+  const variantValue = dropdownValue(14, value_(order, 'N · Variant'));
   const channelValue = String(value_(order, 'H · Channel / Chanel') || '').trim();
   if (isCollagenDrinkSheet_(sheet)) {
     return [

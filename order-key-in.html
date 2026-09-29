@@ -945,7 +945,7 @@
         const data = {
           ...parseOrder(text, selectedPage),
           "Page / Account": selectedPage,
-          "H · Channel / Chanel": channelForPage(selectedPage)
+          "H · Channel / Chanel": channelForOrder(selectedPage, text)
         };
         if (payments.has(index)) data["M · Payment Method"] = payments.get(index);
         if (products.has(index)) {
@@ -1259,8 +1259,15 @@
       return pageChannelMap[pageName] || "";
     }
 
+    function channelForOrder(pageName = page.value, source = "", order = {}) {
+      if (pageName !== "Live Channel") return channelForPage(pageName);
+      const context = `${source || ""}\n${order["Q · Phone"] || ""}\n${order["R · Address"] || ""}`;
+      return /\bsingapore\b|\b65[\s-]?[89]\d{3}[\s-]?\d{4}\b|\b[89]\d{7}\b/i.test(context) ? "SG LIVE" : "Main LIVE";
+    }
+
     function pageForChannel(channel = "") {
       const normalized = String(channel).trim().toLowerCase();
+      if (["main live", "sg live"].includes(normalized)) return "Live Channel";
       const entry = Object.entries(pageChannelMap).find(([, mappedChannel]) =>
         String(mappedChannel).trim().toLowerCase() === normalized
       );
@@ -1617,7 +1624,10 @@
       };
       segments.forEach(addQuantity);
       const variantParts = [];
-      const totalBoxes = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)].reduce((sum, match) => sum + Number(match[1]), 0);
+      const totalBoxes = segments
+        .filter(part => ["classic", "knee", "ginseng"].includes(classify(part)))
+        .flatMap(part => [...part.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)])
+        .reduce((sum, match) => sum + Number(match[1]), 0);
       const formatBoxCount = (value) => {
         const number = Number(value || 0);
         if (!Number.isFinite(number) || !number) return "";
@@ -1727,7 +1737,9 @@
         if (totalKey) totals[totalKey] += item.unit === "BTL" ? item.quantity : item.quantity * multiplier;
       });
       const formatBoxes = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
-      const variant = normalized.map(item => `${formatBoxes(item.quantity)} ${item.unit} ${item.variant || item.type}`).join(" + ");
+      const variant = normalized
+        .filter(item => ["CLASSIC", "KNEE", "GINSENG"].includes(item.type))
+        .map(item => `${formatBoxes(item.quantity)} ${item.unit} ${item.variant || item.type}`).join(" + ");
       return { totals, variant, remark: variant };
     }
 
@@ -1891,13 +1903,13 @@
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
         "G · Platform Name": platformName || "",
-        "H · Channel / Chanel": channelForPage(selectedPage),
+        "H · Channel / Chanel": channelForOrder(selectedPage, text),
         "I · Classic BTL": quantities.totals.classic || "-",
         "J · Knee BTL": quantities.totals.knee || "-",
         "K · Ginseng BTL": quantities.totals.ginseng || "-",
         "L · Floral BTL": quantities.totals.floral || "-",
         "M · Payment Method": payment,
-        "N · Variant": isCollagenBowl ? bowlProductText : quantities.variant,
+        "N · Variant": isCollagenBowl ? "" : quantities.variant,
         "O · Remark": remarkBits.join(", "),
         "P · Name": name || "",
         "Q · Phone": normalizePhone(phone),
@@ -1941,11 +1953,11 @@
         let data = {
           ...(isDraftEditor ? editingDraftEntry.data : parseOrder(entry.text, entry.page)),
           "Page / Account": entry.page,
-          "H · Channel / Chanel": channelForPage(entry.page)
+          "H · Channel / Chanel": channelForOrder(entry.page, entry.text)
         };
         if (pageOverrides.has(index)) {
           data["Page / Account"] = pageOverrides.get(index);
-          data["H · Channel / Chanel"] = channelForPage(data["Page / Account"]);
+          data["H · Channel / Chanel"] = channelForOrder(data["Page / Account"], entry.text, data);
         }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
