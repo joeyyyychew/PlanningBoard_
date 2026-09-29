@@ -1882,7 +1882,10 @@
     function parseOrder(text = splitOrderBlocks()[0] || "", selectedPage = page.value) {
       const loose = inferLooseOrder(text);
       const phone = pick(text, ["电话", "手机号", "phone", "tel", "contact"]) || loose.phone || extractPhone(text);
-      const amount = pick(text, ["金额", "总额", "价格", "amount", "total"]) || loose.amount || (text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "");
+      // A product note can contain words such as "TOTAL 20 SET". Prefer an
+      // actual currency amount so those quantities never become the order total.
+      const currencyAmount = text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "";
+      const amount = pick(text, ["金额", "总额", "价格", "amount"]) || currencyAmount || loose.amount;
       const product = pick(text, ["产品", "商品", "item", "product"]) || loose.product;
       const quantities = productQuantities(product);
       const isCollagenBowl = /COLLAGEN\s*BOWL/i.test(product);
