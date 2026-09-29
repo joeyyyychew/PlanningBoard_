@@ -755,7 +755,7 @@
         </div>
         <div class="full">
           <label for="editOrderReceipt">Receipt Link</label>
-          <input id="editOrderReceipt" type="text" />
+          <textarea id="editOrderReceipt" placeholder="One receipt link per line"></textarea>
         </div>
       </div>
       <div class="edit-order-actions">
@@ -973,6 +973,17 @@
           data["O · Remark"] = collagen.remark;
           data["Page / Account"] = "";
           data["H · Channel / Chanel"] = "";
+        } else if (isCollagenBowlOrder(data)) {
+          const bowl = productDataFromItems(products.has(index)
+            ? normaliseProductItems(products.get(index))
+            : collagenBowlItemsFromText(text));
+          data["I · Classic BTL"] = "-";
+          data["J · Knee BTL"] = "-";
+          data["K · Ginseng BTL"] = "-";
+          data["L · Floral BTL"] = "-";
+          data["M · Collagen Drinks BTL"] = "";
+          data["N · Variant"] = bowl.variant || "COLLAGEN BOWL";
+          data["O · Remark"] = bowl.remark || "COLLAGEN BOWL";
         }
         return { index, raw:text, data };
       });
@@ -1477,7 +1488,13 @@
     }
 
     function extractReceipt(text) {
-      return pick(text, ["receipt", "收据", "付款证明"]) || (text.match(/https?:\/\/\S+/i)?.[0] || "");
+      const source = String(text || "");
+      const labelled = [...source.matchAll(/(?:receipt|收据|付款证明)\s*[:：-]?\s*([^\n]+)/ig)]
+        .map(match => match[1].trim())
+        .filter(Boolean);
+      const urls = [...source.matchAll(/https?:\/\/[^\s<>"']+/ig)]
+        .map(match => match[0].replace(/[),.;]+$/, ""));
+      return [...new Set([...labelled, ...urls])].join("\n");
     }
 
     function cleanLines(text) {
@@ -1514,7 +1531,7 @@
     function isProductLine(line = "") {
       const text = String(line || "").trim();
       return /\b(?:BOX|BTL|BOTTLE|盒|瓶)\b/i.test(text) ||
-        /\b(?:CLASSIC|LYCHEE|LONGAN|OSMANTHUS|PASSION\s*FRUIT|GINSENG|LEMON\s*GRASS|LEMONGRASS|FLORAL|GIFT\s*BOX|SKIN|KNEE)\b/i.test(text);
+        /\b(?:COLLAGEN\s*BOWL|CLASSIC|LYCHEE|LONGAN|OSMANTHUS|PASSION\s*FRUIT|GINSENG|LEMON\s*GRASS|LEMONGRASS|FLORAL|GIFT\s*BOX|SKIN|KNEE)\b/i.test(text);
     }
 
     function isLikelyNameLine(line = "") {
@@ -1575,7 +1592,7 @@
         .filter(line => line !== name)
         .filter(line => isAddressLine(line) || !isLikelyNameLine(line));
       const address = addressLines.join("\n");
-      return { name, phone: extractPhone(phoneLine), amount: amountLine, payment: paymentLine, product: productLine, receipt: urls[0] || "", address };
+      return { name, phone: extractPhone(phoneLine), amount: amountLine, payment: paymentLine, product: productLine, receipt: urls.join("\n"), address };
     }
 
     function productQuantities(productText) {
@@ -1623,20 +1640,23 @@
       return { totals, variant: variantParts.join(" + ") };
     }
 
-    const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL"];
+    const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL", "COLLAGEN_BOWL"];
     const orderTypeOptions = [
       { value:"", label:"ScaleStory Products" },
-      { value:"COLLAGEN_DRINKS", label:"Collagen Drinks" }
+      { value:"COLLAGEN_DRINKS", label:"Collagen Drinks" },
+      { value:"COLLAGEN_BOWL", label:"Collagen Bowl" }
     ];
     const productVariantOptions = {
       CLASSIC: ["LONGAN", "OSMANTHUS", "PASSIONFRUIT", "LYCHEE"],
       KNEE: ["", "LEMON GRASS"],
       GINSENG: ["", "GINSENG"],
-      FLORAL: ["", "FLORAL"]
+      FLORAL: ["", "FLORAL"],
+      COLLAGEN_BOWL: ["COLLAGEN BOWL"]
     };
 
     function productTypeForText(text = "") {
       const value = String(text).toUpperCase();
+      if (/COLLAGEN\s*BOWL/.test(value)) return "COLLAGEN_BOWL";
       if (/GINSENG/.test(value)) return "GINSENG";
       if (/LEMON\s*GRASS|LEMONGRASS|KNEE/.test(value)) return "KNEE";
       if (/FLORAL/.test(value)) return "FLORAL";
@@ -1654,7 +1674,7 @@
         const unit = /BTL|BOTTLE|瓶/.test(quantityMatch?.[2] || "") ? "BTL" : "BOX";
         const variant = part
           .replace(/\d+(?:\.\d+)?\s*(?:BOX|盒|BTL|BOTTLE|瓶)/g, "")
-          .replace(/\b(CLASSIC|KNEE|GINSENG|FLORAL)\b/g, "")
+          .replace(/\b(COLLAGEN\s*BOWL|CLASSIC|KNEE|GINSENG|FLORAL)\b/g, "")
           .replace(/\s+/g, " ").trim();
         return { type, variant, quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1, unit };
       });
@@ -1672,6 +1692,20 @@
 
     function isCollagenDrinkOrder(data = {}) {
       return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_DRINKS";
+    }
+
+    function isCollagenBowlOrder(data = {}) {
+      return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_BOWL";
+    }
+
+    function collagenBowlItemsFromText(productText = "") {
+      const bowls = manualProductItemsFromText(productText).filter(item => item.type === "COLLAGEN_BOWL");
+      return bowls.length ? bowls : [{ type:"COLLAGEN_BOWL", variant:"COLLAGEN BOWL", quantity:1, unit:"BOX" }];
+    }
+
+    function collagenBowlItemsForOrder(index, originalProduct = "") {
+      const override = productOverrides.get(index);
+      return override ? normaliseProductItems(override) : collagenBowlItemsFromText(originalProduct);
     }
 
     function collagenItemsFromText(productText = "") {
@@ -1715,7 +1749,8 @@
       const keyForType = { CLASSIC: "classic", KNEE: "knee", GINSENG: "ginseng", FLORAL: "floral" };
       normalized.forEach(item => {
         const multiplier = item.type === "CLASSIC" && /GIFT\s*BOX/.test(item.variant) ? 6 : 12;
-        totals[keyForType[item.type]] += item.unit === "BTL" ? item.quantity : item.quantity * multiplier;
+        const totalKey = keyForType[item.type];
+        if (totalKey) totals[totalKey] += item.unit === "BTL" ? item.quantity : item.quantity * multiplier;
       });
       const formatBoxes = value => Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
       const variant = normalized.map(item => `${formatBoxes(item.quantity)} ${item.unit} ${item.variant || item.type}`).join(" + ");
@@ -1742,6 +1777,17 @@
         data["M · Collagen Drinks BTL"] = collagen.bottles;
         data["N · Variant"] = collagen.variant;
         data["O · Remark"] = collagen.remark;
+        return data;
+      }
+      if (isCollagenBowlOrder(data)) {
+        const bowl = productDataFromItems(collagenBowlItemsForOrder(index, originalProduct));
+        data["I · Classic BTL"] = "-";
+        data["J · Knee BTL"] = "-";
+        data["K · Ginseng BTL"] = "-";
+        data["L · Floral BTL"] = "-";
+        data["M · Collagen Drinks BTL"] = "";
+        data["N · Variant"] = bowl.variant || "COLLAGEN BOWL";
+        data["O · Remark"] = bowl.remark || "COLLAGEN BOWL";
         return data;
       }
       if (!productOverrides.has(index)) return data;
@@ -1875,7 +1921,7 @@
         /SGD|S\$/i.test(amount) ? amount : ""
       ].filter(Boolean);
       const parsed = {
-        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : "",
+        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : /COLLAGEN\s*BOWL/i.test(`${product}\n${text}`) ? "COLLAGEN_BOWL" : "",
         "D · Sales Person": "Joey",
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
@@ -1901,12 +1947,14 @@
       if (isCollagenDrinkOrder(data)) {
         return `Collagen Drinks ${data["M · Collagen Drinks BTL"] || "待确认"} BTL`;
       }
-      return [
+      if (isCollagenBowlOrder(data)) return data["N · Variant"] || data["O · Remark"] || "COLLAGEN BOWL";
+      const listedProducts = [
         data["I · Classic BTL"] !== "-" ? `Classic ${data["I · Classic BTL"]} BTL` : "",
         data["J · Knee BTL"] !== "-" ? `Knee ${data["J · Knee BTL"]} BTL` : "",
         data["K · Ginseng BTL"] !== "-" ? `Ginseng ${data["K · Ginseng BTL"]} BTL` : "",
         data["L · Floral BTL"] !== "-" ? `Floral ${data["L · Floral BTL"]} BTL` : ""
-      ].filter(Boolean).join(" · ") || "待确认";
+      ].filter(Boolean).join(" · ");
+      return listedProducts || data["N · Variant"] || data["O · Remark"] || "待确认";
     }
 
     function previewRowsForData(data) {
@@ -1992,7 +2040,7 @@
             <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select</label>
             <h3>订单 ${index + 1}</h3>
             <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
-            <span>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : ([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认"))}</span>
+            <span>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : isCollagenBowlOrder(data) ? "Collagen Bowl" : ([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认"))}</span>
           </div>
           <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}" title="展开订单" aria-label="展开订单">⌄</button>
         </div>
@@ -2007,7 +2055,7 @@
                 : field === "R · Address"
                 ? `<textarea class="order-detail-input" data-order-index="${index}" data-order-field="${field}">${escapeHtml(value)}</textarea>`
                 : field === "AK · Receipt Link"
-                ? `<input class="order-detail-input receipt-link-input" type="url" inputmode="url" autocomplete="url" placeholder="Paste receipt link…" aria-label="Receipt Link" data-order-index="${index}" data-order-field="${field}" value="${escapeHtml(value)}" />`
+                ? `<textarea class="order-detail-input receipt-link-input" placeholder="One receipt link per line" aria-label="Receipt Link" data-order-index="${index}" data-order-field="${field}">${escapeHtml(value)}</textarea>`
                 : `<input class="order-detail-input" data-order-index="${index}" data-order-field="${field}" value="${escapeHtml(value)}" />`)
                 : `<strong>${escapeHtml(value)}</strong>`}
             </div>
@@ -2716,6 +2764,8 @@
         const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
         productOverrides.set(orderIndex, orderType === "COLLAGEN_DRINKS"
           ? collagenItemsFromText(originalProduct)
+          : orderType === "COLLAGEN_BOWL"
+          ? collagenBowlItemsFromText(originalProduct)
           : manualProductItemsFromText(originalProduct));
         render();
         return;

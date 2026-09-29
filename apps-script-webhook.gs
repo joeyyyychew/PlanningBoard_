@@ -339,6 +339,10 @@ function isCollagenDrinkOrder_(order) {
   return String(value_(order, 'Order Type') || '').trim().toUpperCase() === 'COLLAGEN_DRINKS';
 }
 
+function isCollagenBowlOrder_(order) {
+  return String(value_(order, 'Order Type') || '').trim().toUpperCase() === 'COLLAGEN_BOWL';
+}
+
 function isCollagenDrinkSheet_(sheet) {
   return /^Collagen Drink\s+/i.test(String(sheet && sheet.getName() || ''));
 }
@@ -1018,6 +1022,9 @@ function rowDSFromOrder_(order, orderNo, sheet, row) {
   const dropdownValue = function(column, value) {
     return sheet && row ? dropdownValueOrBlank_(sheet, row, column, value) : String(value || '').trim();
   };
+  const variantValue = isCollagenBowlOrder_(order)
+    ? String(value_(order, 'N · Variant') || 'COLLAGEN BOWL').trim()
+    : dropdownValue(14, value_(order, 'N · Variant'));
   if (isCollagenDrinkSheet_(sheet)) {
     return [
       dropdownValue(4, value_(order, 'D · Sales Person') || 'Joey'),
@@ -1047,7 +1054,7 @@ function rowDSFromOrder_(order, orderNo, sheet, row) {
     value_(order, 'K · Ginseng BTL'),
     value_(order, 'L · Floral BTL'),
     dropdownValue(13, value_(order, 'M · Payment Method')),
-    dropdownValue(14, value_(order, 'N · Variant')),
+    variantValue,
     value_(order, 'O · Remark'),
     value_(order, 'P · Name'),
     value_(order, 'Q · Phone'),
