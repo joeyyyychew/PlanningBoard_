@@ -340,7 +340,7 @@ function isCollagenDrinkOrder_(order) {
 }
 
 function isCollagenBowlOrder_(order) {
-  return String(value_(order, 'Order Type') || '').trim().toUpperCase() === 'COLLAGEN_BOWL';
+  return /COLLAGEN\s*BOWL/i.test(String(value_(order, 'N · Variant') || '') + '\n' + String(value_(order, 'O · Remark') || ''));
 }
 
 function isCollagenDrinkSheet_(sheet) {
@@ -1025,13 +1025,14 @@ function rowDSFromOrder_(order, orderNo, sheet, row) {
   const variantValue = isCollagenBowlOrder_(order)
     ? String(value_(order, 'N · Variant') || 'COLLAGEN BOWL').trim()
     : dropdownValue(14, value_(order, 'N · Variant'));
+  const channelValue = String(value_(order, 'H · Channel / Chanel') || '').trim();
   if (isCollagenDrinkSheet_(sheet)) {
     return [
       dropdownValue(4, value_(order, 'D · Sales Person') || 'Joey'),
       orderNo,
       value_(order, 'F · Date'),
       dropdownValue(7, value_(order, 'G · Platform Name')),
-      dropdownValue(8, value_(order, 'H · Channel / Chanel')),
+      channelValue,
       '-', '-', '-', '-',
       value_(order, 'M · Collagen Drinks BTL') || '',
       dropdownValue(14, value_(order, 'M · Payment Method')),
@@ -1048,7 +1049,7 @@ function rowDSFromOrder_(order, orderNo, sheet, row) {
     orderNo,
     value_(order, 'F · Date'),
     dropdownValue(7, value_(order, 'G · Platform Name')),
-    dropdownValue(8, value_(order, 'H · Channel / Chanel')),
+    channelValue,
     value_(order, 'I · Classic BTL'),
     value_(order, 'J · Knee BTL'),
     value_(order, 'K · Ginseng BTL'),

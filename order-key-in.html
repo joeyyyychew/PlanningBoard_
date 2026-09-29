@@ -973,17 +973,6 @@
           data["O · Remark"] = collagen.remark;
           data["Page / Account"] = "";
           data["H · Channel / Chanel"] = "";
-        } else if (isCollagenBowlOrder(data)) {
-          const bowl = productDataFromItems(products.has(index)
-            ? normaliseProductItems(products.get(index))
-            : collagenBowlItemsFromText(text));
-          data["I · Classic BTL"] = "-";
-          data["J · Knee BTL"] = "-";
-          data["K · Ginseng BTL"] = "-";
-          data["L · Floral BTL"] = "-";
-          data["M · Collagen Drinks BTL"] = "";
-          data["N · Variant"] = bowl.variant || "COLLAGEN BOWL";
-          data["O · Remark"] = bowl.remark || "COLLAGEN BOWL";
         }
         return { index, raw:text, data };
       });
@@ -1643,8 +1632,7 @@
     const productTypes = ["CLASSIC", "KNEE", "GINSENG", "FLORAL", "COLLAGEN_BOWL"];
     const orderTypeOptions = [
       { value:"", label:"ScaleStory Products" },
-      { value:"COLLAGEN_DRINKS", label:"Collagen Drinks" },
-      { value:"COLLAGEN_BOWL", label:"Collagen Bowl" }
+      { value:"COLLAGEN_DRINKS", label:"Collagen Drinks" }
     ];
     const productVariantOptions = {
       CLASSIC: ["LONGAN", "OSMANTHUS", "PASSIONFRUIT", "LYCHEE"],
@@ -1692,20 +1680,6 @@
 
     function isCollagenDrinkOrder(data = {}) {
       return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_DRINKS";
-    }
-
-    function isCollagenBowlOrder(data = {}) {
-      return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_BOWL";
-    }
-
-    function collagenBowlItemsFromText(productText = "") {
-      const bowls = manualProductItemsFromText(productText).filter(item => item.type === "COLLAGEN_BOWL");
-      return bowls.length ? bowls : [{ type:"COLLAGEN_BOWL", variant:"COLLAGEN BOWL", quantity:1, unit:"BOX" }];
-    }
-
-    function collagenBowlItemsForOrder(index, originalProduct = "") {
-      const override = productOverrides.get(index);
-      return override ? normaliseProductItems(override) : collagenBowlItemsFromText(originalProduct);
     }
 
     function collagenItemsFromText(productText = "") {
@@ -1779,17 +1753,6 @@
         data["O · Remark"] = collagen.remark;
         return data;
       }
-      if (isCollagenBowlOrder(data)) {
-        const bowl = productDataFromItems(collagenBowlItemsForOrder(index, originalProduct));
-        data["I · Classic BTL"] = "-";
-        data["J · Knee BTL"] = "-";
-        data["K · Ginseng BTL"] = "-";
-        data["L · Floral BTL"] = "-";
-        data["M · Collagen Drinks BTL"] = "";
-        data["N · Variant"] = bowl.variant || "COLLAGEN BOWL";
-        data["O · Remark"] = bowl.remark || "COLLAGEN BOWL";
-        return data;
-      }
       if (!productOverrides.has(index)) return data;
       const product = productDataFromItems(productItemsForOrder(index, originalProduct));
       data["I · Classic BTL"] = product.totals.classic || "-";
@@ -1819,7 +1782,7 @@
       return `<div class="product-builder" data-product-builder="${index}">
         <div class="product-builder-head"><small>产品（自动大写；可选择 BOX / BTL）</small><small>可加多项</small></div>
         ${items.map((item, itemIndex) => `<div class="product-builder-item" data-product-item="${itemIndex}">
-          <select class="product-type-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${productTypes.map(type => `<option value="${type}" ${type === item.type ? "selected" : ""}>${type}</option>`).join("")}</select>
+          <select class="product-type-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${productTypes.map(type => `<option value="${type}" ${type === item.type ? "selected" : ""}>${type === "COLLAGEN_BOWL" ? "COLLAGEN BOWL" : type}</option>`).join("")}</select>
           <select class="product-variant-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true">${(productVariantOptions[item.type] || [""]).map(variant => `<option value="${escapeHtml(variant)}" ${variant === item.variant ? "selected" : ""}>${escapeHtml(variant || "VARIANT")}</option>`).join("")}</select>
           <input class="product-quantity-input" data-order-index="${index}" data-product-index="${itemIndex}" type="number" min="0.5" step="0.5" value="${escapeHtml(item.quantity)}" aria-label="数量" />
           <select class="product-unit-select" data-order-index="${index}" data-product-index="${itemIndex}" data-native="true"><option value="BOX" ${item.unit === "BOX" ? "selected" : ""}>BOX</option><option value="BTL" ${item.unit === "BTL" ? "selected" : ""}>BTL</option></select>
@@ -1911,17 +1874,19 @@
       const amount = pick(text, ["金额", "总额", "价格", "amount", "total"]) || loose.amount || (text.match(/(?:RM|SGD|S\$)\s*\d+(?:\.\d{1,2})?/i)?.[0] || "");
       const product = pick(text, ["产品", "商品", "item", "product"]) || loose.product;
       const quantities = productQuantities(product);
+      const isCollagenBowl = /COLLAGEN\s*BOWL/i.test(product);
+      const bowlProductText = String(product || "").trim().toUpperCase();
       const receipt = extractReceipt(text) || loose.receipt;
       const payment = inferPaymentMethod(`${pick(text, ["付款", "付款方式", "payment", "payment method"])}\n${loose.payment}\n${text}`, receipt);
       const name = pick(text, ["姓名", "名字", "name"]) || loose.name;
       const platformName = pick(text, ["Platform Name", "平台名", "fb name", "manychat name"]) || name;
       const remarkBits = [
-        product,
+        isCollagenBowl ? bowlProductText : product,
         pick(text, ["备注", "note", "remark"]),
         /SGD|S\$/i.test(amount) ? amount : ""
       ].filter(Boolean);
       const parsed = {
-        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : /COLLAGEN\s*BOWL/i.test(`${product}\n${text}`) ? "COLLAGEN_BOWL" : "",
+        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : "",
         "D · Sales Person": "Joey",
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
@@ -1932,7 +1897,7 @@
         "K · Ginseng BTL": quantities.totals.ginseng || "-",
         "L · Floral BTL": quantities.totals.floral || "-",
         "M · Payment Method": payment,
-        "N · Variant": quantities.variant,
+        "N · Variant": isCollagenBowl ? bowlProductText : quantities.variant,
         "O · Remark": remarkBits.join(", "),
         "P · Name": name || "",
         "Q · Phone": normalizePhone(phone),
@@ -1947,7 +1912,6 @@
       if (isCollagenDrinkOrder(data)) {
         return `Collagen Drinks ${data["M · Collagen Drinks BTL"] || "待确认"} BTL`;
       }
-      if (isCollagenBowlOrder(data)) return data["N · Variant"] || data["O · Remark"] || "COLLAGEN BOWL";
       const listedProducts = [
         data["I · Classic BTL"] !== "-" ? `Classic ${data["I · Classic BTL"]} BTL` : "",
         data["J · Knee BTL"] !== "-" ? `Knee ${data["J · Knee BTL"]} BTL` : "",
@@ -2040,7 +2004,7 @@
             <label class="preview-select"><input class="order-preview-select-toggle" type="checkbox" data-order-index="${index}" ${selectedPreviewOrders.has(index) ? "checked" : ""} /> Select</label>
             <h3>订单 ${index + 1}</h3>
             <strong>${escapeHtml(data["P · Name"] || "待确认")} ${data["S · Total/RM"] ? `· RM ${escapeHtml(data["S · Total/RM"])}` : ""}</strong>
-            <span>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : isCollagenBowlOrder(data) ? "Collagen Bowl" : ([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认"))}</span>
+            <span>${escapeHtml(isCollagenDrinkOrder(data) ? "Collagen Drinks" : ([data["Page / Account"], data["H · Channel / Chanel"]].filter(Boolean).join(" → ") || "Channel 待确认"))}</span>
           </div>
           <button type="button" class="preview-done-button is-done" data-preview-toggle="${index}" title="展开订单" aria-label="展开订单">⌄</button>
         </div>
@@ -2702,8 +2666,6 @@
     pasteBlocks.addEventListener("paste", event => {
       if (!event.target.classList.contains("order-paste")) return;
       setTimeout(() => {
-        paymentOverrides.clear();
-        productOverrides.clear();
         collapsedPreviewOrders.clear();
         previewSelectionSignature = "";
         autoResizePasteInput(event.target);
@@ -2712,8 +2674,6 @@
     });
     pasteBlocks.addEventListener("input", event => {
       if (!event.target.classList.contains("order-paste")) return;
-      editingDraftEntry = null;
-      fieldOverrides.clear();
       collapsedPreviewOrders.clear();
       previewSelectionSignature = "";
       autoResizePasteInput(event.target);
@@ -2764,8 +2724,6 @@
         const originalProduct = inferLooseOrder(activeOrderEntries()[orderIndex]?.text || "").product;
         productOverrides.set(orderIndex, orderType === "COLLAGEN_DRINKS"
           ? collagenItemsFromText(originalProduct)
-          : orderType === "COLLAGEN_BOWL"
-          ? collagenBowlItemsFromText(originalProduct)
           : manualProductItemsFromText(originalProduct));
         render();
         return;
@@ -2848,8 +2806,6 @@
     });
     orderEntryDate.addEventListener("input", render);
     page.addEventListener("change", () => {
-      pageOverrides.clear();
-      productOverrides.clear();
       collapsedPreviewOrders.clear();
       window.customSelectRefresh?.();
       render();
