@@ -1261,8 +1261,7 @@
 
     function channelForOrder(pageName = page.value, source = "", order = {}) {
       if (pageName !== "Live Channel") return channelForPage(pageName);
-      const context = `${source || ""}\n${order["Q · Phone"] || ""}\n${order["R · Address"] || ""}`;
-      return /\bsingapore\b|\b65[\s-]?[89]\d{3}[\s-]?\d{4}\b|\b[89]\d{7}\b/i.test(context) ? "SG LIVE" : "Main LIVE";
+      return "Main LIVE";
     }
 
     function pageForChannel(channel = "") {
