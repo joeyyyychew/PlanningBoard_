@@ -839,12 +839,27 @@
     const pageOverrides = new Map();
     const productOverrides = new Map();
     const fieldOverrides = new Map();
+    const bundleSelections = new Map();
+    const bundleTemplatesKey = "scale_story_bundle_templates";
     const collapsedPreviewOrders = new Set();
     const selectedPreviewOrders = new Set();
     let previewSelectionSignature = "";
     const orderDraftsKey = "orderKeyInDraftsV1";
     let activeDraftId = "";
     let editingDraftEntry = null;
+
+    function readBundleTemplates() {
+      try {
+        const templates = JSON.parse(localStorage.getItem(bundleTemplatesKey) || "[]");
+        return Array.isArray(templates) ? templates : [];
+      } catch { return []; }
+    }
+
+    function standardBundleItemsFromText(details = "") {
+      return String(details || "").split(/[+,，\n]/).map(part => part.trim()).filter(part =>
+        /CLASSIC|GINSENG|LEMON\s*GRASS|LEMONGRASS|KNEE|FLORAL|COLLAGEN\s*BOWL/i.test(part)
+      ).flatMap(part => manualProductItemsFromText(part));
+    }
     const draftOrdersPanel = document.getElementById("draftOrdersPanel");
     const draftOrdersDetails = document.getElementById("draftOrdersDetails");
     const draftNotificationBadge = document.getElementById("draftNotificationBadge");
@@ -1091,6 +1106,7 @@
       paymentOverrides.clear();
       productOverrides.clear();
       fieldOverrides.clear();
+      bundleSelections.clear();
       (draft.pages || []).forEach(([index, value]) => pageOverrides.set(Number(index), value));
       (draft.payments || []).forEach(([index, value]) => paymentOverrides.set(Number(index), value));
       (draft.products || []).forEach(([index, value]) => productOverrides.set(Number(index), value));
@@ -1871,6 +1887,7 @@
       pageOverrides.clear();
       productOverrides.clear();
       fieldOverrides.clear();
+      bundleSelections.clear();
       collapsedPreviewOrders.clear();
       selectedPreviewOrders.clear();
       previewSelectionSignature = "";
@@ -1964,8 +1981,12 @@
         }
         if (paymentOverrides.has(index)) data["M · Payment Method"] = paymentOverrides.get(index);
         const originalProduct = pick(entry.text, ["产品", "商品", "item", "product"]) || inferLooseOrder(entry.text).product;
-        data = applyFieldOverrides(data, index);
+        const manualFields = fieldOverrides.get(index) || {};
+        data = { ...data, ...manualFields };
         data = applyProductItems(data, index, originalProduct);
+        // A bundle's full wording belongs in Remark. Keep it after product
+        // quantities are recalculated so it is never shortened or reordered.
+        if (Object.prototype.hasOwnProperty.call(manualFields, "O · Remark")) data["O · Remark"] = manualFields["O · Remark"];
         if (isCollagenDrinkOrder(data)) {
           data["Page / Account"] = "";
           data["H · Channel / Chanel"] = "";
@@ -2059,6 +2080,13 @@
             <small>Payment Method</small>
             <select class="payment-method-select" data-native="true" data-order-index="${index}">
               ${paymentMethodOptions.map(option => `<option value="${escapeHtml(option)}" ${option === (data["M · Payment Method"] || "") ? "selected" : ""}>${escapeHtml(option || "待确认")}</option>`).join("")}
+            </select>
+          </div>
+          <div class="simple-row order-preview-select-row">
+            <small>Bundle</small>
+            <select class="bundle-template-select" data-native="true" data-order-index="${index}">
+              <option value="">Custom order</option>
+              ${readBundleTemplates().map(template => `<option value="${escapeHtml(template.id)}" ${bundleSelections.get(index) === template.id ? "selected" : ""}>${escapeHtml(template.name)}${template.amount ? ` · RM ${escapeHtml(template.amount)}` : ""}</option>`).join("")}
             </select>
           </div>
           ${productBuilderHtml(index, inferLooseOrder(entries[index]?.text || "").product, data)}
@@ -2729,6 +2757,24 @@
         activeOrderEntries().forEach((entry, index) => pageOverrides.set(index, entry.page));
         pageOverrides.set(selectedIndex, event.target.value);
         page.value = event.target.value;
+        render();
+        return;
+      }
+      if (event.target.classList.contains("bundle-template-select")) {
+        const orderIndex = Number(event.target.dataset.orderIndex);
+        const template = readBundleTemplates().find(item => item.id === event.target.value);
+        if (!template) {
+          bundleSelections.delete(orderIndex);
+          render();
+          return;
+        }
+        bundleSelections.set(orderIndex, template.id);
+        productOverrides.set(orderIndex, standardBundleItemsFromText(template.details));
+        fieldOverrides.set(orderIndex, {
+          ...(fieldOverrides.get(orderIndex) || {}),
+          "S · Total/RM": String(template.amount || ""),
+          "O · Remark": String(template.details || "")
+        });
         render();
         return;
       }

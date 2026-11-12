@@ -13,6 +13,7 @@ const files = [
   "broadcast-tracking.html",
   "payment-links.html",
   "payment-links-library.js",
+  "bundle-templates.html",
   "pharmacy-search.html",
   "pharmacy-library.js",
   "manychat-setup.html",
@@ -177,13 +178,14 @@ function serveAsset(pathname) {
   if (cleanPathname === "/favicon.ico") {
     return new Response("", { status: 204, headers: { "Cache-Control": "public, max-age=86400" } });
   }
-  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/payment-links.html", "/pharmacy-search.html"].includes(cleanPathname)) {
+  if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/payment-links.html", "/bundle-templates.html", "/pharmacy-search.html"].includes(cleanPathname)) {
     url.pathname = "/";
     url.searchParams.delete("embedded");
     if (cleanPathname === "/order-key-in.html") url.searchParams.set("view", "order-key-in");
     else if (cleanPathname === "/broadcast-planning.html") url.searchParams.set("view", "broadcast-planning");
     else if (cleanPathname === "/broadcast-tracking.html") url.searchParams.set("view", "broadcast-tracking");
     else if (cleanPathname === "/payment-links.html") url.searchParams.set("view", "payment-links");
+    else if (cleanPathname === "/bundle-templates.html") url.searchParams.set("view", "bundle-templates");
     else if (cleanPathname === "/pharmacy-search.html") url.searchParams.set("view", "pharmacy-search");
     else url.searchParams.set("view", url.searchParams.get("account") ? "analysis-account" : "analysis-overview");
     return new Response(null, {
@@ -204,6 +206,8 @@ function serveAsset(pathname) {
     "/broadcast-tracking.html": embedded ? "/broadcast-tracking.html" : "/dashboard.html",
     "/payment-links": embedded ? "/payment-links.html" : "/dashboard.html",
     "/payment-links.html": embedded ? "/payment-links.html" : "/dashboard.html",
+    "/bundle-templates": embedded ? "/bundle-templates.html" : "/dashboard.html",
+    "/bundle-templates.html": embedded ? "/bundle-templates.html" : "/dashboard.html",
     "/pharmacy-search": embedded ? "/pharmacy-search.html" : "/dashboard.html",
     "/pharmacy-search.html": embedded ? "/pharmacy-search.html" : "/dashboard.html",
     "/manychat-setup": "/manychat-setup.html"

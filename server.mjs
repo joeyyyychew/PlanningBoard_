@@ -1975,7 +1975,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const embedded = url.searchParams.get("embedded") === "1";
-    if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/pharmacy-search.html"].includes(url.pathname)) {
+    if (!embedded && ["/index.html", "/order-key-in.html", "/broadcast-planning.html", "/broadcast-tracking.html", "/payment-links.html", "/bundle-templates.html", "/pharmacy-search.html"].includes(url.pathname)) {
       const next = new URL(url);
       next.pathname = "/";
       next.searchParams.delete("embedded");
@@ -1983,6 +1983,8 @@ const server = http.createServer(async (req, res) => {
       else if (url.pathname === "/broadcast-planning.html") next.searchParams.set("view", "broadcast-planning");
       else if (url.pathname === "/broadcast-tracking.html") next.searchParams.set("view", "broadcast-tracking");
       else if (url.pathname === "/pharmacy-search.html") next.searchParams.set("view", "pharmacy-search");
+      else if (url.pathname === "/payment-links.html") next.searchParams.set("view", "payment-links");
+      else if (url.pathname === "/bundle-templates.html") next.searchParams.set("view", "bundle-templates");
       else next.searchParams.set("view", next.searchParams.get("account") ? "analysis-account" : "analysis-overview");
       res.writeHead(302, { Location: `${next.pathname}${next.search}` });
       return res.end();
@@ -2000,6 +2002,8 @@ const server = http.createServer(async (req, res) => {
       "/broadcast-tracking.html": embedded ? "broadcast-tracking.html" : "dashboard.html",
       "/payment-links": embedded ? "payment-links.html" : "dashboard.html",
       "/payment-links.html": embedded ? "payment-links.html" : "dashboard.html",
+      "/bundle-templates": embedded ? "bundle-templates.html" : "dashboard.html",
+      "/bundle-templates.html": embedded ? "bundle-templates.html" : "dashboard.html",
       "/pharmacy-search": embedded ? "pharmacy-search.html" : "dashboard.html",
       "/pharmacy-search.html": embedded ? "pharmacy-search.html" : "dashboard.html",
       "/manychat-setup": "manychat-setup.html",
