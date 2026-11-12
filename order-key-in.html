@@ -1691,6 +1691,13 @@
       return String(data["Order Type"] || "").toUpperCase() === "COLLAGEN_DRINKS";
     }
 
+    function isPureCollagenDrinksOrder(text = "") {
+      const source = String(text || "").toUpperCase();
+      const hasDrinks = /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/.test(source);
+      const hasOtherProducts = /CLASSIC|GINSENG|LEMON\s*GRASS|LEMONGRASS|KNEE|FLORAL|COLLAGEN\s*BOWL|\bMASK\b/.test(source);
+      return hasDrinks && !hasOtherProducts;
+    }
+
     function collagenItemsFromText(productText = "") {
       const source = String(productText || "").toUpperCase();
       const quantities = [...source.matchAll(/(\d+(?:\.\d+)?)\s*(?:BOX|盒)/g)]
@@ -1900,7 +1907,7 @@
         /SGD|S\$/i.test(amount) ? amount : ""
       ].filter(Boolean);
       const parsed = {
-        "Order Type": /COLLAGEN\s*DRINK|RM\s*4\.90\s*DRINK/i.test(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : "",
+        "Order Type": isPureCollagenDrinksOrder(`${product}\n${text}`) ? "COLLAGEN_DRINKS" : "",
         "D · Sales Person": "Joey",
         "E · NO": "正式写入时自动接下一单号",
         "F · Date": sheetDateFromTypedInput(),
